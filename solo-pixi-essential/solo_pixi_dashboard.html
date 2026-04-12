@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="cyber">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TechNexion - Produxion | Solo PIXI Module Test Analysis</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ─── Apple Dark Mode CSS ─────────────────────────────────────────────────── */
+:root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --surface2: #2c2c2e;
+    --surface3: #3a3a3c;
+    --text: #f5f5f7;
+    --text2: #aeaeb2;
+    --text3: #636366;
+    --blue: #0a84ff;
+    --green: #30d158;
+    --red: #ff453a;
+    --orange: #ff9f0a;
+    --purple: #bf5af2;
+    --teal: #64d2ff;
+    --border: #38383a;
+    --sidebar-w: 220px;
+    --radius: 12px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 100;
+    overflow-y: auto;
+}
+.sidebar .logo {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid var(--border);
+}
+.sidebar .logo .org-name {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+.sidebar .logo h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    line-height: 1.3;
+}
+.sidebar .logo span {
+    font-size: 11px;
+    color: var(--text2);
+    font-weight: 400;
+}
+.sidebar nav { padding: 12px 0; flex: 1; }
+.sidebar nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 20px;
+    color: var(--text2);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 8px;
+    margin: 2px 8px;
+    transition: all .15s;
+}
+.sidebar nav a:hover { background: var(--surface2); color: var(--text); }
+.sidebar nav a.active { background: var(--blue); color: #fff; }
+.sidebar nav .section-label {
+    padding: 16px 20px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.sidebar .sidebar-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.sidebar .clock {
+    font-size: 22px;
+    font-weight: 300;
+    color: var(--text2);
+    font-variant-numeric: tabular-nums;
+}
+.sidebar .clock-date {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+}
+.sidebar .sidebar-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text3);
+}
+.theme-select {
+    width: 100%;
+    padding: 6px 10px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+}
+.theme-select:focus { border-color: var(--blue); }
+.theme-label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+/* ─── Theme: TechNexion Blue (default) ─ already in :root ─────────────── */
+
+/* ─── Theme: Cyber Neon ───────────────────────────────────────────────── */
+[data-theme="cyber"] {
+    --bg: #0a0a14;
+    --surface: #12121f;
+    --surface2: #1a1a2e;
+    --surface3: #25253d;
+    --text: #e0e0ff;
+    --text2: #8888aa;
+    --text3: #555577;
+    --blue: #00d4ff;
+    --green: #00ff88;
+    --red: #ff3366;
+    --orange: #ff8800;
+    --purple: #aa44ff;
+    --teal: #00ffcc;
+    --border: #2a2a44;
+}
+
+/* ─── Theme: Deep Space ───────────────────────────────────────────────── */
+[data-theme="space"] {
+    --bg: #0b0c17;
+    --surface: #141526;
+    --surface2: #1e1f35;
+    --surface3: #2a2b45;
+    --text: #e8e6f0;
+    --text2: #9a97b0;
+    --text3: #5e5c72;
+    --blue: #7b61ff;
+    --green: #56e39f;
+    --red: #ff6b6b;
+    --orange: #ffa654;
+    --purple: #c77dff;
+    --teal: #72efdd;
+    --border: #2e2d44;
+}
+
+/* ─── Main ────────────────────────────────────────────────────────────────── */
+.main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 28px 32px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.page { display: none; flex: 1; min-height: 0; }
+.page.active { display: block; overflow: auto; }
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 24px;
+}
+
+/* ─── KPI Cards ───────────────────────────────────────────────────────────── */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.kpi-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+}
+.kpi-card .kpi-label {
+    font-size: 12px;
+    color: var(--text2);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 8px;
+}
+.kpi-card .kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -1px;
+    font-variant-numeric: tabular-nums;
+}
+.kpi-card .kpi-value.green { color: var(--green); }
+.kpi-card .kpi-value.red { color: var(--red); }
+.kpi-card .kpi-value.orange { color: var(--orange); }
+.kpi-card .kpi-value.blue { color: var(--blue); }
+.kpi-card .kpi-value.purple { color: var(--purple); }
+.kpi-card .kpi-value.teal { color: var(--teal); }
+
+/* ─── Chart containers ────────────────────────────────────────────────────── */
+.chart-row {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.chart-row.monthly-row {
+    grid-template-columns: 1fr 1fr;
+}
+.chart-box {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+}
+.chart-box h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text2);
+}
+.chart-box canvas { width: 100% !important; }
+.chart-full { grid-column: 1 / -1; }
+
+#page-failanalysis .device-config-box {
+    height: 30vh;
+}
+
+/* ─── Tables ──────────────────────────────────────────────────────────────── */
+.data-table-wrap {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 28px;
+}
+.data-table-wrap h3 {
+    padding: 16px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+th {
+    background: var(--surface2);
+    padding: 10px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text2);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: sticky;
+    top: 0;
+}
+td {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text);
+}
+tr:hover td { background: var(--surface2); }
+
+/* ─── Yield bar ───────────────────────────────────────────────────────────── */
+.yield-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--surface3);
+    width: 80px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+.yield-bar .fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .3s;
+}
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge.pass { background: rgba(48,209,88,.15); color: var(--green); }
+.badge.fail { background: rgba(255,69,58,.15); color: var(--red); }
+.badge.stop { background: rgba(255,159,10,.15); color: var(--orange); }
+.badge.high { background: rgba(255,69,58,.15); color: var(--red); }
+.badge.medium { background: rgba(255,159,10,.15); color: var(--orange); }
+.badge.low { background: rgba(48,209,88,.15); color: var(--green); }
+
+/* ─── Loading ─────────────────────────────────────────────────────────────── */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text3);
+    font-size: 14px;
+}
+
+/* ─── Two column grid ─────────────────────────────────────────────────────── */
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+/* ─── Scrollable table ────────────────────────────────────────────────────── */
+.table-scroll {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* ─── Top Filter Bar ──────────────────────────────────────────────────────── */
+.filter-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-bottom: 24px;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+/* ─── Overview full-screen layout ─────────────────────────────────────────── */
+#page-overview.active {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px;
+    overflow: hidden;
+}
+#page-overview .kpi-grid { margin-bottom: 0; }
+#page-overview .kpi-card { padding: 14px; }
+#page-overview .kpi-card .kpi-value { font-size: 24px; }
+#page-overview .chart-row { margin-bottom: 0; min-height: 0; }
+#page-overview .chart-box { min-height: 0; padding: 14px; }
+#page-overview .chart-box h3 { margin-bottom: 10px; }
+#page-overview .chart-box canvas { height: calc(100% - 28px) !important; }
+#page-overview .chart-row.primary-row { grid-template-columns: 3fr 1fr; }
+#page-overview .donut-compact {
+    display: flex;
+    flex-direction: column;
+}
+#page-overview .status-lights {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+#page-overview .status-lights .light {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+}
+#page-overview .status-lights .light.pass { background: #30d158; }
+#page-overview .status-lights .light.fail { background: #ff453a; }
+#page-overview .status-lights .light.stop { background: #ff9f0a; }
+#page-overview .donut-compact canvas {
+    height: auto !important;
+    width: 100% !important;
+    aspect-ratio: 1 / 1;
+    max-height: 240px;
+}
+.filter-group { display: flex; flex-direction: column; gap: 3px; }
+.filter-group label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+.filter-group select {
+    padding: 6px 10px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    outline: none;
+    min-width: 90px;
+}
+.filter-group select:focus { border-color: var(--blue); }
+.filter-reset {
+    padding: 6px 14px;
+    background: var(--surface3);
+    color: var(--text2);
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+}
+.filter-reset:hover { background: var(--red); color: #fff; }
+
+/* ─── DB Tweak ────────────────────────────────────────────────────────────── */
+.tweak-login-box {
+    max-width: 380px;
+    margin: 60px auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+}
+.tweak-login-box h3 { margin-bottom: 8px; font-size: 18px; }
+.tweak-form-row { margin-bottom: 14px; }
+.tweak-form-row label {
+    display: block;
+    font-size: 12px;
+    color: var(--text2);
+    margin-bottom: 4px;
+    font-weight: 500;
+}
+.tweak-form-row input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+}
+.tweak-form-row input:focus { border-color: var(--blue); }
+.tweak-btn {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.tweak-btn.primary { background: var(--blue); color: #fff; width: 100%; margin-top: 4px; }
+.tweak-btn.primary:hover { background: #409cff; }
+.tweak-btn.secondary { background: var(--surface3); color: var(--text); }
+.tweak-btn.secondary:hover { background: #48484a; }
+.tweak-btn.danger { background: var(--red); color: #fff; }
+.tweak-btn.danger:hover { background: #ff6961; }
+.tweak-btn:disabled { opacity: .4; cursor: default; }
+.tweak-toolbar {
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.tweak-action-btn {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 4px;
+}
+.tweak-action-btn.dl { background: rgba(10,132,255,.15); color: var(--blue); }
+.tweak-action-btn.dl:hover { background: rgba(10,132,255,.3); }
+.tweak-action-btn.del { background: rgba(255,69,58,.15); color: var(--red); }
+.tweak-action-btn.del:hover { background: rgba(255,69,58,.3); }
+</style>
+</head>
+<body>
+
+<!-- ═══ Sidebar ═══════════════════════════════════════════════════════════ -->
+<aside class="sidebar">
+    <div class="sidebar-header">
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="clock-date" id="clockDate"></div>
+    </div>
+    <div class="logo">
+        <span class="org-name">TechNexion - Produxion</span>
+        <h1>Solo PIXI<br>Module Test Analysis</h1>
+        <span>QCA9377 BT + WiFi QC</span>
+    </div>
+    <nav>
+        <div class="section-label">Overview</div>
+        <a href="#" data-page="overview" class="active">📊 Dashboard</a>
+        <a href="#" data-page="workorders">📋 Work Orders</a>
+        <a href="#" data-page="fails">⚠️ Fail List</a>
+        <div class="section-label">Analysis</div>
+        <a href="#" data-page="bt">📡 BT Analysis</a>
+        <a href="#" data-page="wifi">📶 WiFi Analysis</a>
+        <a href="#" data-page="failanalysis">🔍 Fail Analysis</a>
+        <div class="section-label">Management</div>
+        <a href="#" data-page="dbtweak">🔧 DB Tweak</a>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="theme-label">🎨 Theme</div>
+        <select class="theme-select" id="themeSelect">
+            <option value="default">TechNexion Blue</option>
+            <option value="cyber" selected>Cyber Neon</option>
+            <option value="space">Deep Space</option>
+        </select>
+    </div>
+</aside>
+
+<!-- ═══ Main Content ═════════════════════════════════════════════════════ -->
+<main class="main">
+
+<!-- ─── Top Filter Bar ───────────────────────────────────────────────── -->
+<div class="filter-bar">
+    <div class="filter-group">
+        <label>Year</label>
+        <select id="filterYear"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+        <label>Month</label>
+        <select id="filterMonth"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+        <label>Week</label>
+        <select id="filterWeek"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+        <label>Day</label>
+        <select id="filterDay"><option value="">All</option></select>
+    </div>
+    <div class="filter-group">
+        <label>Work Order</label>
+        <select id="filterWO"><option value="">All</option></select>
+    </div>
+    <button class="filter-reset" id="btnFilterReset" title="Reset all filters">✕ Reset</button>
+</div>
+
+<!-- ─── Overview ──────────────────────────────────────────────────────── -->
+<div class="page active" id="page-overview">
+    <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card"><div class="kpi-label">Total Tested</div><div class="kpi-value teal" id="kpiTotal">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">PASS</div><div class="kpi-value green" id="kpiPass">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">FAIL</div><div class="kpi-value red" id="kpiFail">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">STOP</div><div class="kpi-value orange" id="kpiStop">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Yield %</div><div class="kpi-value green" id="kpiYield">—</div></div>
+        <div class="kpi-card"><div class="kpi-label">Retry Rate %</div><div class="kpi-value purple" id="kpiRetry">—</div></div>
+    </div>
+    <div class="chart-row primary-row">
+        <div class="chart-box yield-wide"><h3>Hourly Yield Trend</h3><canvas id="chartYield"></canvas></div>
+        <div class="chart-box donut-compact">
+            <div class="status-lights" title="PASS / FAIL / STOP status lights">
+                <span class="light pass"></span>
+                <span class="light fail"></span>
+                <span class="light stop"></span>
+            </div>
+            <canvas id="chartDonut"></canvas>
+        </div>
+    </div>
+    <div class="chart-row monthly-row">
+        <div class="chart-box"><h3>Monthly Test Units</h3><canvas id="chartMonthlyUnits"></canvas></div>
+        <div class="chart-box"><h3>Monthly FAIL / STOP</h3><canvas id="chartMonthlyFailStop"></canvas></div>
+    </div>
+</div>
+
+<!-- ─── Work Orders ──────────────────────────────────────────────────── -->
+<div class="page" id="page-workorders">
+    <h2 class="page-title">Work Orders</h2>
+    <div class="data-table-wrap">
+        <div class="table-scroll">
+            <table><thead><tr>
+                <th>Work Order</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th>
+            </tr></thead><tbody id="tbWO"></tbody></table>
+        </div>
+    </div>
+</div>
+
+<!-- ─── Fail List ────────────────────────────────────────────────────── -->
+<div class="page" id="page-fails">
+    <h2 class="page-title">Fail List</h2>
+    <div class="data-table-wrap">
+        <div class="table-scroll">
+            <table><thead><tr>
+                <th>Time</th><th>MAC1</th><th>MAC2</th><th>Work Order</th><th>Result</th><th>Fail Step</th><th>Message</th><th>Duration</th>
+            </tr></thead><tbody id="tbFails"></tbody></table>
+        </div>
+    </div>
+</div>
+
+<!-- ─── BT Analysis ──────────────────────────────────────────────────── -->
+<div class="page" id="page-bt">
+    <h2 class="page-title">BT Analysis</h2>
+    <div class="kpi-grid" id="btKpi"></div>
+    <div class="grid-2">
+        <div class="chart-box"><h3>BDR Power Distribution (dBm)</h3><canvas id="chartBdrPower"></canvas></div>
+        <div class="chart-box"><h3>EDR DEVM Avg — 2DH1 vs 3DH1 (%)</h3><canvas id="chartEdrDevm"></canvas></div>
+    </div>
+</div>
+
+<!-- ─── WiFi Analysis ────────────────────────────────────────────────── -->
+<div class="page" id="page-wifi">
+    <h2 class="page-title">WiFi Analysis</h2>
+    <div class="grid-2">
+        <div class="chart-box"><h3>2.4G EVM by Rate (dB) — lower is better</h3><canvas id="chartEvm24"></canvas></div>
+        <div class="chart-box"><h3>5G EVM by Rate (dB) — lower is better</h3><canvas id="chartEvm5"></canvas></div>
+    </div>
+    <div class="grid-2">
+        <div class="chart-box"><h3>Xtal Cap Distribution</h3><canvas id="chartXtalCap"></canvas></div>
+        <div class="chart-box"><h3>Xtal Freq Error (ppm)</h3><canvas id="chartXtalPpm"></canvas></div>
+    </div>
+</div>
+
+<!-- ─── Fail Analysis ────────────────────────────────────────────────── -->
+<div class="page" id="page-failanalysis">
+    <h2 class="page-title">Fail Analysis</h2>
+    <div class="chart-box" style="margin-bottom:28px"><h3>Top Fail Steps</h3><canvas id="chartFailSteps"></canvas></div>
+    <div class="chart-box device-config-box" style="margin-bottom:28px"><h3>DeviceConfigure (Unidentified Cause)</h3><canvas id="chartConfigSteps"></canvas></div>
+    <div class="data-table-wrap">
+        <h3>Fail / Stop Records</h3>
+        <div class="table-scroll">
+            <table><thead><tr>
+                <th>Time</th><th>MAC1</th><th>Result</th><th>Error Code</th><th>Fail Step</th><th>Category</th><th>Message</th><th>Raw Log</th>
+            </tr></thead><tbody id="tbFailAnalysis"></tbody></table>
+        </div>
+    </div>
+</div>
+
+<!-- ─── DB Tweak ──────────────────────────────────────────────────────── -->
+<div class="page" id="page-dbtweak">
+    <h2 class="page-title">DB Tweak</h2>
+
+    <!-- Login gate -->
+    <div id="tweakLogin" class="tweak-login-box">
+        <h3>🔒 Authentication Required</h3>
+        <p style="color:var(--text2);font-size:13px;margin-bottom:16px">Enter credentials to access database management tools.</p>
+        <div class="tweak-form-row">
+            <label>Username</label>
+            <input type="text" id="tweakUser" placeholder="admin" autocomplete="username">
+        </div>
+        <div class="tweak-form-row">
+            <label>Password</label>
+            <input type="password" id="tweakPass" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="tweak-btn primary" id="btnTweakLogin">Sign In</button>
+        <div id="tweakLoginMsg" style="margin-top:10px;font-size:13px;color:var(--red);display:none"></div>
+    </div>
+
+    <!-- Tweak panel (hidden until authenticated) -->
+    <div id="tweakPanel" style="display:none">
+        <div class="tweak-toolbar">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <span style="color:var(--green);font-weight:600">🔓 Authenticated</span>
+                <button class="tweak-btn secondary" id="btnTweakRefresh">Refresh</button>
+                <button class="tweak-btn danger" id="btnTweakLogout">Logout</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
+                <label style="font-size:12px;color:var(--text2)">Delete by WO:</label>
+                <select id="tweakWOSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+                    <option value="">— select —</option>
+                </select>
+                <button class="tweak-btn danger" id="btnTweakDeleteWO" disabled>Delete Entire WO</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
+                <label style="font-size:12px;color:var(--text2)">Delete by Date:</label>
+                <select id="tweakYearSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+                    <option value="">— Year —</option>
+                </select>
+                <select id="tweakMonthSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+                    <option value="">All Months</option>
+                </select>
+                <span id="tweakDateCount" style="font-size:12px;color:var(--text3)"></span>
+                <button class="tweak-btn danger" id="btnTweakDeleteDate" disabled>Delete by Date</button>
+            </div>
+        </div>
+        <div class="data-table-wrap" style="margin-top:16px">
+            <div class="table-scroll" style="max-height:600px">
+                <table>
+                    <thead><tr>
+                        <th>ID</th><th>Time</th><th>MAC1</th><th>Work Order</th><th>Result</th>
+                        <th>Duration</th><th>Fail Step</th><th>Source</th><th>Actions</th>
+                    </tr></thead>
+                    <tbody id="tbTweak"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+</main>
+
+<script>
+/* ═══ Navigation ═════════════════════════════════════════════════════════ */
+const navLinks = document.querySelectorAll('.sidebar nav a');
+navLinks.forEach(link => {
+    link.addEventListener('click', e => {
+        e.preventDefault();
+        navLinks.forEach(l => l.classList.remove('active'));
+        link.classList.add('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + link.dataset.page).classList.add('active');
+        loadPageData(link.dataset.page);
+    });
+});
+
+/* ═══ Clock ══════════════════════════════════════════════════════════════ */
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toTimeString().slice(0,8);
+    document.getElementById('clockDate').textContent = now.toLocaleDateString('zh-TW', {year:'numeric',month:'2-digit',day:'2-digit',weekday:'short'});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ═══ Filter State ═══════════════════════════════════════════════════════ */
+const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function getFilter() {
+    const p = new URLSearchParams();
+    const y = document.getElementById('filterYear').value;
+    const m = document.getElementById('filterMonth').value;
+    const w = document.getElementById('filterWeek').value;
+    const d = document.getElementById('filterDay').value;
+    const wo = document.getElementById('filterWO').value;
+    if (y) p.set('year', y);
+    if (m) p.set('month', m);
+    if (w) p.set('week', w);
+    if (d) p.set('day', d);
+    if (wo) p.set('work_order', wo);
+    return p.toString() ? '?' + p.toString() : '';
+}
+
+async function api(path) {
+    const r = await fetch(path + getFilter());
+    return r.json();
+}
+
+/* ═══ Cascading filter load ══════════════════════════════════════════════ */
+async function loadFilterOptions() {
+    const y = document.getElementById('filterYear').value;
+    const m = document.getElementById('filterMonth').value;
+    const w = document.getElementById('filterWeek').value;
+    const d = document.getElementById('filterDay').value;
+
+    const p = new URLSearchParams();
+    if (y) p.set('year', y);
+    if (m) p.set('month', m);
+    if (w) p.set('week', w);
+    if (d) p.set('day', d);
+    const qs = p.toString() ? '?' + p.toString() : '';
+
+    try {
+        const opts = await (await fetch('/api/filter-options' + qs)).json();
+        fillSelect('filterYear', opts.years, y, v => v);
+        fillSelect('filterMonth', opts.months, m, v => `${v} (${MONTH_NAMES[v]||v})`);
+        fillSelect('filterWeek', opts.weeks, w, v => `W${v}`);
+        fillSelect('filterDay', opts.days, d, v => v);
+        fillSelect('filterWO', opts.work_orders, document.getElementById('filterWO').value, v => v);
+    } catch(e) { console.warn('filter-options error', e); }
+}
+
+function fillSelect(id, values, currentVal, labelFn) {
+    const sel = document.getElementById(id);
+    const val = currentVal || '';
+    sel.innerHTML = '<option value="">All</option>';
+    (values||[]).forEach(v => {
+        const o = document.createElement('option');
+        o.value = v;
+        o.textContent = labelFn ? labelFn(v) : v;
+        if (String(v) === String(val)) o.selected = true;
+        sel.appendChild(o);
+    });
+}
+
+/* Filter change handlers — cascade downstream */
+document.getElementById('filterYear').addEventListener('change', () => {
+    document.getElementById('filterMonth').value = '';
+    document.getElementById('filterWeek').value = '';
+    document.getElementById('filterDay').value = '';
+    document.getElementById('filterWO').value = '';
+    loadFilterOptions().then(reloadActivePage);
+});
+document.getElementById('filterMonth').addEventListener('change', () => {
+    document.getElementById('filterWeek').value = '';
+    document.getElementById('filterDay').value = '';
+    document.getElementById('filterWO').value = '';
+    loadFilterOptions().then(reloadActivePage);
+});
+document.getElementById('filterWeek').addEventListener('change', () => {
+    document.getElementById('filterDay').value = '';
+    document.getElementById('filterWO').value = '';
+    loadFilterOptions().then(reloadActivePage);
+});
+document.getElementById('filterDay').addEventListener('change', () => {
+    document.getElementById('filterWO').value = '';
+    loadFilterOptions().then(reloadActivePage);
+});
+document.getElementById('filterWO').addEventListener('change', reloadActivePage);
+
+document.getElementById('btnFilterReset').addEventListener('click', () => {
+    ['filterYear','filterMonth','filterWeek','filterDay','filterWO'].forEach(id => document.getElementById(id).value = '');
+    loadFilterOptions().then(reloadActivePage);
+});
+
+function reloadActivePage() {
+    const pg = document.querySelector('.sidebar nav a.active')?.dataset?.page || 'overview';
+    loadPageData(pg);
+}
+
+/* ═══ Chart.js defaults ══════════════════════════════════════════════════ */
+Chart.defaults.color = '#aeaeb2';
+Chart.defaults.borderColor = '#38383a';
+Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto';
+
+const chartInstances = {};
+function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+/* ═══ Load overview ══════════════════════════════════════════════════════ */
+async function loadOverview() {
+    const [summary, trend, split, monthly] = await Promise.all([
+        api('/api/summary'), api('/api/yield-trend'), api('/api/pass-fail-split'), api('/api/monthly-count')
+    ]);
+
+    document.getElementById('kpiTotal').textContent = summary.total ?? '—';
+    document.getElementById('kpiPass').textContent = summary.pass ?? '—';
+    document.getElementById('kpiFail').textContent = summary.fail ?? '—';
+    document.getElementById('kpiStop').textContent = summary.stop ?? '—';
+    document.getElementById('kpiYield').textContent = summary.yield_pct != null ? summary.yield_pct + '%' : '—';
+    document.getElementById('kpiRetry').textContent = summary.retry_rate != null ? summary.retry_rate + '%' : '—';
+
+    destroyChart('chartYield');
+    const labels = trend.map(r => {
+        const d = new Date(r.hour);
+        return d.toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit', hour12:false});
+    });
+    chartInstances['chartYield'] = new Chart(document.getElementById('chartYield'), {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Yield %',
+                data: trend.map(r => r.yield_pct),
+                borderColor: '#30d158',
+                backgroundColor: 'rgba(48,209,88,.1)',
+                fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#30d158',
+                order: 2,
+            },{
+                type: 'bar',
+                label: 'Units',
+                data: trend.map(r => r.total),
+                borderColor: '#0a84ff',
+                backgroundColor: 'rgba(10,132,255,.72)',
+                borderRadius: 4,
+                borderWidth: 1,
+                yAxisID: 'y1',
+                order: 1,
+            }]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { beginAtZero: true, max: 100, title: { display: true, text: 'Yield %' }},
+                y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Units' }},
+            }
+        }
+    });
+
+    destroyChart('chartDonut');
+    const splitMap = {};
+    split.forEach(r => splitMap[r.result] = r.count);
+    chartInstances['chartDonut'] = new Chart(document.getElementById('chartDonut'), {
+        type: 'doughnut',
+        data: {
+            labels: ['PASS', 'FAIL', 'STOP'],
+            datasets: [{
+                data: [splitMap['PASS']||0, splitMap['FAIL']||0, splitMap['STOP']||0],
+                backgroundColor: ['#30d158', '#ff453a', '#ff9f0a'],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 1,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: () => '',
+                        label: (ctx) => `${ctx.parsed}`
+                    }
+                }
+            }
+        }
+    });
+
+    // Monthly Test Units chart
+    destroyChart('chartMonthlyUnits');
+    const mLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const mData = monthly.months || [];
+    chartInstances['chartMonthlyUnits'] = new Chart(document.getElementById('chartMonthlyUnits'), {
+        type: 'bar',
+        data: {
+            labels: mLabels,
+            datasets: [
+                { label: 'Test Units', data: mData.map(r => r.total), backgroundColor: '#64d2ff', borderRadius: 4 },
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Units' } } },
+            plugins: { legend: { display: false }, title: { display: true, text: `Year: ${monthly.year || ''}`, font: { size: 12 }, color: '#8888aa' } }
+        }
+    });
+
+    // Monthly FAIL / STOP chart
+    destroyChart('chartMonthlyFailStop');
+    chartInstances['chartMonthlyFailStop'] = new Chart(document.getElementById('chartMonthlyFailStop'), {
+        type: 'bar',
+        data: {
+            labels: mLabels,
+            datasets: [
+                { label: 'FAIL', data: mData.map(r => r.failed), backgroundColor: '#ff453a', borderRadius: 4 },
+                { label: 'STOP', data: mData.map(r => r.stopped), backgroundColor: '#ff9f0a', borderRadius: 4 },
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
+            plugins: { title: { display: true, text: `Year: ${monthly.year || ''}`, font: { size: 12 }, color: '#8888aa' } }
+        }
+    });
+}
+
+/* ═══ Load work orders ═══════════════════════════════════════════════════ */
+async function loadWorkOrders() {
+    const rows = await api('/api/work-orders');
+    const tbody = document.getElementById('tbWO');
+    tbody.innerHTML = rows.map(r => {
+        const y = parseFloat(r.yield_pct) || 0;
+        const color = y >= 95 ? 'var(--green)' : y >= 80 ? 'var(--orange)' : 'var(--red)';
+        return `<tr>
+            <td><strong>${r.work_order||'—'}</strong></td>
+            <td>${r.total}</td>
+            <td>${r.test_attempts ?? 0}</td>
+            <td><span class="badge pass">${r.passed}</span></td>
+            <td><span class="badge fail">${r.failed}</span></td>
+            <td><span class="badge stop">${r.stopped}</span></td>
+            <td><span class="yield-bar"><span class="fill" style="width:${y}%;background:${color}"></span></span>${y}%</td>
+            <td>${r.retry_rate != null ? parseFloat(r.retry_rate).toFixed(1) + '%' : '—'}</td>
+            <td>${fmtTime(r.first_test)}</td>
+            <td>${fmtTime(r.last_test)}</td>
+        </tr>`;
+    }).join('');
+}
+
+/* ═══ Load fails ═════════════════════════════════════════════════════════ */
+async function loadFails() {
+    const rows = await api('/api/fails');
+    const tbody = document.getElementById('tbFails');
+    tbody.innerHTML = rows.map(r => {
+        const rc = r.result === 'FAIL' ? 'fail' : 'stop';
+        return `<tr>
+        <td>${fmtTime(r.start_time)}</td>
+        <td><code>${r.mac1}</code></td>
+        <td><code>${r.mac2||''}</code></td>
+        <td>${r.work_order||'—'}</td>
+        <td><span class="badge ${rc}">${r.result}</span></td>
+        <td>${r.fail_step_name||'—'}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${r.fail_message||'—'}</td>
+        <td>${r.test_duration_sec != null ? r.test_duration_sec.toFixed(1) + 's' : '—'}</td>
+    </tr>`;
+    }).join('');
+}
+
+/* ═══ Load BT Analysis ═══════════════════════════════════════════════════ */
+async function loadBT() {
+    const data = await api('/api/bt-metrics');
+    const s = data.bt_summary || {};
+    document.getElementById('btKpi').innerHTML = `
+        <div class="kpi-card"><div class="kpi-label">BDR Pass</div><div class="kpi-value green">${s.bdr_passed??'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">BDR Fail</div><div class="kpi-value red">${s.bdr_failed??0}</div></div>
+        <div class="kpi-card"><div class="kpi-label">LE Pass</div><div class="kpi-value green">${s.le_passed??'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">LE Fail</div><div class="kpi-value red">${s.le_failed??0}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Avg BER 2441</div><div class="kpi-value teal">${s.avg_ber_2441!=null?parseFloat(s.avg_ber_2441).toFixed(4):'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Avg PER LE</div><div class="kpi-value teal">${s.avg_per_le!=null?parseFloat(s.avg_per_le).toFixed(4):'—'}</div></div>
+    `;
+
+    destroyChart('chartBdrPower');
+    if (data.bdr_powers && data.bdr_powers.length) {
+        const bins = buildHistogram(data.bdr_powers, 0.5);
+        chartInstances['chartBdrPower'] = new Chart(document.getElementById('chartBdrPower'), {
+            type: 'bar',
+            data: { labels: bins.labels, datasets: [{ label: 'Count', data: bins.counts, backgroundColor: '#0a84ff', borderRadius: 4 }] },
+            options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    destroyChart('chartEdrDevm');
+    if (data.edr1_devm && data.edr1_devm.length) {
+        const bins1 = buildHistogram(data.edr1_devm, 0.5);
+        const bins2 = buildHistogram(data.edr2_devm, 0.5);
+        const allLabels = [...new Set([...bins1.labels, ...bins2.labels])].sort((a,b)=>parseFloat(a)-parseFloat(b));
+        const map1 = {}; bins1.labels.forEach((l,i)=>map1[l]=bins1.counts[i]);
+        const map2 = {}; bins2.labels.forEach((l,i)=>map2[l]=bins2.counts[i]);
+        chartInstances['chartEdrDevm'] = new Chart(document.getElementById('chartEdrDevm'), {
+            type: 'bar',
+            data: {
+                labels: allLabels,
+                datasets: [
+                    { label: 'EDR1 (2DH1)', data: allLabels.map(l=>map1[l]||0), backgroundColor: 'rgba(10,132,255,.7)', borderRadius: 4 },
+                    { label: 'EDR2 (3DH1)', data: allLabels.map(l=>map2[l]||0), backgroundColor: 'rgba(191,90,242,.7)', borderRadius: 4 },
+                ]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+    }
+}
+
+/* ═══ Load WiFi Analysis ═════════════════════════════════════════════════ */
+async function loadWiFi() {
+    const data = await api('/api/wifi-metrics');
+
+    destroyChart('chartEvm24');
+    const avg24 = data.avg_evm_24g || {};
+    chartInstances['chartEvm24'] = new Chart(document.getElementById('chartEvm24'), {
+        type: 'bar',
+        data: {
+            labels: ['CCK-11', 'OFDM-54', 'HT20', 'HT40'],
+            datasets: [{ label: 'Avg EVM (dB)', data: [avg24.cck11, avg24.ofdm54, avg24.ht20, avg24.ht40], backgroundColor: ['#0a84ff','#30d158','#ff9f0a','#bf5af2'], borderRadius: 6 }]
+        },
+        options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+
+    destroyChart('chartEvm5');
+    const avg5 = data.avg_evm_5g || {};
+    chartInstances['chartEvm5'] = new Chart(document.getElementById('chartEvm5'), {
+        type: 'bar',
+        data: {
+            labels: ['OFDM-54', 'HT20', 'HT40', 'VHT80'],
+            datasets: [{ label: 'Avg EVM (dB)', data: [avg5.ofdm54, avg5.ht20, avg5.ht40, avg5.vht80], backgroundColor: ['#0a84ff','#30d158','#ff9f0a','#bf5af2'], borderRadius: 6 }]
+        },
+        options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+
+    destroyChart('chartXtalCap');
+    if (data.xtal_data && data.xtal_data.length) {
+        const caps = data.xtal_data.map(r => r.xtal_cap);
+        const bins = buildHistogram(caps, 1);
+        chartInstances['chartXtalCap'] = new Chart(document.getElementById('chartXtalCap'), {
+            type: 'bar',
+            data: { labels: bins.labels, datasets: [{ label: 'Count', data: bins.counts, backgroundColor: '#64d2ff', borderRadius: 4 }] },
+            options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+        });
+    }
+
+    destroyChart('chartXtalPpm');
+    if (data.xtal_data && data.xtal_data.length) {
+        const ppms = data.xtal_data.map(r => r.xtal_freq_error_ppm);
+        const bins = buildHistogram(ppms, 0.5);
+        chartInstances['chartXtalPpm'] = new Chart(document.getElementById('chartXtalPpm'), {
+            type: 'bar',
+            data: { labels: bins.labels, datasets: [{ label: 'Count', data: bins.counts, backgroundColor: '#ff9f0a', borderRadius: 4 }] },
+            options: { responsive: true, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false } } }
+        });
+    }
+}
+
+/* ═══ Load Fail Analysis ═════════════════════════════════════════════════ */
+async function loadFailAnalysis() {
+    const [analysis, config, fails] = await Promise.all([
+        api('/api/fail-analysis'), api('/api/config-analysis'), api('/api/fails')
+    ]);
+
+    // Top Fail Steps — gray horizontal bars
+    destroyChart('chartFailSteps');
+    if (analysis.length) {
+        chartInstances['chartFailSteps'] = new Chart(document.getElementById('chartFailSteps'), {
+            type: 'bar',
+            data: {
+                labels: analysis.map(r => {
+                    const code = r.fail_error_code ? r.fail_error_code + ': ' : '';
+                    return code + (r.fail_step || '');
+                }),
+                datasets: [{ label: 'Occurrences', data: analysis.map(r => r.count), backgroundColor: '#ff453a', borderRadius: 6 }]
+            },
+            options: { responsive: true, indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+    }
+
+    // DeviceConfigure — gray horizontal bars
+    destroyChart('chartConfigSteps');
+    if (config.length) {
+        chartInstances['chartConfigSteps'] = new Chart(document.getElementById('chartConfigSteps'), {
+            type: 'bar',
+            data: {
+                labels: config.map(r => r.result + ' (no identified cause)'),
+                datasets: [{ label: 'Count', data: config.map(r => r.count), backgroundColor: '#8e8e93', borderRadius: 6 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+    }
+
+    // Table with error code, result, and category
+    document.getElementById('tbFailAnalysis').innerHTML = fails.map(r => {
+        const rc = r.result === 'FAIL' ? 'fail' : 'stop';
+        return `<tr>
+        <td>${fmtTime(r.start_time)}</td>
+        <td><code>${r.mac1||''}</code></td>
+        <td><span class="badge ${rc}">${r.result}</span></td>
+        <td>${r.fail_error_code||'—'}</td>
+        <td>${r.fail_step_name||'—'}</td>
+        <td>${r.fail_category||'—'}</td>
+        <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fail_message||'—'}</td>
+        <td>${r.id ? `<button class="tweak-action-btn dl" onclick="downloadFailLog(${r.id})">📥</button>` : '—'}</td>
+    </tr>`;
+    }).join('');
+}
+
+/* ═══ DB Tweak ═══════════════════════════════════════════════════════════ */
+let tweakToken = null;
+
+document.getElementById('btnTweakLogin').addEventListener('click', async () => {
+    const user = document.getElementById('tweakUser').value.trim();
+    const pass = document.getElementById('tweakPass').value.trim();
+    const msg = document.getElementById('tweakLoginMsg');
+    if (!user || !pass) { msg.textContent = 'Please enter both fields.'; msg.style.display = 'block'; return; }
+    try {
+        const r = await fetch('/api/tweak/login', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({username: user, password: pass})
+        });
+        const data = await r.json();
+        if (data.ok) {
+            tweakToken = data.token;
+            document.getElementById('tweakLogin').style.display = 'none';
+            document.getElementById('tweakPanel').style.display = 'block';
+            loadTweakRecords();
+            loadTweakDateOptions();
+        } else {
+            msg.textContent = data.message || 'Login failed';
+            msg.style.display = 'block';
+        }
+    } catch(e) {
+        msg.textContent = 'Connection error: ' + e.message;
+        msg.style.display = 'block';
+    }
+});
+
+/* Enter key to login */
+document.getElementById('tweakPass').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btnTweakLogin').click();
+});
+
+document.getElementById('btnTweakLogout').addEventListener('click', () => {
+    tweakToken = null;
+    document.getElementById('tweakPanel').style.display = 'none';
+    document.getElementById('tweakLogin').style.display = 'block';
+    document.getElementById('tweakUser').value = '';
+    document.getElementById('tweakPass').value = '';
+    document.getElementById('tweakLoginMsg').style.display = 'none';
+});
+
+document.getElementById('btnTweakRefresh').addEventListener('click', loadTweakRecords);
+
+document.getElementById('tweakWOSelect').addEventListener('change', function() {
+    document.getElementById('btnTweakDeleteWO').disabled = !this.value;
+});
+
+document.getElementById('btnTweakDeleteWO').addEventListener('click', async () => {
+    const wo = document.getElementById('tweakWOSelect').value;
+    if (!wo) return;
+    if (!confirm(`⚠️ Delete ALL records for work order "${wo}"?\nThis cannot be undone.`)) return;
+    try {
+        const r = await fetch(`/api/tweak/work-order/${encodeURIComponent(wo)}`, {
+            method: 'DELETE', headers: {'X-Tweak-Token': tweakToken}
+        });
+        const data = await r.json();
+        alert(`Deleted ${data.deleted} record(s) for WO: ${wo}`);
+        loadTweakRecords();
+        loadFilterOptions();
+        loadTweakDateOptions();
+    } catch(e) { alert('Error: ' + e.message); }
+});
+
+/* ─── Delete by Date ─────────────────────────────────────────────────── */
+const MONTH_LABELS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let tweakDateData = [];
+
+async function loadTweakDateOptions() {
+    if (!tweakToken) return;
+    try {
+        const r = await fetch('/api/tweak/date-options', { headers: {'X-Tweak-Token': tweakToken} });
+        if (r.status === 401) return;
+        const data = await r.json();
+        tweakDateData = data.year_months || [];
+        const ySel = document.getElementById('tweakYearSelect');
+        ySel.innerHTML = '<option value="">— Year —</option>';
+        (data.years || []).forEach(y => {
+            const o = document.createElement('option');
+            o.value = y; o.textContent = y;
+            ySel.appendChild(o);
+        });
+        updateTweakMonthSelect();
+    } catch(e) { console.warn('date-options error', e); }
+}
+
+function updateTweakMonthSelect() {
+    const year = document.getElementById('tweakYearSelect').value;
+    const mSel = document.getElementById('tweakMonthSelect');
+    mSel.innerHTML = '<option value="">All Months</option>';
+    if (year) {
+        const months = tweakDateData.filter(r => r.year === parseInt(year));
+        months.sort((a,b) => a.month - b.month);
+        months.forEach(r => {
+            const o = document.createElement('option');
+            o.value = r.month;
+            o.textContent = `${r.month} (${MONTH_LABELS[r.month]}) — ${r.cnt} records`;
+            mSel.appendChild(o);
+        });
+    }
+    updateTweakDateCount();
+}
+
+function updateTweakDateCount() {
+    const year = document.getElementById('tweakYearSelect').value;
+    const month = document.getElementById('tweakMonthSelect').value;
+    const span = document.getElementById('tweakDateCount');
+    const btn = document.getElementById('btnTweakDeleteDate');
+    if (!year) { span.textContent = ''; btn.disabled = true; return; }
+    let cnt = 0;
+    if (month) {
+        const match = tweakDateData.find(r => r.year === parseInt(year) && r.month === parseInt(month));
+        cnt = match ? match.cnt : 0;
+    } else {
+        cnt = tweakDateData.filter(r => r.year === parseInt(year)).reduce((s, r) => s + r.cnt, 0);
+    }
+    span.textContent = `(${cnt} records)`;
+    btn.disabled = false;
+}
+
+document.getElementById('tweakYearSelect').addEventListener('change', () => {
+    document.getElementById('tweakMonthSelect').value = '';
+    updateTweakMonthSelect();
+});
+document.getElementById('tweakMonthSelect').addEventListener('change', updateTweakDateCount);
+
+document.getElementById('btnTweakDeleteDate').addEventListener('click', async () => {
+    const year = document.getElementById('tweakYearSelect').value;
+    const month = document.getElementById('tweakMonthSelect').value;
+    if (!year) return;
+    const label = month ? `${year}-${String(month).padStart(2,'0')} (${MONTH_LABELS[parseInt(month)]})` : year;
+    if (!confirm(`⚠️ Delete ALL records for ${label}?\nThis cannot be undone.`)) return;
+    try {
+        const params = new URLSearchParams({ year });
+        if (month) params.set('month', month);
+        const r = await fetch(`/api/tweak/by-date?${params}`, {
+            method: 'DELETE', headers: {'X-Tweak-Token': tweakToken}
+        });
+        const data = await r.json();
+        alert(`Deleted ${data.deleted} record(s) for ${label}`);
+        loadTweakRecords();
+        loadFilterOptions();
+        loadTweakDateOptions();
+    } catch(e) { alert('Error: ' + e.message); }
+});
+
+async function loadTweakRecords() {
+    if (!tweakToken) return;
+    try {
+        const r = await fetch('/api/tweak/records' + getFilter(), {
+            headers: {'X-Tweak-Token': tweakToken}
+        });
+        if (r.status === 401) { document.getElementById('btnTweakLogout').click(); return; }
+        const rows = await r.json();
+
+        // Populate WO select
+        const wos = [...new Set(rows.map(r => r.work_order).filter(Boolean))].sort();
+        const sel = document.getElementById('tweakWOSelect');
+        sel.innerHTML = '<option value="">— select —</option>';
+        wos.forEach(wo => { const o = document.createElement('option'); o.value = wo; o.textContent = wo; sel.appendChild(o); });
+
+        // Table
+        const tbody = document.getElementById('tbTweak');
+        tbody.innerHTML = rows.map(r => {
+            const rc = r.result === 'PASS' ? 'pass' : r.result === 'FAIL' ? 'fail' : 'stop';
+            return `<tr>
+                <td>${r.id}</td>
+                <td>${fmtTime(r.start_time)}</td>
+                <td><code>${r.mac1||''}</code></td>
+                <td>${r.work_order||'—'}</td>
+                <td><span class="badge ${rc}">${r.result}</span></td>
+                <td>${r.test_duration_sec != null ? r.test_duration_sec.toFixed(1)+'s' : '—'}</td>
+                <td>${r.fail_step_name||'—'}</td>
+                <td title="${esc(r.source_file||'')}" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.source_file||'—'}</td>
+                <td style="white-space:nowrap">
+                    ${r.has_raw_log ? `<button class="tweak-action-btn dl" onclick="tweakDownload(${r.id})">📥 Raw Log</button>` : '<span style="color:var(--text3);font-size:11px">no log</span>'}
+                    <button class="tweak-action-btn del" onclick="tweakDelete(${r.id},'${esc(r.mac1||'')}')">🗑 Del</button>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch(e) { console.error('tweak records error', e); }
+}
+
+async function tweakDelete(id, mac) {
+    if (!confirm(`Delete record #${id} (MAC: ${mac})?`)) return;
+    try {
+        const r = await fetch(`/api/tweak/records/${id}`, {
+            method: 'DELETE', headers: {'X-Tweak-Token': tweakToken}
+        });
+        const data = await r.json();
+        if (data.deleted) loadTweakRecords();
+        else alert('Record not found');
+    } catch(e) { alert('Error: ' + e.message); }
+}
+
+function tweakDownload(id) {
+    const a = document.createElement('a');
+    a.href = `/api/tweak/raw-log/${id}?token=${encodeURIComponent(tweakToken)}`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
+function downloadFailLog(id) {
+    const a = document.createElement('a');
+    a.href = `/api/raw-log/${id}`;
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
+function loadDBTweak() {
+    if (tweakToken) { loadTweakRecords(); loadTweakDateOptions(); }
+}
+
+/* ═══ Page data loader ═══════════════════════════════════════════════════ */
+const pageLoaders = {
+    overview: loadOverview,
+    workorders: loadWorkOrders,
+    fails: loadFails,
+    bt: loadBT,
+    wifi: loadWiFi,
+    failanalysis: loadFailAnalysis,
+    dbtweak: loadDBTweak,
+};
+function loadPageData(page) { if (pageLoaders[page]) pageLoaders[page](); }
+
+/* ═══ Utility ════════════════════════════════════════════════════════════ */
+function fmtTime(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    return d.toLocaleString('zh-TW', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function buildHistogram(values, binSize) {
+    if (!values.length) return { labels: [], counts: [] };
+    const min = Math.floor(Math.min(...values) / binSize) * binSize;
+    const max = Math.ceil(Math.max(...values) / binSize) * binSize;
+    const labels = [];
+    const counts = [];
+    for (let b = min; b <= max; b += binSize) {
+        labels.push(b.toFixed(1));
+        counts.push(values.filter(v => v >= b && v < b + binSize).length);
+    }
+    return { labels, counts };
+}
+
+/* ═══ Theme Switcher ══════════════════════════════════════════════════════ */
+(function() {
+    const sel = document.getElementById('themeSelect');
+    const saved = localStorage.getItem('pixi-theme') || 'cyber';
+    if (saved !== 'default') {
+        document.documentElement.setAttribute('data-theme', saved);
+        sel.value = saved;
+    }
+    sel.addEventListener('change', function() {
+        const t = this.value;
+        if (t === 'default') {
+            document.documentElement.removeAttribute('data-theme');
+        } else {
+            document.documentElement.setAttribute('data-theme', t);
+        }
+        localStorage.setItem('pixi-theme', t);
+        // Update Chart.js defaults to match new theme
+        const cs = getComputedStyle(document.documentElement);
+        Chart.defaults.color = cs.getPropertyValue('--text2').trim();
+        Chart.defaults.borderColor = cs.getPropertyValue('--border').trim();
+        reloadActivePage();
+    });
+})();
+
+/* ═══ Init ═══════════════════════════════════════════════════════════════ */
+loadFilterOptions();
+loadOverview();
+</script>
+</body>
+</html>
