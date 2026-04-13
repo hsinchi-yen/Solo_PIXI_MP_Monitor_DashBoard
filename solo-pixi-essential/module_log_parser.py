@@ -7,9 +7,13 @@ import os
 import hashlib
 from datetime import datetime
 
-# ─── Filename pattern ────────────────────────────────────────────────────────
-# {WO}_{YYYYMMDD}_{HHMMSS}_{MAC1}_{MAC2}_{RESULT}.txt
+# ─── Filename patterns ───────────────────────────────────────────────────────
+# New: {YYYYMMDD}_{HHMMSS}_{MAC1}_{MAC2}_{RESULT}.txt
+# Old: {WO}_{YYYYMMDD}_{HHMMSS}_{MAC1}_{MAC2}_{RESULT}.txt
 FILENAME_RE = re.compile(
+    r'^(\d{8})_(\d{6})_([0-9A-Fa-f]+)_([0-9A-Fa-f]+)_(PASS|FAIL|STOP)\.txt$'
+)
+LEGACY_FILENAME_RE = re.compile(
     r'^(.+?)_(\d{8})_(\d{6})_([0-9A-Fa-f]+)_([0-9A-Fa-f]+)_(PASS|FAIL|STOP)\.txt$'
 )
 
@@ -75,10 +79,26 @@ def parse_filename(filename):
     """Extract metadata from filename."""
     base = os.path.basename(filename)
     m = FILENAME_RE.match(base)
+    if m:
+        unit_date = datetime.strptime(m.group(1), '%Y%m%d').date()
+        return {
+            'work_order': None,
+            'unit_date':  unit_date,
+            'date_str':   m.group(1),
+            'time_str':   m.group(2),
+            'mac1':       m.group(3).upper(),
+            'mac2':       m.group(4).upper(),
+            'result':     m.group(5),
+        }
+
+    m = LEGACY_FILENAME_RE.match(base)
     if not m:
         return None
+
+    unit_date = datetime.strptime(m.group(2), '%Y%m%d').date()
     return {
         'work_order': m.group(1),
+        'unit_date':  unit_date,
         'date_str':   m.group(2),
         'time_str':   m.group(3),
         'mac1':       m.group(4).upper(),
@@ -126,6 +146,7 @@ def parse_log_file(filepath):
     fmeta = parse_filename(filepath)
     rec = {
         'work_order': fmeta['work_order'] if fmeta else None,
+        'unit_date': fmeta['unit_date'] if fmeta else None,
         'mac1': None, 'mac2': None, 'tester_sn': None,
         'start_time': None, 'end_time': None, 'test_duration_sec': None,
         'result': fmeta['result'] if fmeta else 'UNKNOWN',
@@ -172,6 +193,8 @@ def parse_log_file(filepath):
             dt_raw = stripped.split('\t')[-1].strip()
             try:
                 rec['start_time'] = datetime.strptime(dt_raw, '%Y/%m/%d %H:%M:%S')
+                if rec['unit_date'] is None:
+                    rec['unit_date'] = rec['start_time'].date()
             except ValueError:
                 pass
             continue
@@ -396,7 +419,7 @@ def parse_log_file(filepath):
 
 # ─── DB columns (matching schema.sql) ───────────────────────────────────────
 DB_COLUMNS = [
-    'work_order', 'mac1', 'mac2', 'tester_sn',
+    'work_order', 'unit_date', 'mac1', 'mac2', 'tester_sn',
     'start_time', 'end_time', 'test_duration_sec', 'result',
     'bdr_freq_error', 'bdr_freq_drift', 'bdr_delta_f2_max', 'bdr_power',
     'bdr_delta_f1_avg', 'bdr_delta_f2_f1_ratio', 'bdr_pass',
@@ -496,7 +519,7 @@ if __name__ == '__main__':
             rec = parse_log_file(os.path.join(args.path, fname))
             print(f"\n{'='*60}")
             print(f"File: {fname}")
-            print(f"  result={rec['result']}  mac1={rec['mac1']}  WO={rec['work_order']}")
+            print(f"  result={rec['result']}  mac1={rec['mac1']}  unit_date={rec['unit_date']}")
             print(f"  start={rec['start_time']}  end={rec['end_time']}  dur={rec['test_duration_sec']}s")
             print(f"  BDR: power={rec.get('bdr_power')}  pass={rec.get('bdr_pass')}")
             print(f"  EDR1: devm={rec.get('edr1_devm_avg')}  pass={rec.get('edr1_pass')}")

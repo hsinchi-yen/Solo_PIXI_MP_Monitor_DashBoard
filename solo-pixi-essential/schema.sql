@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS module_test (
 
     -- Identity (from filename + log header)
     work_order          TEXT,
+    unit_date           DATE,
     mac1                TEXT NOT NULL,
     mac2                TEXT,
     tester_sn           TEXT,
@@ -115,16 +116,18 @@ CREATE TABLE IF NOT EXISTS module_test (
 -- ─── Indexes ────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_mt_start_time  ON module_test(start_time);
 CREATE INDEX IF NOT EXISTS idx_mt_work_order  ON module_test(work_order);
+CREATE INDEX IF NOT EXISTS idx_mt_unit_date   ON module_test(unit_date);
 CREATE INDEX IF NOT EXISTS idx_mt_result      ON module_test(result);
 CREATE INDEX IF NOT EXISTS idx_mt_mac1        ON module_test(mac1);
 CREATE INDEX IF NOT EXISTS idx_mt_wo_time     ON module_test(work_order, start_time);
+CREATE INDEX IF NOT EXISTS idx_mt_unit_date_time ON module_test(unit_date, start_time);
 
 -- ─── Views ──────────────────────────────────────────────────────────────────
 
--- Yield per work order
-CREATE OR REPLACE VIEW v_yield_by_wo AS
+-- Yield per date unit
+CREATE OR REPLACE VIEW v_yield_by_unit_date AS
 SELECT
-    work_order,
+    unit_date,
     COUNT(*)                                                              AS total,
     COUNT(*) FILTER (WHERE result = 'PASS')                               AS passed,
     COUNT(*) FILTER (WHERE result = 'FAIL')                               AS failed,
@@ -134,7 +137,7 @@ SELECT
     MIN(start_time)                                                       AS first_test,
     MAX(start_time)                                                       AS last_test
 FROM module_test
-GROUP BY work_order;
+GROUP BY unit_date;
 
 -- Fail step summary
 CREATE OR REPLACE VIEW v_fail_summary AS
@@ -150,7 +153,7 @@ ORDER BY occurrences DESC;
 -- Retry units (same mac1 tested more than once)
 CREATE OR REPLACE VIEW v_retry_units AS
 SELECT
-    mac1, mac2, work_order,
+    mac1, mac2, unit_date,
     COUNT(*)                                      AS attempts,
     COUNT(*) FILTER (WHERE result = 'PASS')       AS pass_count,
     COUNT(*) FILTER (WHERE result = 'FAIL')       AS fail_count,
@@ -158,6 +161,6 @@ SELECT
     MIN(start_time)                               AS first_attempt,
     MAX(start_time)                               AS last_attempt
 FROM module_test
-GROUP BY mac1, mac2, work_order
+GROUP BY mac1, mac2, unit_date
 HAVING COUNT(*) > 1
 ORDER BY attempts DESC;

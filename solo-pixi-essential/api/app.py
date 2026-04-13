@@ -28,13 +28,21 @@ def get_conn():
 def run_migrations():
     conn = get_conn()
     cur = conn.cursor()
-    for col, dtype in [("fail_error_code", "TEXT"), ("fail_category", "TEXT")]:
+    for col, dtype in [("fail_error_code", "TEXT"), ("fail_category", "TEXT"), ("unit_date", "DATE")]:
         cur.execute(f"""
             DO $$ BEGIN
                 ALTER TABLE module_test ADD COLUMN {col} {dtype};
             EXCEPTION WHEN duplicate_column THEN NULL;
             END $$;
         """)
+    cur.execute("""
+        UPDATE module_test
+        SET unit_date = COALESCE(unit_date, start_time::date)
+        WHERE start_time IS NOT NULL
+          AND unit_date IS NULL
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_unit_date ON module_test(unit_date)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_unit_date_time ON module_test(unit_date, start_time)")
     conn.commit()
     cur.close()
     conn.close()
@@ -49,23 +57,26 @@ WITH latest AS (
 """
 
 
-def _build_where(work_order=None, year=None, month=None, week=None, day=None):
+def _build_where(unit_date=None, work_order=None, year=None, month=None, week=None, day=None):
     clauses = []
     params = []
-    if work_order:
+    if unit_date:
+        clauses.append("COALESCE(unit_date, start_time::date) = %s")
+        params.append(unit_date)
+    elif work_order:
         clauses.append("work_order = %s")
         params.append(work_order)
     if year:
-        clauses.append("EXTRACT(YEAR FROM start_time) = %s")
+        clauses.append("EXTRACT(YEAR FROM COALESCE(unit_date, start_time::date)) = %s")
         params.append(int(year))
     if month:
-        clauses.append("EXTRACT(MONTH FROM start_time) = %s")
+        clauses.append("EXTRACT(MONTH FROM COALESCE(unit_date, start_time::date)) = %s")
         params.append(int(month))
     if week:
-        clauses.append("EXTRACT(WEEK FROM start_time) = %s")
+        clauses.append("EXTRACT(WEEK FROM COALESCE(unit_date, start_time::date)) = %s")
         params.append(int(week))
     if day:
-        clauses.append("start_time::date = %s")
+        clauses.append("COALESCE(unit_date, start_time::date) = %s")
         params.append(day)
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
     return where, params
@@ -92,8 +103,8 @@ def health():
 
 # ─── Summary KPIs ────────────────────────────────────────────────────────────
 @app.get("/api/summary")
-def api_summary(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_summary(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -105,46 +116,41 @@ def api_summary(work_order: str = None, year: int = None, month: int = None, wee
         COUNT(*) FILTER (WHERE result = 'FAIL')            AS fail,
         COUNT(*) FILTER (WHERE result = 'STOP')            AS stop,
         ROUND(COUNT(*) FILTER (WHERE result = 'PASS') * 100.0
-              / NULLIF(COUNT(*), 0), 2)                    AS yield_pct,
-        (SELECT COUNT(DISTINCT mac1) FROM module_test m2
-         WHERE EXISTS (
-             SELECT 1 FROM module_test m3
-             WHERE m3.mac1 = m2.mac1 AND m3.id != m2.id
-             {'AND m2.work_order = %s' if work_order else ''}
-         ))                                                 AS retry_units,
-        COUNT(*)                                           AS total_for_retry
+              / NULLIF(COUNT(*), 0), 2)                    AS yield_pct
     FROM latest WHERE rn = 1
     """
-    p = params + ([work_order] if work_order else [])
-    cur.execute(sql, p)
+    cur.execute(sql, params)
     row = cur.fetchone()
 
-    # Compute retry rate from raw data (not deduped)
     cur.execute(f"""
+        WITH filtered AS (
+            SELECT * FROM module_test {where}
+        )
         SELECT
             COUNT(DISTINCT mac1) FILTER (
-                WHERE mac1 IN (SELECT mac1 FROM module_test {where} GROUP BY mac1 HAVING COUNT(*) > 1)
+                WHERE mac1 IN (SELECT mac1 FROM filtered GROUP BY mac1 HAVING COUNT(*) > 1)
             ) AS retry_macs,
             COUNT(DISTINCT mac1) AS total_macs
-        FROM module_test {where}
+        FROM filtered
     """, params)
     rr = cur.fetchone()
-    retry_rate = round(rr['retry_macs'] * 100.0 / max(rr['total_macs'], 1), 2)
+    retry_units = rr['retry_macs'] or 0
+    retry_rate = round(retry_units * 100.0 / max(rr['total_macs'] or 0, 1), 2)
 
     cur.close()
     conn.close()
-    return {**dict(row), "retry_rate": retry_rate}
+    return {**dict(row), "retry_units": retry_units, "retry_rate": retry_rate}
 
 
 # ─── Yield trend (hourly, gap-filled) ───────────────────────────────────────
 @app.get("/api/yield-trend")
-def api_yield_trend(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     # If no filters, default to latest day's last 12 hours
-    no_filter = not any([work_order, year, month, week, day])
+    no_filter = not any([unit_date, work_order, year, month, week, day])
     if no_filter:
         cur.execute("SELECT MAX(start_time::date) AS latest_day FROM module_test")
         row = cur.fetchone()
@@ -186,8 +192,8 @@ def api_yield_trend(work_order: str = None, year: int = None, month: int = None,
 
 # ─── Pass/Fail/Stop split ───────────────────────────────────────────────────
 @app.get("/api/pass-fail-split")
-def api_pass_fail_split(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_pass_fail_split(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
@@ -203,8 +209,8 @@ def api_pass_fail_split(work_order: str = None, year: int = None, month: int = N
 
 # ─── Fail analysis (TestFail — identified causes only) ──────────────────────
 @app.get("/api/fail-analysis")
-def api_fail_analysis(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_fail_analysis(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     extra = " AND result IN ('FAIL','STOP') AND fail_step_name IS NOT NULL" if where else "WHERE result IN ('FAIL','STOP') AND fail_step_name IS NOT NULL"
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -225,8 +231,8 @@ def api_fail_analysis(work_order: str = None, year: int = None, month: int = Non
 
 # ─── Config analysis (DeviceConfigure — unidentified FAIL/STOP) ──────────────
 @app.get("/api/config-analysis")
-def api_config_analysis(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_config_analysis(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     extra = (" AND result IN ('FAIL','STOP') AND fail_step_name IS NULL"
              if where else
              "WHERE result IN ('FAIL','STOP') AND fail_step_name IS NULL")
@@ -300,8 +306,8 @@ def api_raw_log(record_id: int):
 
 # ─── BT metrics ─────────────────────────────────────────────────────────────
 @app.get("/api/bt-metrics")
-def api_bt_metrics(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_bt_metrics(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -350,8 +356,8 @@ def api_bt_metrics(work_order: str = None, year: int = None, month: int = None, 
 
 # ─── WiFi metrics ───────────────────────────────────────────────────────────
 @app.get("/api/wifi-metrics")
-def api_wifi_metrics(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_wifi_metrics(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
@@ -403,8 +409,8 @@ def api_wifi_metrics(work_order: str = None, year: int = None, month: int = None
 
 # ─── Calibration endpoint ───────────────────────────────────────────────────
 @app.get("/api/calibration")
-def api_calibration(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_calibration(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     not_null = "AND" if where else "WHERE"
@@ -420,14 +426,15 @@ def api_calibration(work_order: str = None, year: int = None, month: int = None,
 
 
 # ─── Work Orders ─────────────────────────────────────────────────────────────
+@app.get("/api/date-units")
 @app.get("/api/work-orders")
-def api_work_orders(year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(year=year, month=month, week=week, day=day)
+def api_work_orders(unit_date: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date=unit_date, year=year, month=month, week=week, day=day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
         WITH filtered AS (
-            SELECT *
+            SELECT *, COALESCE(unit_date, start_time::date) AS effective_unit_date
             FROM module_test {where}
         ),
         latest AS (
@@ -437,7 +444,7 @@ def api_work_orders(year: int = None, month: int = None, week: int = None, day: 
         ),
         latest_agg AS (
             SELECT
-                work_order,
+                effective_unit_date AS unit_date,
                 COUNT(*)                                              AS total,
                 COUNT(*) FILTER (WHERE result = 'PASS')               AS passed,
                 COUNT(*) FILTER (WHERE result = 'FAIL')               AS failed,
@@ -446,35 +453,44 @@ def api_work_orders(year: int = None, month: int = None, week: int = None, day: 
                       / NULLIF(COUNT(*), 0), 2)                       AS yield_pct
             FROM latest
             WHERE rn = 1
-            GROUP BY work_order
+            GROUP BY effective_unit_date
         ),
         attempts AS (
             SELECT
-                work_order,
+                effective_unit_date AS unit_date,
                 COUNT(*)                                              AS test_attempts,
                 MIN(start_time)                                       AS first_test,
                 MAX(start_time)                                       AS last_test,
-                COUNT(DISTINCT mac1) FILTER (
-                    WHERE mac1 IN (
-                        SELECT mac1 FROM filtered GROUP BY mac1 HAVING COUNT(*) > 1
-                    )
-                ) * 100.0 / NULLIF(COUNT(DISTINCT mac1), 0)          AS retry_rate
+                COUNT(DISTINCT mac1)                                  AS total_macs
             FROM filtered
-            GROUP BY work_order
+            GROUP BY effective_unit_date
+        ),
+        retry AS (
+            SELECT
+                effective_unit_date AS unit_date,
+                COUNT(*) AS retry_macs
+            FROM (
+                SELECT effective_unit_date, mac1
+                FROM filtered
+                GROUP BY effective_unit_date, mac1
+                HAVING COUNT(*) > 1
+            ) grouped_retry
+            GROUP BY effective_unit_date
         )
         SELECT
-            l.work_order,
+            l.unit_date,
             l.total,
             a.test_attempts,
             l.passed,
             l.failed,
             l.stopped,
             l.yield_pct,
-            a.retry_rate,
+            ROUND(COALESCE(r.retry_macs, 0) * 100.0 / NULLIF(a.total_macs, 0), 2) AS retry_rate,
             a.first_test,
             a.last_test
         FROM latest_agg l
-        JOIN attempts a ON a.work_order = l.work_order
+        JOIN attempts a ON a.unit_date = l.unit_date
+        LEFT JOIN retry r ON r.unit_date = l.unit_date
         ORDER BY a.last_test DESC
     """, params)
     rows = [dict(r) for r in cur.fetchall()]
@@ -485,13 +501,13 @@ def api_work_orders(year: int = None, month: int = None, week: int = None, day: 
 
 # ─── Fails (FAIL + STOP) ────────────────────────────────────────────────────
 @app.get("/api/fails")
-def api_fails(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None, limit: int = 50):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_fails(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None, limit: int = 50):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     extra = " AND result IN ('FAIL','STOP')" if where else "WHERE result IN ('FAIL','STOP')"
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
-        SELECT id, mac1, mac2, work_order, start_time, test_duration_sec,
+        SELECT id, mac1, mac2, COALESCE(unit_date, start_time::date) AS unit_date, start_time, test_duration_sec,
                result, fail_step_num, fail_step_name, fail_message,
                fail_error_code, fail_category,
                bdr_pass, edr1_pass, le_pass, bt_rx_pass, cal_pass,
@@ -507,13 +523,13 @@ def api_fails(work_order: str = None, year: int = None, month: int = None, week:
 
 # ─── Retries ─────────────────────────────────────────────────────────────────
 @app.get("/api/retries")
-def api_retries(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_retries(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
         SELECT
-            mac1, mac2, work_order,
+            mac1, mac2, COALESCE(unit_date, start_time::date) AS unit_date,
             COUNT(*) AS attempts,
             COUNT(*) FILTER (WHERE result = 'PASS') AS pass_count,
             COUNT(*) FILTER (WHERE result = 'FAIL') AS fail_count,
@@ -526,7 +542,7 @@ def api_retries(work_order: str = None, year: int = None, month: int = None, wee
                 ELSE 'low'
             END AS retry_risk
         FROM module_test {where}
-        GROUP BY mac1, mac2, work_order
+        GROUP BY mac1, mac2, COALESCE(unit_date, start_time::date)
         HAVING COUNT(*) > 1
         ORDER BY COUNT(*) DESC
     """, params)
@@ -538,8 +554,8 @@ def api_retries(work_order: str = None, year: int = None, month: int = None, wee
 
 # ─── Test duration distribution ──────────────────────────────────────────────
 @app.get("/api/test-duration")
-def api_test_duration(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(work_order, year, month, week, day)
+def api_test_duration(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     not_null = "AND" if where else "WHERE"
@@ -580,14 +596,14 @@ def api_filter_options(year: int = None, month: int = None, week: int = None, da
     cur.execute(f"SELECT DISTINCT start_time::date AS v FROM module_test {d_where} ORDER BY v", d_params)
     days = [str(r['v']) for r in cur.fetchall()]
 
-    # Work orders — filtered by all date selections
-    wo_where, wo_params = _build_where(year=year, month=month, week=week, day=day)
-    cur.execute(f"SELECT DISTINCT work_order AS v FROM module_test {wo_where} ORDER BY v", wo_params)
-    work_orders = [r['v'] for r in cur.fetchall()]
+    # Date units — filtered by all date selections
+    u_where, u_params = _build_where(year=year, month=month, week=week, day=day)
+    cur.execute(f"SELECT DISTINCT COALESCE(unit_date, start_time::date) AS v FROM module_test {u_where} ORDER BY v", u_params)
+    unit_dates = [str(r['v']) for r in cur.fetchall()]
 
     cur.close()
     conn.close()
-    return {"years": years, "months": months, "weeks": weeks, "days": days, "work_orders": work_orders}
+    return {"years": years, "months": months, "weeks": weeks, "days": days, "unit_dates": unit_dates, "work_orders": []}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -620,17 +636,17 @@ def tweak_login(body: dict = Body(...)):
 
 @app.get("/api/tweak/records")
 def tweak_records(
-    work_order: str = None, year: int = None, month: int = None,
+    unit_date: str = None, work_order: str = None, year: int = None, month: int = None,
     week: int = None, day: str = None, limit: int = 200,
     x_tweak_token: str = Header(None),
 ):
     if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    where, params = _build_where(work_order, year, month, week, day)
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
-        SELECT id, mac1, mac2, work_order, start_time, end_time,
+        SELECT id, mac1, mac2, COALESCE(unit_date, start_time::date) AS unit_date, start_time, end_time,
                test_duration_sec, result, source_file,
                fail_step_name, fail_message,
                (raw_log IS NOT NULL AND raw_log != '') AS has_raw_log
@@ -657,6 +673,20 @@ def tweak_delete_record(record_id: int, x_tweak_token: str = Header(None)):
     return {"deleted": deleted, "id": record_id}
 
 
+@app.delete("/api/tweak/date-unit/{unit_date}")
+def tweak_delete_date_unit(unit_date: str, x_tweak_token: str = Header(None)):
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM module_test WHERE COALESCE(unit_date, start_time::date) = %s", (unit_date,))
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"deleted": deleted, "unit_date": unit_date}
+
+
 @app.delete("/api/tweak/work-order/{wo}")
 def tweak_delete_work_order(wo: str, x_tweak_token: str = Header(None)):
     if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
@@ -679,11 +709,11 @@ def tweak_delete_by_date(
 ):
     if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    clauses = ["EXTRACT(YEAR FROM start_time) = %s"]
+    clauses = ["EXTRACT(YEAR FROM COALESCE(unit_date, start_time::date)) = %s"]
     params = [year]
     label = str(year)
     if month:
-        clauses.append("EXTRACT(MONTH FROM start_time) = %s")
+        clauses.append("EXTRACT(MONTH FROM COALESCE(unit_date, start_time::date)) = %s")
         params.append(month)
         label += f"-{month:02d}"
     conn = get_conn()
@@ -703,8 +733,8 @@ def tweak_date_options(x_tweak_token: str = Header(None)):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT DISTINCT EXTRACT(YEAR FROM start_time)::int AS year,
-               EXTRACT(MONTH FROM start_time)::int AS month,
+         SELECT DISTINCT EXTRACT(YEAR FROM COALESCE(unit_date, start_time::date))::int AS year,
+             EXTRACT(MONTH FROM COALESCE(unit_date, start_time::date))::int AS month,
                COUNT(*) AS cnt
         FROM module_test
         GROUP BY year, month

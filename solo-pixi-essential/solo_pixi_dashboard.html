@@ -514,7 +514,7 @@ tr:hover td { background: var(--surface2); }
     <nav>
         <div class="section-label">Overview</div>
         <a href="#" data-page="overview" class="active">📊 Dashboard</a>
-        <a href="#" data-page="workorders">📋 Work Orders</a>
+        <a href="#" data-page="workorders">📋 Date Units</a>
         <a href="#" data-page="fails">⚠️ Fail List</a>
         <div class="section-label">Analysis</div>
         <a href="#" data-page="bt">📡 BT Analysis</a>
@@ -554,10 +554,6 @@ tr:hover td { background: var(--surface2); }
         <label>Day</label>
         <select id="filterDay"><option value="">All</option></select>
     </div>
-    <div class="filter-group">
-        <label>Work Order</label>
-        <select id="filterWO"><option value="">All</option></select>
-    </div>
     <button class="filter-reset" id="btnFilterReset" title="Reset all filters">✕ Reset</button>
 </div>
 
@@ -588,13 +584,13 @@ tr:hover td { background: var(--surface2); }
     </div>
 </div>
 
-<!-- ─── Work Orders ──────────────────────────────────────────────────── -->
+<!-- ─── Date Units ───────────────────────────────────────────────────── -->
 <div class="page" id="page-workorders">
-    <h2 class="page-title">Work Orders</h2>
+    <h2 class="page-title">Date Units</h2>
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
-                <th>Work Order</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th>
+                <th>Date Unit</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th>
             </tr></thead><tbody id="tbWO"></tbody></table>
         </div>
     </div>
@@ -606,7 +602,7 @@ tr:hover td { background: var(--surface2); }
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
-                <th>Time</th><th>MAC1</th><th>MAC2</th><th>Work Order</th><th>Result</th><th>Fail Step</th><th>Message</th><th>Duration</th>
+                <th>Time</th><th>MAC1</th><th>MAC2</th><th>Date Unit</th><th>Result</th><th>Fail Step</th><th>Message</th><th>Duration</th>
             </tr></thead><tbody id="tbFails"></tbody></table>
         </div>
     </div>
@@ -679,11 +675,11 @@ tr:hover td { background: var(--surface2); }
                 <button class="tweak-btn danger" id="btnTweakLogout">Logout</button>
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
-                <label style="font-size:12px;color:var(--text2)">Delete by WO:</label>
-                <select id="tweakWOSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+                <label style="font-size:12px;color:var(--text2)">Delete by Date Unit:</label>
+                <select id="tweakUnitDateSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
                     <option value="">— select —</option>
                 </select>
-                <button class="tweak-btn danger" id="btnTweakDeleteWO" disabled>Delete Entire WO</button>
+                <button class="tweak-btn danger" id="btnTweakDeleteDateUnit" disabled>Delete Exact Date Unit</button>
             </div>
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
                 <label style="font-size:12px;color:var(--text2)">Delete by Date:</label>
@@ -701,7 +697,7 @@ tr:hover td { background: var(--surface2); }
             <div class="table-scroll" style="max-height:600px">
                 <table>
                     <thead><tr>
-                        <th>ID</th><th>Time</th><th>MAC1</th><th>Work Order</th><th>Result</th>
+                        <th>ID</th><th>Time</th><th>MAC1</th><th>Date Unit</th><th>Result</th>
                         <th>Duration</th><th>Fail Step</th><th>Source</th><th>Actions</th>
                     </tr></thead>
                     <tbody id="tbTweak"></tbody>
@@ -745,12 +741,10 @@ function getFilter() {
     const m = document.getElementById('filterMonth').value;
     const w = document.getElementById('filterWeek').value;
     const d = document.getElementById('filterDay').value;
-    const wo = document.getElementById('filterWO').value;
     if (y) p.set('year', y);
     if (m) p.set('month', m);
     if (w) p.set('week', w);
     if (d) p.set('day', d);
-    if (wo) p.set('work_order', wo);
     return p.toString() ? '?' + p.toString() : '';
 }
 
@@ -779,7 +773,6 @@ async function loadFilterOptions() {
         fillSelect('filterMonth', opts.months, m, v => `${v} (${MONTH_NAMES[v]||v})`);
         fillSelect('filterWeek', opts.weeks, w, v => `W${v}`);
         fillSelect('filterDay', opts.days, d, v => v);
-        fillSelect('filterWO', opts.work_orders, document.getElementById('filterWO').value, v => v);
     } catch(e) { console.warn('filter-options error', e); }
 }
 
@@ -801,28 +794,23 @@ document.getElementById('filterYear').addEventListener('change', () => {
     document.getElementById('filterMonth').value = '';
     document.getElementById('filterWeek').value = '';
     document.getElementById('filterDay').value = '';
-    document.getElementById('filterWO').value = '';
     loadFilterOptions().then(reloadActivePage);
 });
 document.getElementById('filterMonth').addEventListener('change', () => {
     document.getElementById('filterWeek').value = '';
     document.getElementById('filterDay').value = '';
-    document.getElementById('filterWO').value = '';
     loadFilterOptions().then(reloadActivePage);
 });
 document.getElementById('filterWeek').addEventListener('change', () => {
     document.getElementById('filterDay').value = '';
-    document.getElementById('filterWO').value = '';
     loadFilterOptions().then(reloadActivePage);
 });
 document.getElementById('filterDay').addEventListener('change', () => {
-    document.getElementById('filterWO').value = '';
     loadFilterOptions().then(reloadActivePage);
 });
-document.getElementById('filterWO').addEventListener('change', reloadActivePage);
 
 document.getElementById('btnFilterReset').addEventListener('click', () => {
-    ['filterYear','filterMonth','filterWeek','filterDay','filterWO'].forEach(id => document.getElementById(id).value = '');
+    ['filterYear','filterMonth','filterWeek','filterDay'].forEach(id => document.getElementById(id).value = '');
     loadFilterOptions().then(reloadActivePage);
 });
 
@@ -962,13 +950,13 @@ async function loadOverview() {
 
 /* ═══ Load work orders ═══════════════════════════════════════════════════ */
 async function loadWorkOrders() {
-    const rows = await api('/api/work-orders');
+    const rows = await api('/api/date-units');
     const tbody = document.getElementById('tbWO');
     tbody.innerHTML = rows.map(r => {
         const y = parseFloat(r.yield_pct) || 0;
         const color = y >= 95 ? 'var(--green)' : y >= 80 ? 'var(--orange)' : 'var(--red)';
         return `<tr>
-            <td><strong>${r.work_order||'—'}</strong></td>
+            <td><strong>${r.unit_date||'—'}</strong></td>
             <td>${r.total}</td>
             <td>${r.test_attempts ?? 0}</td>
             <td><span class="badge pass">${r.passed}</span></td>
@@ -992,7 +980,7 @@ async function loadFails() {
         <td>${fmtTime(r.start_time)}</td>
         <td><code>${r.mac1}</code></td>
         <td><code>${r.mac2||''}</code></td>
-        <td>${r.work_order||'—'}</td>
+        <td>${r.unit_date||'—'}</td>
         <td><span class="badge ${rc}">${r.result}</span></td>
         <td>${r.fail_step_name||'—'}</td>
         <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${r.fail_message||'—'}</td>
@@ -1192,20 +1180,20 @@ document.getElementById('btnTweakLogout').addEventListener('click', () => {
 
 document.getElementById('btnTweakRefresh').addEventListener('click', loadTweakRecords);
 
-document.getElementById('tweakWOSelect').addEventListener('change', function() {
-    document.getElementById('btnTweakDeleteWO').disabled = !this.value;
+document.getElementById('tweakUnitDateSelect').addEventListener('change', function() {
+    document.getElementById('btnTweakDeleteDateUnit').disabled = !this.value;
 });
 
-document.getElementById('btnTweakDeleteWO').addEventListener('click', async () => {
-    const wo = document.getElementById('tweakWOSelect').value;
-    if (!wo) return;
-    if (!confirm(`⚠️ Delete ALL records for work order "${wo}"?\nThis cannot be undone.`)) return;
+document.getElementById('btnTweakDeleteDateUnit').addEventListener('click', async () => {
+    const unitDate = document.getElementById('tweakUnitDateSelect').value;
+    if (!unitDate) return;
+    if (!confirm(`⚠️ Delete ALL records for date unit "${unitDate}"?\nThis cannot be undone.`)) return;
     try {
-        const r = await fetch(`/api/tweak/work-order/${encodeURIComponent(wo)}`, {
+        const r = await fetch(`/api/tweak/date-unit/${encodeURIComponent(unitDate)}`, {
             method: 'DELETE', headers: {'X-Tweak-Token': tweakToken}
         });
         const data = await r.json();
-        alert(`Deleted ${data.deleted} record(s) for WO: ${wo}`);
+        alert(`Deleted ${data.deleted} record(s) for date unit: ${unitDate}`);
         loadTweakRecords();
         loadFilterOptions();
         loadTweakDateOptions();
@@ -1303,11 +1291,11 @@ async function loadTweakRecords() {
         if (r.status === 401) { document.getElementById('btnTweakLogout').click(); return; }
         const rows = await r.json();
 
-        // Populate WO select
-        const wos = [...new Set(rows.map(r => r.work_order).filter(Boolean))].sort();
-        const sel = document.getElementById('tweakWOSelect');
+        // Populate exact date-unit select
+        const unitDates = [...new Set(rows.map(r => r.unit_date).filter(Boolean))].sort();
+        const sel = document.getElementById('tweakUnitDateSelect');
         sel.innerHTML = '<option value="">— select —</option>';
-        wos.forEach(wo => { const o = document.createElement('option'); o.value = wo; o.textContent = wo; sel.appendChild(o); });
+        unitDates.forEach(unitDate => { const o = document.createElement('option'); o.value = unitDate; o.textContent = unitDate; sel.appendChild(o); });
 
         // Table
         const tbody = document.getElementById('tbTweak');
@@ -1317,7 +1305,7 @@ async function loadTweakRecords() {
                 <td>${r.id}</td>
                 <td>${fmtTime(r.start_time)}</td>
                 <td><code>${r.mac1||''}</code></td>
-                <td>${r.work_order||'—'}</td>
+            <td>${r.unit_date||'—'}</td>
                 <td><span class="badge ${rc}">${r.result}</span></td>
                 <td>${r.test_duration_sec != null ? r.test_duration_sec.toFixed(1)+'s' : '—'}</td>
                 <td>${r.fail_step_name||'—'}</td>
