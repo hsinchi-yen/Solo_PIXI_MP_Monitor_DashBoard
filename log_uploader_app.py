@@ -42,7 +42,7 @@ QMainWindow {
 QWidget {
     font-family: "Ubuntu", "Noto Sans", "Segoe UI", sans-serif;
     color: #241f31;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.2;
 }
 
@@ -51,9 +51,9 @@ QGroupBox {
     border: 1px solid #d6d3d1;
     border-radius: 14px;
     margin-top: 12px;
-    padding: 18px 16px 14px 16px;
+    padding: 20px 18px 16px 18px;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
@@ -67,12 +67,12 @@ QGroupBox::title {
 QLineEdit {
     border: 1px solid #c7c2bf;
     border-radius: 9px;
-    padding: 8px 12px;
+    padding: 9px 12px;
     background-color: #ffffff;
     selection-background-color: #e95420;
     color: #241f31;
-    font-size: 14px;
-    min-height: 20px;
+    font-size: 13px;
+    min-height: 22px;
 }
 QLineEdit:focus {
     border: 2px solid #e95420;
@@ -90,7 +90,7 @@ QPushButton {
     border-radius: 10px;
     padding: 8px 18px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 13px;
     min-height: 20px;
 }
 QPushButton:hover {
@@ -150,7 +150,7 @@ QListWidget {
     background-color: #ffffff;
     color: #241f31;
     padding: 6px;
-    font-size: 13px;
+    font-size: 12px;
     font-family: "Ubuntu Mono", "Cascadia Code", Consolas, monospace;
     outline: none;
 }
@@ -183,7 +183,7 @@ QProgressBar::chunk {
 }
 
 QLabel {
-    font-size: 14px;
+    font-size: 13px;
     color: #241f31;
     background: transparent;
 }
@@ -306,18 +306,18 @@ class LogUploaderApp(QMainWindow):
         self.setCentralWidget(main_widget)
 
         layout = QVBoxLayout()
-        layout.setContentsMargins(28, 20, 28, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(30, 22, 30, 22)
+        layout.setSpacing(14)
         main_widget.setLayout(layout)
 
         # ── Title Bar + DB Status Indicator ───────────────────────
         title_row = QHBoxLayout()
 
         title_col = QVBoxLayout()
-        title_col.setSpacing(2)
+        title_col.setSpacing(4)
         title_lbl = QLabel("Solo PIXI — Log Uploader")
         title_lbl.setStyleSheet(
-            "color: #241f31; font-size: 26px; font-weight: 700;"
+            "color: #241f31; font-size: 24px; font-weight: 700;"
         )
         subtitle_lbl = QLabel("QCA9377 BT+WiFi Module Test")
         subtitle_lbl.setStyleSheet("color: #636363; font-size: 14px; font-weight: 500;")
@@ -352,27 +352,37 @@ class LogUploaderApp(QMainWindow):
         info_banner.setStyleSheet(
             "QFrame { background-color: #fff3ed; border: 1px solid #f1c7b8; border-radius: 12px; }"
         )
-        info_layout = QVBoxLayout(info_banner)
-        info_layout.setContentsMargins(14, 10, 14, 10)
-        info_layout.setSpacing(2)
-        info_title = QLabel("Upload Format")
-        info_title.setStyleSheet("color: #5e2750; font-size: 13px; font-weight: 700;")
+        info_layout = QHBoxLayout(info_banner)
+        info_layout.setContentsMargins(16, 10, 16, 10)
+        info_layout.setSpacing(6)
+        info_title = QLabel("Upload Format:")
+        info_title.setStyleSheet("color: #5e2750; font-size: 13px; font-weight: 700; white-space: nowrap;")
         info_desc = QLabel(
             "Preferred filename: YYYYMMDD_HHMMSS_MAC1_MAC2_RESULT.txt. unit_date is derived from filename or Start time."
         )
-        info_desc.setWordWrap(True)
         info_desc.setStyleSheet("color: #5c514b; font-size: 13px;")
-        info_layout.addWidget(info_title)
-        info_layout.addWidget(info_desc)
+        info_layout.addWidget(info_title, 0)
+        info_layout.addWidget(info_desc, 1)
         layout.addWidget(info_banner)
 
         # ════════════════════════════════════════════════════════
         # 1. Database Connection (QGridLayout)
         # ════════════════════════════════════════════════════════
         conn_group = QGroupBox("Database Connection")
+        conn_group.setMinimumHeight(200)
         conn_grid = QGridLayout()
-        conn_grid.setSpacing(12)
-        conn_grid.setContentsMargins(14, 20, 14, 14)
+        conn_grid.setHorizontalSpacing(14)
+        conn_grid.setVerticalSpacing(14)
+        conn_grid.setContentsMargins(16, 22, 16, 16)
+        conn_grid.setColumnMinimumWidth(0, 72)
+        conn_grid.setColumnMinimumWidth(2, 72)
+        conn_grid.setColumnMinimumWidth(4, 78)
+        conn_grid.setColumnStretch(1, 3)
+        conn_grid.setColumnStretch(3, 2)
+        conn_grid.setColumnStretch(5, 2)
+        conn_grid.setRowMinimumHeight(0, 46)
+        conn_grid.setRowMinimumHeight(1, 46)
+        conn_grid.setRowMinimumHeight(2, 30)
 
         lbl_host = QLabel("Host:")
         lbl_port = QLabel("Port:")
@@ -381,6 +391,7 @@ class LogUploaderApp(QMainWindow):
         lbl_pw   = QLabel("Password:")
         for lbl in [lbl_host, lbl_port, lbl_db, lbl_user, lbl_pw]:
             lbl.setStyleSheet("color: #5c514b; font-size: 13px; font-weight: 600;")
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         self.inp_host = QLineEdit("localhost")
         self.inp_port = QLineEdit("5433")
@@ -389,34 +400,35 @@ class LogUploaderApp(QMainWindow):
         self.inp_pass = QLineEdit("pixipass")
         self.inp_pass.setEchoMode(QLineEdit.Password)
         for inp in [self.inp_host, self.inp_port, self.inp_db, self.inp_user, self.inp_pass]:
-            inp.setMinimumHeight(38)
+            inp.setFixedHeight(40)
+            inp.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             inp.textChanged.connect(self._on_conn_changed)
 
         conn_grid.addWidget(lbl_host, 0, 0)
         conn_grid.addWidget(self.inp_host, 0, 1)
         conn_grid.addWidget(lbl_port, 0, 2)
-        self.inp_port.setMaximumWidth(90)
+        self.inp_port.setMinimumWidth(110)
+        self.inp_port.setMaximumWidth(140)
         conn_grid.addWidget(self.inp_port, 0, 3)
+        conn_grid.addWidget(lbl_pw, 0, 4)
+        self.inp_pass.setMinimumWidth(140)
+        self.inp_pass.setMaximumWidth(160)
+        conn_grid.addWidget(self.inp_pass, 0, 5)
 
         conn_grid.addWidget(lbl_db, 1, 0)
         conn_grid.addWidget(self.inp_db, 1, 1)
         conn_grid.addWidget(lbl_user, 1, 2)
         conn_grid.addWidget(self.inp_user, 1, 3)
-
-        conn_grid.addWidget(lbl_pw, 2, 0)
-        self.inp_pass.setMaximumWidth(220)
-        conn_grid.addWidget(self.inp_pass, 2, 1)
-
         self.btn_test_conn = QPushButton("Test Connection")
         self.btn_test_conn.setObjectName("secondary")
-        self.btn_test_conn.setMinimumHeight(38)
+        self.btn_test_conn.setMinimumHeight(40)
         self.btn_test_conn.clicked.connect(self.test_connection)
-        conn_grid.addWidget(self.btn_test_conn, 2, 2, 1, 2)
+        conn_grid.addWidget(self.btn_test_conn, 1, 4, 1, 2)
 
         self.lbl_conn_detail = QLabel("DB connection: checking...")
         self.lbl_conn_detail.setWordWrap(True)
         self.lbl_conn_detail.setStyleSheet("color: #8a8886; font-size: 13px;")
-        conn_grid.addWidget(self.lbl_conn_detail, 3, 0, 1, 4)
+        conn_grid.addWidget(self.lbl_conn_detail, 2, 0, 1, 6)
 
         conn_group.setLayout(conn_grid)
         layout.addWidget(conn_group)
@@ -426,21 +438,21 @@ class LogUploaderApp(QMainWindow):
         # ════════════════════════════════════════════════════════
         file_group = QGroupBox("Log Files")
         file_layout = QVBoxLayout()
-        file_layout.setContentsMargins(14, 20, 14, 14)
-        file_layout.setSpacing(10)
+        file_layout.setContentsMargins(16, 22, 16, 16)
+        file_layout.setSpacing(12)
 
         # Folder row
         folder_row = QHBoxLayout()
-        folder_row.setSpacing(10)
+        folder_row.setSpacing(12)
         lbl_folder = QLabel("Log Folder:")
         lbl_folder.setStyleSheet("color: #5c514b; font-size: 13px; font-weight: 600;")
         self.inp_folder_display = QLineEdit()
         self.inp_folder_display.setReadOnly(True)
         self.inp_folder_display.setPlaceholderText("Select folder containing .txt log files")
-        self.inp_folder_display.setMinimumHeight(38)
+        self.inp_folder_display.setMinimumHeight(40)
         self.btn_browse_folder = QPushButton("Browse")
         self.btn_browse_folder.setObjectName("secondary")
-        self.btn_browse_folder.setMinimumHeight(38)
+        self.btn_browse_folder.setMinimumHeight(40)
         self.btn_browse_folder.clicked.connect(self.browse_folder)
         folder_row.addWidget(lbl_folder)
         folder_row.addWidget(self.inp_folder_display, 1)
@@ -449,14 +461,14 @@ class LogUploaderApp(QMainWindow):
 
         # Buttons + count
         list_btn_row = QHBoxLayout()
-        list_btn_row.setSpacing(10)
+        list_btn_row.setSpacing(12)
         self.btn_add_files = QPushButton("Add Files")
         self.btn_add_files.setObjectName("secondary")
-        self.btn_add_files.setMinimumHeight(38)
+        self.btn_add_files.setMinimumHeight(40)
         self.btn_add_files.clicked.connect(self.add_files)
         self.btn_clear_files = QPushButton("Clear")
         self.btn_clear_files.setObjectName("secondary")
-        self.btn_clear_files.setMinimumHeight(38)
+        self.btn_clear_files.setMinimumHeight(40)
         self.btn_clear_files.clicked.connect(self.clear_files)
         self.lbl_file_count = QLabel("0 files selected")
         self.lbl_file_count.setStyleSheet("color: #636363; font-size: 13px; font-weight: 600;")
@@ -468,7 +480,7 @@ class LogUploaderApp(QMainWindow):
 
         self.file_list = QListWidget()
         self.file_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
-        self.file_list.setMinimumHeight(120)
+        self.file_list.setMinimumHeight(150)
         self.file_list.setMaximumHeight(220)
         file_layout.addWidget(self.file_list)
 
@@ -479,28 +491,29 @@ class LogUploaderApp(QMainWindow):
         # 3. Upload Progress & Stats
         # ════════════════════════════════════════════════════════
         progress_group = QGroupBox("Upload")
+        progress_group.setMinimumHeight(320)
         progress_layout = QVBoxLayout()
-        progress_layout.setContentsMargins(14, 20, 14, 14)
-        progress_layout.setSpacing(12)
+        progress_layout.setContentsMargins(16, 22, 16, 16)
+        progress_layout.setSpacing(16)
 
         # Action buttons
         action_row = QHBoxLayout()
-        action_row.setSpacing(12)
+        action_row.setSpacing(14)
         self.btn_start = QPushButton("Upload to DB")
-        self.btn_start.setMinimumHeight(42)
+        self.btn_start.setMinimumHeight(40)
         self.btn_start.setMinimumWidth(180)
         self.btn_start.clicked.connect(self.start_upload)
         self.btn_start.setEnabled(False)
 
         self.btn_stop = QPushButton("Cancel")
         self.btn_stop.setObjectName("danger")
-        self.btn_stop.setMinimumHeight(42)
+        self.btn_stop.setMinimumHeight(40)
         self.btn_stop.setEnabled(False)
         self.btn_stop.clicked.connect(self.stop_upload)
 
         self.btn_clear_stats = QPushButton("Clear Stats")
         self.btn_clear_stats.setObjectName("secondary")
-        self.btn_clear_stats.setMinimumHeight(42)
+        self.btn_clear_stats.setMinimumHeight(40)
         self.btn_clear_stats.clicked.connect(self.clear_stats)
 
         action_row.addWidget(self.btn_start)
@@ -517,7 +530,8 @@ class LogUploaderApp(QMainWindow):
 
         # Stat cards
         stats_row = QHBoxLayout()
-        stats_row.setSpacing(14)
+        stats_row.setContentsMargins(0, 4, 0, 4)
+        stats_row.setSpacing(16)
         self.stat_cards = {}
         for key, label, color in [
             ('queued',   'Queued',   '#98989d'),
@@ -533,7 +547,8 @@ class LogUploaderApp(QMainWindow):
         # Upload status
         self.lbl_upload_status = QLabel("Upload status: idle")
         self.lbl_upload_status.setWordWrap(True)
-        self.lbl_upload_status.setStyleSheet("color: #8a8886; font-size: 13px; font-weight: 600;")
+        self.lbl_upload_status.setMinimumHeight(24)
+        self.lbl_upload_status.setStyleSheet("color: #8a8886; font-size: 13px; font-weight: 600; padding-top: 2px;")
         progress_layout.addWidget(self.lbl_upload_status)
 
         # Duplicate policy
@@ -541,21 +556,9 @@ class LogUploaderApp(QMainWindow):
             "Duplicate policy: skip same file_hash. Upload is compatible with the new unit_date-based schema."
         )
         policy_lbl.setWordWrap(True)
-        policy_lbl.setStyleSheet("color: #6d635d; font-size: 12px;")
-        progress_layout.addWidget(policy_lbl)
-
+        policy_lbl.setMinimumHeight(24)
         progress_group.setLayout(progress_layout)
         layout.addWidget(progress_group)
-
-        # ════════════════════════════════════════════════════════
-        # 4. Console Log
-        # ════════════════════════════════════════════════════════
-        self.console = QTextEdit()
-        self.console.setReadOnly(True)
-        self.console.setPlaceholderText("Upload log will appear here...")
-        self.console.setMinimumHeight(120)
-        self.console.setMaximumHeight(220)
-        layout.addWidget(self.console)
 
     # ─── Stat Card Builder ───────────────────────────────────
     def _build_stat_card(self, label, value, color):
@@ -568,22 +571,24 @@ class LogUploaderApp(QMainWindow):
             }
         """)
         frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        frame.setFixedHeight(82)
+        frame.setFixedHeight(102)
 
         vl = QVBoxLayout(frame)
-        vl.setContentsMargins(14, 10, 14, 10)
-        vl.setSpacing(2)
+        vl.setContentsMargins(14, 12, 14, 12)
+        vl.setSpacing(6)
 
         val_lbl = QLabel(value)
         val_lbl.setStyleSheet(
-            f"font-weight: 700; font-size: 28px; color: {color}; background: transparent;"
+            f"font-weight: 700; font-size: 24px; color: {color}; background: transparent;"
         )
+        val_lbl.setMinimumHeight(32)
         val_lbl.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         txt_lbl = QLabel(label)
         txt_lbl.setStyleSheet(
-            "font-size: 12px; color: #6d635d; font-weight: 700; background: transparent;"
+            "font-size: 13px; color: #6d635d; font-weight: 700; background: transparent;"
         )
+        txt_lbl.setMinimumHeight(18)
         txt_lbl.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         vl.addWidget(val_lbl)
@@ -663,7 +668,6 @@ class LogUploaderApp(QMainWindow):
     # ─── Test Connection (manual button) ─────────────────────
     def test_connection(self):
         self._run_db_connection_check()
-        self.console.append(f"[Connection] {self.lbl_conn_detail.text()}")
 
     # ─── File Selection ──────────────────────────────────────
     def browse_folder(self):
@@ -689,7 +693,6 @@ class LogUploaderApp(QMainWindow):
                     self.file_list.addItem(fpath)
                     added += 1
         self._update_file_count()
-        self.console.append(f"[Files] Added {added} supported files from {dirname}")
         self._update_upload_btn_state()
 
     def add_files(self):
@@ -716,7 +719,6 @@ class LogUploaderApp(QMainWindow):
                 self.file_list.addItem(fp)
                 added += 1
         self._update_file_count()
-        self.console.append(f"[Files] Added {added} supported files")
         self._update_upload_btn_state()
 
     def clear_files(self):
@@ -731,6 +733,11 @@ class LogUploaderApp(QMainWindow):
 
     def _update_upload_btn_state(self):
         self.btn_start.setEnabled(self.file_list.count() > 0)
+
+    def _format_status_stats(self, st):
+        return (
+            f"PASS: {st.get('uploaded', 0)}  FAIL: {st.get('failed', 0)}"
+        )
 
     # ─── Upload ──────────────────────────────────────────────
     def start_upload(self):
@@ -751,14 +758,10 @@ class LogUploaderApp(QMainWindow):
         self.lbl_upload_status.setText(
             f"Upload status: uploading {len(file_paths)} files..."
         )
-        self.lbl_upload_status.setStyleSheet("color: #e95420; font-size: 13px; font-weight: 700;")
-        self.console.append(f"\n{'─'*50}")
-        self.console.append(f"Starting upload: {len(file_paths)} files")
 
         self.worker = UploadWorkerThread(dsn, file_paths)
         self.worker.progress.connect(self.progress_bar.setValue)
         self.worker.stats.connect(self._on_stats)
-        self.worker.log.connect(self.console.append)
         self.worker.finished_signal.connect(self._on_finished)
         self.worker.error.connect(self._on_error)
         self.worker.start()
@@ -773,11 +776,18 @@ class LogUploaderApp(QMainWindow):
     def _on_stats(self, st):
         for key in self.stat_cards:
             self.stat_cards[key]['value'].setText(str(st[key]))
+        self.lbl_upload_status.setText(f"Upload status: {self._format_status_stats(st)}")
 
     def _on_finished(self, msg):
-        self.console.append(f"\n{msg}")
-        self.console.append(f"{'─'*50}")
-        self.lbl_upload_status.setText(f"Upload status: {msg}")
+        final_stats = {
+            'queued': self.stat_cards['queued']['value'].text(),
+            'uploaded': self.stat_cards['uploaded']['value'].text(),
+            'skipped': self.stat_cards['skipped']['value'].text(),
+            'failed': self.stat_cards['failed']['value'].text(),
+        }
+        self.lbl_upload_status.setText(
+            f"Upload status: completed. {self._format_status_stats(final_stats)}"
+        )
         self.lbl_upload_status.setStyleSheet("color: #0e8420; font-size: 13px; font-weight: 700;")
         self._enable_buttons()
         # Refresh DB record count
@@ -785,7 +795,6 @@ class LogUploaderApp(QMainWindow):
         QMessageBox.information(self, "Upload Complete", msg)
 
     def _on_error(self, msg):
-        self.console.append(f"✗ Error: {msg}")
         self.lbl_upload_status.setText(f"Upload status: error — {msg}")
         self.lbl_upload_status.setStyleSheet("color: #c01c28; font-size: 13px; font-weight: 700;")
         self._enable_buttons()
@@ -801,9 +810,10 @@ class LogUploaderApp(QMainWindow):
         self.progress_bar.setValue(0)
         for key in self.stat_cards:
             self.stat_cards[key]['value'].setText("0")
-        self.lbl_upload_status.setText("Upload status: idle")
+        self.lbl_upload_status.setText(
+            "Upload status: PASS: 0  FAIL: 0"
+        )
         self.lbl_upload_status.setStyleSheet("color: #8a8886; font-size: 13px; font-weight: 600;")
-        self.console.clear()
 
     def closeEvent(self, event):
         if self._db_heartbeat_timer is not None:
