@@ -140,7 +140,6 @@ QLabel#statLabel {
     color: #6b5f68;
     font-size: 11px;
     font-weight: 600;
-    text-transform: uppercase;
 }
 QLabel#statValue {
     color: #2e3436;
@@ -488,14 +487,14 @@ class LogSplitterApp(QMainWindow):
         self.card_pass_rate = self.create_stat_card("Pass Rate", "0.00%", "PASS / total", accent=True)
         self.card_fail_rate = self.create_stat_card("Fail Rate", "0.00%", "FAIL / total")
 
-        stats_layout.addWidget(self.card_total[0], 0, 0)
-        stats_layout.addWidget(self.card_success[0], 0, 1)
-        stats_layout.addWidget(self.card_skipped[0], 0, 2)
-        stats_layout.addWidget(self.card_pass[0], 1, 0)
-        stats_layout.addWidget(self.card_fail[0], 1, 1)
-        stats_layout.addWidget(self.card_stop[0], 1, 2)
-        stats_layout.addWidget(self.card_pass_rate[0], 2, 0)
-        stats_layout.addWidget(self.card_fail_rate[0], 2, 1)
+        stats_layout.addWidget(self.card_total["frame"], 0, 0)
+        stats_layout.addWidget(self.card_success["frame"], 0, 1)
+        stats_layout.addWidget(self.card_skipped["frame"], 0, 2)
+        stats_layout.addWidget(self.card_pass["frame"], 1, 0)
+        stats_layout.addWidget(self.card_fail["frame"], 1, 1)
+        stats_layout.addWidget(self.card_stop["frame"], 1, 2)
+        stats_layout.addWidget(self.card_pass_rate["frame"], 2, 0)
+        stats_layout.addWidget(self.card_fail_rate["frame"], 2, 1)
         
         self.stats_group.setLayout(stats_layout)
         self.stats_group.setVisible(False)
@@ -509,6 +508,7 @@ class LogSplitterApp(QMainWindow):
     def create_stat_card(self, title, value, hint, accent=False):
         card = QFrame()
         card.setObjectName("statCardAccent" if accent else "statCard")
+        card.setMinimumHeight(92)
         card_layout = QVBoxLayout()
         card_layout.setContentsMargins(14, 12, 14, 12)
         card_layout.setSpacing(4)
@@ -516,10 +516,13 @@ class LogSplitterApp(QMainWindow):
 
         title_label = QLabel(title)
         title_label.setObjectName("statLabel")
+        title_label.setStyleSheet("color: #6b5f68; font-size: 11px; font-weight: 700;")
         value_label = QLabel(value)
         value_label.setObjectName("statValue")
+        value_label.setStyleSheet("color: #2e3436; font-size: 20px; font-weight: 700;")
         hint_label = QLabel(hint)
         hint_label.setObjectName("statHint")
+        hint_label.setStyleSheet("color: #7b727a; font-size: 11px;")
         hint_label.setWordWrap(True)
 
         card_layout.addWidget(title_label)
@@ -527,7 +530,12 @@ class LogSplitterApp(QMainWindow):
         card_layout.addWidget(hint_label)
         card_layout.addStretch(1)
 
-        return card, value_label, hint_label
+        return {
+            "frame": card,
+            "title": title_label,
+            "value": value_label,
+            "hint": hint_label,
+        }
 
     def browse_file(self):
         filename, _ = QFileDialog.getOpenFileName(self, "Select source log file", "", "Text Files (*.txt);;All Files (*)")
@@ -541,14 +549,14 @@ class LogSplitterApp(QMainWindow):
             self.dir_input.setText(os.path.normpath(dirname))
 
     def reset_stats(self):
-        self.card_total[1].setText("0")
-        self.card_success[1].setText("0")
-        self.card_skipped[1].setText("0")
-        self.card_pass[1].setText("0")
-        self.card_fail[1].setText("0")
-        self.card_stop[1].setText("0")
-        self.card_pass_rate[1].setText("0.00%")
-        self.card_fail_rate[1].setText("0.00%")
+        self.card_total["value"].setText("0")
+        self.card_success["value"].setText("0")
+        self.card_skipped["value"].setText("0")
+        self.card_pass["value"].setText("0")
+        self.card_fail["value"].setText("0")
+        self.card_stop["value"].setText("0")
+        self.card_pass_rate["value"].setText("0.00%")
+        self.card_fail_rate["value"].setText("0.00%")
 
     def validate_paths(self, require_input_file=False):
         input_file = self.file_input.text().strip()
@@ -620,17 +628,17 @@ class LogSplitterApp(QMainWindow):
         s = stats['stop']
         
         self.stats_group.setVisible(True)
-        self.card_total[1].setText(str(t))
-        self.card_success[1].setText(str(success))
-        self.card_skipped[1].setText(str(skipped))
-        self.card_pass[1].setText(str(p))
-        self.card_fail[1].setText(str(f))
-        self.card_stop[1].setText(str(s))
+        self.card_total["value"].setText(str(t))
+        self.card_success["value"].setText(str(success))
+        self.card_skipped["value"].setText(str(skipped))
+        self.card_pass["value"].setText(str(p))
+        self.card_fail["value"].setText(str(f))
+        self.card_stop["value"].setText(str(s))
         
         pass_rate = (p / t * 100) if t else 0
         fail_rate = (f / t * 100) if t else 0
-        self.card_pass_rate[1].setText(f"{pass_rate:.2f}%")
-        self.card_fail_rate[1].setText(f"{fail_rate:.2f}%")
+        self.card_pass_rate["value"].setText(f"{pass_rate:.2f}%")
+        self.card_fail_rate["value"].setText(f"{fail_rate:.2f}%")
 
     def handle_error(self, err_msg):
         self.console.append(f"<font color='#ff3b30'>Error: {err_msg}</font>")
