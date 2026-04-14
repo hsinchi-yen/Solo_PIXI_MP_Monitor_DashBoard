@@ -9,6 +9,7 @@ import importlib.util
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PARSER_PATH = os.path.join(BASE_DIR, 'solo-pixi-essential', 'module_log_parser.py')
+DB_SERVER_CONF_PATH = os.path.join(BASE_DIR, 'dbservip.conf')
 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLineEdit, QLabel,
@@ -20,6 +21,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 APP_VERSION = "1.2.0"
 DB_CONNECT_TIMEOUT = 3
 DB_HEARTBEAT_INTERVAL_MS = 15_000  # 15 seconds
+DEFAULT_DB_HOST = "10.20.31.111"
 
 
 def load_parser_module():
@@ -31,6 +33,31 @@ def load_parser_module():
         raise ImportError("Failed to create loader for module_log_parser.py")
     spec.loader.exec_module(module)
     return module
+
+
+def load_default_db_host():
+    if not os.path.exists(DB_SERVER_CONF_PATH):
+        return DEFAULT_DB_HOST
+
+    try:
+        with open(DB_SERVER_CONF_PATH, 'r', encoding='utf-8') as conf_file:
+            for raw_line in conf_file:
+                line = raw_line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                if ':' in line:
+                    key, value = line.split(':', 1)
+                    if key.strip().upper() == 'IP' and value.strip():
+                        return value.strip()
+                if '=' in line:
+                    key, value = line.split('=', 1)
+                    if key.strip().upper() == 'IP' and value.strip():
+                        return value.strip()
+                return line
+    except OSError:
+        return DEFAULT_DB_HOST
+
+    return DEFAULT_DB_HOST
 
 # ========================================================
 # Ubuntu Yaru-inspired stylesheet
@@ -393,7 +420,7 @@ class LogUploaderApp(QMainWindow):
             lbl.setStyleSheet("color: #5c514b; font-size: 13px; font-weight: 600;")
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.inp_host = QLineEdit("localhost")
+        self.inp_host = QLineEdit(load_default_db_host())
         self.inp_port = QLineEdit("5433")
         self.inp_db   = QLineEdit("pixi_test")
         self.inp_user = QLineEdit("pixi")
@@ -598,7 +625,7 @@ class LogUploaderApp(QMainWindow):
 
     # ─── Build DSN ───────────────────────────────────────────
     def _build_dsn(self):
-        host = self.inp_host.text().strip() or 'localhost'
+        host = self.inp_host.text().strip() or load_default_db_host()
         port = self.inp_port.text().strip() or '5433'
         db   = self.inp_db.text().strip()   or 'pixi_test'
         user = self.inp_user.text().strip()  or 'pixi'
