@@ -622,7 +622,7 @@ tr:hover td { background: var(--surface2); }
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
-                <th>Time</th><th>MAC1</th><th>MAC2</th><th>Date Unit</th><th>Result</th><th>Fail Step</th><th>Message</th><th>Duration</th>
+                <th>Work Order</th><th>Time</th><th>MAC1</th><th>MAC2</th><th>Date Unit</th><th>Result</th><th>Fail Step</th><th>Message</th><th>Duration</th>
             </tr></thead><tbody id="tbFails"></tbody></table>
         </div>
     </div>
@@ -660,7 +660,7 @@ tr:hover td { background: var(--surface2); }
         <h3>Fail / Stop Records</h3>
         <div class="table-scroll">
             <table><thead><tr>
-                <th>Time</th><th>MAC1</th><th>Result</th><th>Error Code</th><th>Fail Step</th><th>Category</th><th>Message</th><th>Raw Log</th>
+                <th>Work Order</th><th>Time</th><th>MAC1</th><th>Result</th><th>Error Code</th><th>Fail Step</th><th>Category</th><th>Message</th><th>Raw Log</th>
             </tr></thead><tbody id="tbFailAnalysis"></tbody></table>
         </div>
     </div>
@@ -1112,6 +1112,7 @@ async function loadFails() {
     tbody.innerHTML = rows.map(r => {
         const rc = r.result === 'FAIL' ? 'fail' : 'stop';
         return `<tr>
+        <td>${r.work_order||'—'}</td>
         <td>${fmtTime(r.start_time)}</td>
         <td><code>${r.mac1}</code></td>
         <td><code>${r.mac2||''}</code></td>
@@ -1256,6 +1257,7 @@ async function loadFailAnalysis() {
     document.getElementById('tbFailAnalysis').innerHTML = fails.map(r => {
         const rc = r.result === 'FAIL' ? 'fail' : 'stop';
         return `<tr>
+        <td>${r.work_order||'—'}</td>
         <td>${fmtTime(r.start_time)}</td>
         <td><code>${r.mac1||''}</code></td>
         <td><span class="badge ${rc}">${r.result}</span></td>
