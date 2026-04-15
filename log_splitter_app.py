@@ -154,7 +154,9 @@ QLabel#statHint {
 
 SEGMENT_PATTERN = re.compile(r'(?=^MAC1:\s*)', re.MULTILINE)
 START_PATTERN = re.compile(r'(\d{4})/(\d{2})/(\d{2}).*?(\d{2}):(\d{2}):(\d{2})')
-SPLIT_FILENAME_PATTERN = re.compile(r'^(\d{8})_(\d{6})_([0-9A-F]+)_([0-9A-F]+)_(PASS|FAIL|STOP)\.txt$', re.IGNORECASE)
+WORKORDER_FROM_PATH_PATTERN = re.compile(r'([A-Za-z0-9]+-\d{8,})')
+SPLIT_FILENAME_PATTERN = re.compile(r'^([A-Za-z0-9]+-\d{8,})_(\d{8})_(\d{6})_([0-9A-F]+)_([0-9A-F]+)_(PASS|FAIL|STOP)\.txt$', re.IGNORECASE)
+DUMMY_WORK_ORDER = "XXXX-XXXXXXXXX"
 
 
 def split_log_content(content):
@@ -191,6 +193,17 @@ def parse_segment(segment):
         "time": time_str,
         "result": result,
     }
+
+
+def infer_workorder_from_source_path(path_text):
+    """Infer work order from source path/filename (e.g. 5101-25122302)."""
+    normalized = os.path.normpath(path_text)
+    for part in normalized.split(os.sep):
+        match = WORKORDER_FROM_PATH_PATTERN.search(part)
+        if match:
+            return match.group(1)
+    match = WORKORDER_FROM_PATH_PATTERN.search(normalized)
+    return match.group(1) if match else None
 
 
 def build_stats(total, success_count, skipped_count, results_list):
@@ -268,7 +281,7 @@ def collect_output_summary(output_dir):
 
         match = SPLIT_FILENAME_PATTERN.match(entry)
         if match:
-            results_list.append(match.group(5).upper())
+            results_list.append(match.group(6).upper())
         else:
             skipped_count += 1
 
@@ -282,15 +295,19 @@ class LogSplitterThread(QThread):
     finished = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, input_file, output_dir):
+    def __init__(self, input_file, output_dir, work_order):
         super().__init__()
         self.input_file = input_file
         self.output_dir = output_dir
+        self.work_order = (work_order or "").strip()
 
     def run(self):
         try:
             self.progress.emit(f"Processing source file: {self.input_file}")
             os.makedirs(self.output_dir, exist_ok=True)
+
+            work_order = self.work_order if self.work_order else DUMMY_WORK_ORDER
+            self.progress.emit(f"Using work order: {work_order}")
 
             with open(self.input_file, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
@@ -313,7 +330,7 @@ class LogSplitterThread(QThread):
                 result = parsed['result']
 
                 if all([mac1, mac2, date_str, time_str, result]):
-                    filename = f"{date_str}_{time_str}_{mac1}_{mac2}_{result}.txt"
+                    filename = f"{work_order}_{date_str}_{time_str}_{mac1}_{mac2}_{result}.txt"
                     filepath = ensure_unique_output_path(self.output_dir, filename)
                     
                     with open(filepath, "w", encoding="utf-8") as out_f:
@@ -448,8 +465,12 @@ class LogSplitterApp(QMainWindow):
         dir_box.addWidget(btn_browse_dir)
         dir_box.setContentsMargins(0, 0, 0, 0)
 
+        self.workorder_input = QLineEdit()
+        self.workorder_input.setPlaceholderText(f"Optional. Leave blank to use {DUMMY_WORK_ORDER}")
+
         form_layout.addRow(QLabel("Source file:"), file_box)
         form_layout.addRow(QLabel("Output folder:"), dir_box)
+        form_layout.addRow(QLabel("WORKORDER:"), self.workorder_input)
         
         settings_group.setLayout(form_layout)
         layout.addWidget(settings_group)
@@ -459,7 +480,7 @@ class LogSplitterApp(QMainWindow):
         status_layout.setContentsMargins(16, 18, 16, 14)
         status_layout.setSpacing(8)
 
-        self.lbl_pattern = QLabel("Filename pattern: DATE_TIME_MAC1_MAC2_RESULT.txt")
+        self.lbl_pattern = QLabel(f"Filename pattern: WORKORDER_DATE_TIME_MAC1_MAC2_RESULT.txt (default WORKORDER: {DUMMY_WORK_ORDER})")
         self.lbl_last_summary = QLabel(f"Last summary file: {self.last_summary_path}")
         self.lbl_last_summary_time = QLabel(f"Last summary time: {self.last_summary_time}")
         self.lbl_pattern.setWordWrap(True)
@@ -591,7 +612,7 @@ class LogSplitterApp(QMainWindow):
         self.console.clear()
         self.stats_group.setVisible(False)
         
-        self.thread = LogSplitterThread(input_file, output_dir)
+        self.thread = LogSplitterThread(input_file, output_dir, self.workorder_input.text())
         self.thread.progress.connect(self.log_message)
         self.thread.summary.connect(self.handle_split_summary)
         self.thread.error.connect(self.handle_error)

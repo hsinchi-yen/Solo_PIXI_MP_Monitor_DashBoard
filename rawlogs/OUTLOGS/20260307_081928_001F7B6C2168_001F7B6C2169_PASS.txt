@@ -1,0 +1,673 @@
+MAC1:	001F7B6C2168
+MAC2:	001F7B6C2169
+Start:	2026/03/07 08:19:28
+
+1. ATC_CONNECT_TESTER
+	Serial number: IQ112EA2387
+	Test time: 0.04sec
+
+2. ATC_INSERT_DUT
+	Technology: BT
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.2 (2024-05-14)
+
+	Test time: 0.01sec
+
+3. ATC_INITIALIZE_DUT
+	Technology: BT
+	DUT_NAME=Qualcomm9377 V1.0.2 (2024-05-14)
+
+	Test time: 1.83sec
+
+4. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+5. BT_TX_BDR
+	Frequency: 2402,Packet Type: 1DH1, Tx Power: 5.0
+
+	Ini Freq Error      37.035 KHz          (75.0 ~ -75.0)      <-- pass
+	Freq Drift          0.635 KHz           (25.0 ~ -25.0)      <-- pass
+	Delta F2 Max        165.423 KHz         (200.0 ~ 115.0)     <-- pass
+	Power               4.511 dBm           (10.0 ~ 0.0)        <-- pass
+	Freq Delta F1 Avg   148.593 KHz         (175.0 ~ 140.0)     <-- pass
+	DELTA_F2_F1_AV_RATIO1.171               (100.0 ~ 0.8)       <-- pass
+	Test time: 0.70sec
+
+6. BT_TX_EDR
+	Frequency: 2441,Packet Type: 2DH1, Tx Power: 5.0
+
+	DEVM Avg            3.653 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          8.318 %             (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.508 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         35.473 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         -0.407 KHz          (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        35.198 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               2.226 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.40sec
+
+7. BT_TX_EDR
+	Frequency: 2480,Packet Type: 3DH1, Tx Power: 5.0
+
+	DEVM Avg            3.859 %             (13.0 ~ 0.0)        <-- pass
+	DEVM Peakg          10.311 %            (25.0 ~ 0.0)        <-- pass
+	Power Diff          -0.503 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         35.484 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         0.461 KHz           (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        35.945 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               2.910 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.41sec
+
+8. BT_TX_LE
+	Frequency: 2402,Packet Type: 1LE, Tx Power: 5.0
+
+	Ini Freq Error      34.520 KHz          (150.0 ~ -150.0)    <-- pass
+	Delta F2 Avg        275.094 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F2 Max        274.853 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F0 Fn Max     1.291 KHz           (50.0 ~ 0.0)        <-- pass
+	Delta F1 F0         0.700 KHz           (20.0 ~ 0.0)        <-- pass
+	Delta Fn Fn5 Max    0.730 KHz           (20.0 ~ 0.0)        <-- pass
+	Power               4.546 dBm           (10.0 ~ 0.0)        <-- pass
+	Delta F1 Avg        247.520 KHz         (275.0 ~ 225.0)     <-- pass
+	Ratio of F2 To F1   1.111               (10.0 ~ 0.8)        <-- pass
+	Test time: 0.77sec
+
+9. BT_RX_BER
+	Frequency: 2441, Packet Type: 2DH1, Rx Power: -85.0
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 0.87sec
+
+10. BT_RX_BER
+	Frequency: 2480, Packet Type: 3DH1, Rx Power: -85.0
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 0.83sec
+
+11. BT_RX_LE
+	Frequency: 2402, Packet Type: 1LE, Rx Power: -85.0
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.08sec
+
+12. ATC_TESTER_RELEASE_CONTROL
+	Test time: 0.00sec
+
+13. ATC_REMOVE_DUT
+	Remove DUT (Technology: BT)
+	Test time: 0.02sec
+
+14. ATC_INSERT_DUT
+	Technology: WIFI
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.1 (2018-08-15)
+
+	Test time: 0.02sec
+
+15. ATC_INITIALIZE_DUT
+	Technology: WIFI
+	DUT_NAME=Qualcomm9377 V1.0.0 (2018-08-15)
+
+	DUT_DRIVER_INFO=QLIB V6.1.174,QPHONEMS
+	Test time: 0.23sec
+
+16. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+17. WIFI_TX_CALIBRATION
+	Xtal Calibration
+	-----------------------------------------------
+	Xtal_cap:14	Xtal_freqerrppm:-0.803	
+	2G Calibration
+	-----------------------------------------------
+	txChainMask : WLAN_ANT_1	 Channel : 2412
+	MeasPower0:21.51	Gain0:18	DacGain0:0
+	MeasPower1:20.14	Gain1:18	DacGain1:-16
+	MeasPower2:20.14	Gain2:18	DacGain2:-16
+	MeasPower3:20.06	Gain3:18	DacGain3:-16
+	MeasPower4:18.00	Gain4:18	DacGain4:-16
+	THERMCAL:151
+
+	txChainMask : WLAN_ANT_1	 Channel : 2442
+	MeasPower0:21.60	Gain0:18	DacGain0:0
+	MeasPower1:20.13	Gain1:18	DacGain1:-16
+	MeasPower2:20.14	Gain2:18	DacGain2:-16
+	MeasPower3:20.12	Gain3:18	DacGain3:-16
+	MeasPower4:18.09	Gain4:18	DacGain4:-16
+	THERMCAL:151
+
+	txChainMask : WLAN_ANT_1	 Channel : 2462
+	MeasPower0:21.67	Gain0:18	DacGain0:0
+	MeasPower1:20.33	Gain1:18	DacGain1:-16
+	MeasPower2:20.24	Gain2:18	DacGain2:-16
+	MeasPower3:20.24	Gain3:18	DacGain3:-16
+	MeasPower4:18.14	Gain4:18	DacGain4:-16
+	THERMCAL:152
+
+	5G Calibration
+	-----------------------------------------------
+	txChainMask : WLAN_ANT_1	 Channel : 5180
+	MeasPower0:15.05	Gain0:10	DacGain0:0
+	MeasPower1:11.34	Gain1:7	DacGain1:0
+	MeasPower2:9.42	Gain2:6	DacGain2:0
+	MeasPower3:0.72	Gain3:4	DacGain3:0
+	THERMCAL:158
+
+	txChainMask : WLAN_ANT_1	 Channel : 5240
+	MeasPower0:16.05	Gain0:12	DacGain0:0
+	MeasPower1:12.68	Gain1:8	DacGain1:0
+	MeasPower2:8.96	Gain2:6	DacGain2:0
+	MeasPower3:2.31	Gain3:5	DacGain3:0
+	THERMCAL:158
+
+	txChainMask : WLAN_ANT_1	 Channel : 5320
+	MeasPower0:16.02	Gain0:12	DacGain0:0
+	MeasPower1:12.58	Gain1:8	DacGain1:0
+	MeasPower2:8.79	Gain2:6	DacGain2:0
+	MeasPower3:2.47	Gain3:5	DacGain3:0
+	THERMCAL:158
+
+	txChainMask : WLAN_ANT_1	 Channel : 5500
+	MeasPower0:15.21	Gain0:12	DacGain0:0
+	MeasPower1:12.28	Gain1:9	DacGain1:0
+	MeasPower2:9.55	Gain2:7	DacGain2:0
+	MeasPower3:3.89	Gain3:6	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5600
+	MeasPower0:14.99	Gain0:12	DacGain0:0
+	MeasPower1:12.01	Gain1:9	DacGain1:0
+	MeasPower2:9.38	Gain2:7	DacGain2:0
+	MeasPower3:3.91	Gain3:6	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5700
+	MeasPower0:14.89	Gain0:12	DacGain0:0
+	MeasPower1:11.86	Gain1:9	DacGain1:0
+	MeasPower2:9.14	Gain2:7	DacGain2:0
+	MeasPower3:3.78	Gain3:6	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5745
+	MeasPower0:15.02	Gain0:12	DacGain0:0
+	MeasPower1:12.05	Gain1:9	DacGain1:0
+	MeasPower2:9.32	Gain2:7	DacGain2:0
+	MeasPower3:3.95	Gain3:6	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5825
+	MeasPower0:15.30	Gain0:14	DacGain0:0
+	MeasPower1:11.58	Gain1:10	DacGain1:0
+	MeasPower2:9.73	Gain2:8	DacGain2:0
+	MeasPower3:2.51	Gain3:6	DacGain3:0
+	THERMCAL:159
+
+	Calibration Done.
+
+	
+	
+	Test time: 16.35sec
+
+18. WIFI_TX_VERIFY_ALL
+	Frequency: 2412, Data Rate: NON_HT-CCK-11, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 19.0
+
+	EVM                 -18.524 dB          (-10.0 ~ -80.0)     <-- pass
+	Freq Error          -1.962 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -2.774 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               19.862 dBm          (21.0 ~ 17.0)       <-- pass
+	LO Leakage          -54.896 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 1.46sec
+
+19. WIFI_TX_VERIFY_ALL
+	Frequency: 2442, Data Rate: NON_HT-CCK-11, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 19.0
+
+	EVM                 -18.695 dB          (-10.0 ~ -80.0)     <-- pass
+	Freq Error          -2.363 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -5.305 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               19.867 dBm          (21.0 ~ 17.0)       <-- pass
+	LO Leakage          -48.798 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 1.75sec
+
+20. WIFI_TX_VERIFY_ALL
+	Frequency: 2467, Data Rate: NON_HT-CCK-11, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 19.0
+
+	EVM                 -18.583 dB          (-10.0 ~ -80.0)     <-- pass
+	Freq Error          -4.116 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -2.145 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               19.917 dBm          (21.0 ~ 17.0)       <-- pass
+	LO Leakage          -48.583 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 20.07sec
+
+21. WIFI_TX_VERIFY_ALL
+	Frequency: 2412, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -30.121 dB          (-25.0 ~ -80.0)     <-- pass
+	Freq Error          -3.966 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -2.207 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               17.189 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -38.372 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.97sec
+
+22. WIFI_TX_VERIFY_ALL
+	Frequency: 2442, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -29.861 dB          (-25.0 ~ -80.0)     <-- pass
+	Freq Error          -3.894 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.773 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               17.353 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -43.153 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.91sec
+
+23. WIFI_TX_VERIFY_ALL
+	Frequency: 2467, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -32.347 dB          (-25.0 ~ -80.0)     <-- pass
+	Freq Error          -3.842 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.814 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               17.482 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -43.688 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.98sec
+
+24. WIFI_TX_VERIFY_ALL
+	Frequency: 2412, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -29.525 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.781 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -0.518 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               16.649 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -44.873 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.94sec
+
+25. WIFI_TX_VERIFY_ALL
+	Frequency: 2442, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -29.614 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.744 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       0.431 ppm           (20.0 ~ -20.0)      <-- pass
+	Power               16.781 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -50.210 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.93sec
+
+26. WIFI_TX_VERIFY_ALL
+	Frequency: 2467, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -32.856 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.695 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.138 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               16.718 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -41.496 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.97sec
+
+27. WIFI_TX_VERIFY_ALL
+	Frequency: 2422, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -27.427 dB          (-28.0 ~ -80.0)     <-- fail
+	Freq Error          -3.648 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.223 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               16.103 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -41.885 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	
+	Retry 1:
+
+	EVM                 -32.695 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.607 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.113 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               16.316 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -51.137 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 2.46sec
+
+28. WIFI_TX_VERIFY_ALL
+	Frequency: 2442, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -32.480 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.547 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.828 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               16.348 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -37.379 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 1.02sec
+
+29. WIFI_TX_VERIFY_ALL
+	Frequency: 2467, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Tx Power: 16.0
+
+	EVM                 -27.517 dB          (-28.0 ~ -80.0)     <-- fail
+	Freq Error          -3.499 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.513 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               16.167 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -38.306 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	
+	Retry 1:
+
+	EVM                 -32.992 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.473 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.901 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               16.294 dBm          (18.0 ~ 14.0)       <-- pass
+	LO Leakage          -44.360 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 2.38sec
+
+30. WIFI_TX_VERIFY_ALL
+	Frequency: 5180, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 13.0
+
+	EVM                 -32.138 dB          (-25.0 ~ -80.0)     <-- pass
+	Freq Error          -3.608 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -2.918 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               12.160 dBm          (15.0 ~ 11.0)       <-- pass
+	LO Leakage          -48.770 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.95sec
+
+31. WIFI_TX_VERIFY_ALL
+	Frequency: 5500, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 13.0
+
+	EVM                 -32.391 dB          (-25.0 ~ -80.0)     <-- pass
+	Freq Error          -3.668 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.243 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               12.353 dBm          (15.0 ~ 11.0)       <-- pass
+	LO Leakage          -43.204 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.94sec
+
+32. WIFI_TX_VERIFY_ALL
+	Frequency: 5765, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 13.0
+
+	EVM                 -31.270 dB          (-25.0 ~ -80.0)     <-- pass
+	Freq Error          -3.663 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.947 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               12.491 dBm          (15.0 ~ 11.0)       <-- pass
+	LO Leakage          -35.861 dBc         (-15.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.94sec
+
+33. WIFI_TX_VERIFY_ALL
+	Frequency: 5180, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 11.0
+
+	EVM                 -33.397 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.759 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.546 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               11.014 dBm          (13.0 ~ 9.0)        <-- pass
+	LO Leakage          -45.997 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.96sec
+
+34. WIFI_TX_VERIFY_ALL
+	Frequency: 5500, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 11.0
+
+	EVM                 -35.717 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.786 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.739 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               11.285 dBm          (13.0 ~ 9.0)        <-- pass
+	LO Leakage          -44.591 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.97sec
+
+35. WIFI_TX_VERIFY_ALL
+	Frequency: 5765, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Tx Power: 11.0
+
+	EVM                 -33.510 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.796 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.192 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               11.616 dBm          (13.0 ~ 9.0)        <-- pass
+	LO Leakage          -39.905 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.96sec
+
+36. WIFI_TX_VERIFY_ALL
+	Frequency: 5190, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Tx Power: 11.0
+
+	EVM                 -25.199 dB          (-28.0 ~ -80.0)     <-- fail
+	Freq Error          -3.779 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.172 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               11.342 dBm          (13.0 ~ 9.0)        <-- pass
+	LO Leakage          -41.736 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	
+	Retry 1:
+
+	EVM                 -31.911 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.843 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.983 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               11.308 dBm          (13.0 ~ 9.0)        <-- pass
+	LO Leakage          -45.803 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 2.43sec
+
+37. WIFI_TX_VERIFY_ALL
+	Frequency: 5510, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Tx Power: 11.0
+
+	EVM                 -34.454 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.822 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -2.967 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               11.375 dBm          (13.0 ~ 9.0)        <-- pass
+	LO Leakage          -43.376 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.95sec
+
+38. WIFI_TX_VERIFY_ALL
+	Frequency: 5755, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Tx Power: 11.0
+
+	EVM                 -34.669 dB          (-28.0 ~ -80.0)     <-- pass
+	Freq Error          -3.809 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.511 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               11.731 dBm          (13.0 ~ 9.0)        <-- pass
+	LO Leakage          -37.340 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 0.95sec
+
+39. WIFI_TX_VERIFY_ALL
+	Frequency: 5210, Data Rate: VHT-MCS9, Bandwidth: BW-80, Antenna: ANT_1, Tx Power: 9.0
+
+	EVM                 -35.349 dB          (-32.0 ~ -80.0)     <-- pass
+	Freq Error          -3.721 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -4.373 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               8.122 dBm           (11.0 ~ 7.0)        <-- pass
+	LO Leakage          -56.216 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 1.50sec
+
+40. WIFI_TX_VERIFY_ALL
+	Frequency: 5530, Data Rate: VHT-MCS9, Bandwidth: BW-80, Antenna: ANT_1, Tx Power: 9.0
+
+	EVM                 -37.595 dB          (-32.0 ~ -80.0)     <-- pass
+	Freq Error          -3.719 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.544 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               8.282 dBm           (11.0 ~ 7.0)        <-- pass
+	LO Leakage          -68.794 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 1.42sec
+
+41. WIFI_TX_VERIFY_ALL
+	Frequency: 5775, Data Rate: VHT-MCS9, Bandwidth: BW-80, Antenna: ANT_1, Tx Power: 9.0
+
+	EVM                 -37.737 dB          (-32.0 ~ -80.0)     <-- pass
+	Freq Error          -3.706 ppm          (20.0 ~ -20.0)      <-- pass
+	Sym Clk Error       -3.563 ppm          (20.0 ~ -20.0)      <-- pass
+	Power               8.050 dBm           (11.0 ~ 7.0)        <-- pass
+	LO Leakage          -56.008 dBc         (-17.0 ~ -100.0)    <-- pass
+	Spectrum Mask       0.000 %             (2.0 ~ 0.0)         <-- pass
+	Test time: 1.36sec
+
+42. WIFI_RX_VERIFY_PER
+	Frequency: 2412, Data Rate: NON_HT-CCK-11, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -84.0
+
+	PER                 0.000 %             (8.0 ~ 0.0)         <-- pass
+	Test time: 1.36sec
+
+43. WIFI_RX_VERIFY_PER
+	Frequency: 2442, Data Rate: NON_HT-CCK-11, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -84.0
+
+	PER                 0.000 %             (8.0 ~ 0.0)         <-- pass
+	Test time: 1.36sec
+
+44. WIFI_RX_VERIFY_PER
+	Frequency: 2467, Data Rate: NON_HT-CCK-11, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -84.0
+
+	PER                 0.000 %             (8.0 ~ 0.0)         <-- pass
+	Test time: 1.37sec
+
+45. WIFI_RX_VERIFY_PER
+	Frequency: 2412, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -67.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.00sec
+
+46. WIFI_RX_VERIFY_PER
+	Frequency: 2442, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -67.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.00sec
+
+47. WIFI_RX_VERIFY_PER
+	Frequency: 2467, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -67.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.01sec
+
+48. WIFI_RX_VERIFY_PER
+	Frequency: 2412, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -63.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.00sec
+
+49. WIFI_RX_VERIFY_PER
+	Frequency: 2442, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -63.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.02sec
+
+50. WIFI_RX_VERIFY_PER
+	Frequency: 2467, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -63.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.99sec
+
+51. WIFI_RX_VERIFY_PER
+	Frequency: 2422, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Rx Power: -62.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.93sec
+
+52. WIFI_RX_VERIFY_PER
+	Frequency: 2442, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Rx Power: -62.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.93sec
+
+53. WIFI_RX_VERIFY_PER
+	Frequency: 2467, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Rx Power: -62.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.94sec
+
+54. WIFI_RX_VERIFY_PER
+	Frequency: 5180, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -67.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.04sec
+
+55. WIFI_RX_VERIFY_PER
+	Frequency: 5500, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -67.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.03sec
+
+56. WIFI_RX_VERIFY_PER
+	Frequency: 5765, Data Rate: NON_HT-OFDM-54, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -67.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.01sec
+
+57. WIFI_RX_VERIFY_PER
+	Frequency: 5180, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -63.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.99sec
+
+58. WIFI_RX_VERIFY_PER
+	Frequency: 5500, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -63.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.98sec
+
+59. WIFI_RX_VERIFY_PER
+	Frequency: 5765, Data Rate: HT_MF-MCS7, Bandwidth: BW-20, Antenna: ANT_1, Rx Power: -63.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.98sec
+
+60. WIFI_RX_VERIFY_PER
+	Frequency: 5190, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Rx Power: -62.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.92sec
+
+61. WIFI_RX_VERIFY_PER
+	Frequency: 5510, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Rx Power: -62.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.92sec
+
+62. WIFI_RX_VERIFY_PER
+	Frequency: 5755, Data Rate: HT_MF-MCS7, Bandwidth: BW-40, Antenna: ANT_1, Rx Power: -62.5
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.92sec
+
+63. WIFI_RX_VERIFY_PER
+	Frequency: 5210, Data Rate: VHT-MCS9, Bandwidth: BW-80, Antenna: ANT_1, Rx Power: -51.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.91sec
+
+64. WIFI_RX_VERIFY_PER
+	Frequency: 5530, Data Rate: VHT-MCS9, Bandwidth: BW-80, Antenna: ANT_1, Rx Power: -51.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.91sec
+
+65. WIFI_RX_VERIFY_PER
+	Frequency: 5775, Data Rate: VHT-MCS9, Bandwidth: BW-80, Antenna: ANT_1, Rx Power: -51.0
+
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 0.92sec
+
+66. ATC_TESTER_RELEASE_CONTROL
+	Test time: 0.00sec
+
+67. ATC_WRITE_MAC_ADDRESS
+	MAC_ADDRESS: 001F7B6C2168
+	
+	Test time: 0.02sec
+
+68. ATC_WRITE_MAC_ADDRESS
+	MAC_ADDRESS: 001F7B6C2169
+	
+	Test time: 0.05sec
+
+69. ATC_WRITE_EEPROM
+	
+	Test time: 0.19sec
+
+70. ATC_REMOVE_DUT
+	Remove DUT (Technology: WIFI)
+	Test time: 0.02sec
+
+		*****************
+		**** P A S S ****
+		*****************
+
+End:		2026/03/07 08:21:08
+
+Test Time:  01:39.4
+
+

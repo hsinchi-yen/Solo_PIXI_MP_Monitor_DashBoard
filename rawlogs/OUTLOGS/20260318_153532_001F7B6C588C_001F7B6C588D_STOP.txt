@@ -1,0 +1,116 @@
+MAC1:	001F7B6C588C
+MAC2:	001F7B6C588D
+Start:	2026/03/18 15:35:32
+
+1. ATC_CONNECT_TESTER
+	Serial number: IQ112EA2387
+	Test time: 0.02sec
+
+2. ATC_INSERT_DUT
+	Technology: BT
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.2 (2024-05-14)
+
+	Test time: 0.01sec
+
+3. ATC_INITIALIZE_DUT
+	Technology: BT
+	DUT_NAME=Qualcomm9377 V1.0.2 (2024-05-14)
+
+	Test time: 1.34sec
+
+4. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+5. BT_TX_BDR
+	Frequency: 2402,Packet Type: 1DH1, Tx Power: 5.0
+
+	Ini Freq Error      43.628 KHz          (75.0 ~ -75.0)      <-- pass
+	Freq Drift          1.672 KHz           (25.0 ~ -25.0)      <-- pass
+	Delta F2 Max        163.905 KHz         (200.0 ~ 115.0)     <-- pass
+	Power               2.161 dBm           (10.0 ~ 0.0)        <-- pass
+	Freq Delta F1 Avg   149.719 KHz         (175.0 ~ 140.0)     <-- pass
+	DELTA_F2_F1_AV_RATIO1.152               (100.0 ~ 0.8)       <-- pass
+	Test time: 0.71sec
+
+6. BT_TX_EDR
+	Frequency: 2441,Packet Type: 2DH1, Tx Power: 5.0
+
+	DEVM Avg            3.522 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          8.241 %             (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.491 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         41.041 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         -0.815 KHz          (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        40.307 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               -2.165 dBm          (10.0 ~ 0.0)        <-- fail
+	Retry 1:
+
+	Analyze failed!
+
+	Retry 2:
+
+	DEVM Avg            4.654 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          13.018 %            (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.499 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         40.898 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         -1.019 KHz          (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        40.118 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               0.612 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 2.63sec
+
+7. BT_TX_EDR
+	Frequency: 2480,Packet Type: 3DH1, Tx Power: 5.0
+
+	DEVM Avg            5.495 %             (13.0 ~ 0.0)        <-- pass
+	DEVM Peakg          14.156 %            (25.0 ~ 0.0)        <-- pass
+	Power Diff          -0.502 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         40.296 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         0.832 KHz           (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        41.127 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               0.173 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.39sec
+
+8. BT_TX_LE
+	Frequency: 2402,Packet Type: 1LE, Tx Power: 5.0
+
+	Ini Freq Error      39.863 KHz          (150.0 ~ -150.0)    <-- pass
+	Delta F2 Avg        279.183 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F2 Max        283.719 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F0 Fn Max     1.352 KHz           (50.0 ~ 0.0)        <-- pass
+	Delta F1 F0         0.215 KHz           (20.0 ~ 0.0)        <-- pass
+	Delta Fn Fn5 Max    1.245 KHz           (20.0 ~ 0.0)        <-- pass
+	Power               1.153 dBm           (10.0 ~ 0.0)        <-- pass
+	Delta F1 Avg        247.136 KHz         (275.0 ~ 225.0)     <-- pass
+	Ratio of F2 To F1   1.130               (10.0 ~ 0.8)        <-- pass
+	Test time: 0.75sec
+
+9. BT_RX_BER
+	Frequency: 2441, Packet Type: 2DH1, Rx Power: -83.0
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 0.80sec
+
+10. BT_RX_BER
+	Frequency: 2480, Packet Type: 3DH1, Rx Power: -83.0
+	BER                 0.233 %             (0.010 ~ 0.000)     <-- fail
+	Retry 1, 
+	BER                 0.010 %             (0.010 ~ 0.000)     <-- fail
+	Retry 2, 
+	BER                 0.228 %             (0.010 ~ 0.000)     <-- fail
+	Retry 3, 
+	BER                 0.400 %             (0.010 ~ 0.000)     <-- fail
+	Test time: 3.12sec
+
+	Remove DUT (Technology: BT)
+	Remove DUT (Technology: BT)
+		*****************
+		**** S T O P ****
+		*****************
+
+End:		2026/03/18 15:35:42
+
+Test Time:  00:10.0
+
+

@@ -1,0 +1,130 @@
+MAC1:	001F7B6C68A4
+MAC2:	001F7B6C68A5
+Start:	2026/03/23 15:48:38
+
+1. ATC_CONNECT_TESTER
+	Serial number: IQ112EA2387
+	Test time: 0.03sec
+
+2. ATC_INSERT_DUT
+	Technology: BT
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.2 (2024-05-14)
+
+	Test time: 0.01sec
+
+3. ATC_INITIALIZE_DUT
+	Technology: BT
+	DUT_NAME=Qualcomm9377 V1.0.2 (2024-05-14)
+
+	Test time: 0.80sec
+
+4. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+5. BT_TX_BDR
+	Frequency: 2402,Packet Type: 1DH1, Tx Power: 5.0
+
+	Ini Freq Error      41.630 KHz          (75.0 ~ -75.0)      <-- pass
+	Freq Drift          -0.751 KHz          (25.0 ~ -25.0)      <-- pass
+	Delta F2 Max        170.103 KHz         (200.0 ~ 115.0)     <-- pass
+	Power               -5.131 dBm          (10.0 ~ 0.0)        <-- fail
+	Freq Delta F1 Avg   150.632 KHz         (175.0 ~ 140.0)     <-- pass
+	DELTA_F2_F1_AV_RATIO1.167               (100.0 ~ 0.8)       <-- pass
+	Retry 1:
+
+	Ini Freq Error      42.454 KHz          (75.0 ~ -75.0)      <-- pass
+	Freq Drift          0.487 KHz           (25.0 ~ -25.0)      <-- pass
+	Delta F2 Max        166.209 KHz         (200.0 ~ 115.0)     <-- pass
+	Power               -5.146 dBm          (10.0 ~ 0.0)        <-- fail
+	Freq Delta F1 Avg   150.275 KHz         (175.0 ~ 140.0)     <-- pass
+	DELTA_F2_F1_AV_RATIO1.168               (100.0 ~ 0.8)       <-- pass
+	Retry 2:
+
+	Ini Freq Error      43.122 KHz          (75.0 ~ -75.0)      <-- pass
+	Freq Drift          1.536 KHz           (25.0 ~ -25.0)      <-- pass
+	Delta F2 Max        168.166 KHz         (200.0 ~ 115.0)     <-- pass
+	Power               1.595 dBm           (10.0 ~ 0.0)        <-- pass
+	Freq Delta F1 Avg   150.819 KHz         (175.0 ~ 140.0)     <-- pass
+	DELTA_F2_F1_AV_RATIO1.163               (100.0 ~ 0.8)       <-- pass
+	Test time: 3.71sec
+
+6. BT_TX_EDR
+	Frequency: 2441,Packet Type: 2DH1, Tx Power: 5.0
+
+	DEVM Avg            3.342 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          8.867 %             (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.512 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         39.651 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         1.094 KHz           (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        40.746 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               -0.873 dBm          (10.0 ~ 0.0)        <-- fail
+	Retry 1:
+
+	DEVM Avg            3.292 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          7.159 %             (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.507 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         39.624 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         0.945 KHz           (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        40.569 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               -0.836 dBm          (10.0 ~ 0.0)        <-- fail
+	Retry 2:
+
+	DEVM Avg            4.091 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          10.621 %            (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.511 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         38.747 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         1.586 KHz           (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        40.333 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               0.903 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 2.77sec
+
+7. BT_TX_EDR
+	Frequency: 2480,Packet Type: 3DH1, Tx Power: 5.0
+
+	DEVM Avg            4.307 %             (13.0 ~ 0.0)        <-- pass
+	DEVM Peakg          13.246 %            (25.0 ~ 0.0)        <-- pass
+	Power Diff          -0.506 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         40.562 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         0.509 KHz           (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        41.071 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               1.658 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.43sec
+
+8. BT_TX_LE
+	Frequency: 2402,Packet Type: 1LE, Tx Power: 5.0
+
+	Ini Freq Error      38.693 KHz          (150.0 ~ -150.0)    <-- pass
+	Delta F2 Avg        274.018 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F2 Max        275.094 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F0 Fn Max     2.609 KHz           (50.0 ~ 0.0)        <-- pass
+	Delta F1 F0         1.502 KHz           (20.0 ~ 0.0)        <-- pass
+	Delta Fn Fn5 Max    1.480 KHz           (20.0 ~ 0.0)        <-- pass
+	Power               3.255 dBm           (10.0 ~ 0.0)        <-- pass
+	Delta F1 Avg        247.941 KHz         (275.0 ~ 225.0)     <-- pass
+	Ratio of F2 To F1   1.105               (10.0 ~ 0.8)        <-- pass
+	Test time: 0.74sec
+
+9. BT_RX_BER
+	Frequency: 2441, Packet Type: 2DH1, Rx Power: -80.0
+	BER                 0.330 %             (0.010 ~ 0.000)     <-- fail
+	Retry 1, 
+	BER                 0.221 %             (0.010 ~ 0.000)     <-- fail
+	Retry 2, 
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 2.37sec
+
+	Remove DUT (Technology: BT)
+		*****************
+		**** S T O P ****
+		*****************
+
+End:		2026/03/23 15:48:49
+
+Test Time:  00:11.1
+
+

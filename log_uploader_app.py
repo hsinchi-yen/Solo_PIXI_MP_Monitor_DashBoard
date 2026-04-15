@@ -385,7 +385,7 @@ class LogUploaderApp(QMainWindow):
         info_title = QLabel("Upload Format:")
         info_title.setStyleSheet("color: #5e2750; font-size: 13px; font-weight: 700; white-space: nowrap;")
         info_desc = QLabel(
-            "Preferred filename: YYYYMMDD_HHMMSS_MAC1_MAC2_RESULT.txt. unit_date is derived from filename or Start time."
+            "Preferred filename: WORKORDER_YYYYMMDD_HHMMSS_MAC1_MAC2_RESULT.txt. unit_date is derived from filename or Start time."
         )
         info_desc.setStyleSheet("color: #5c514b; font-size: 13px;")
         info_layout.addWidget(info_title, 0)

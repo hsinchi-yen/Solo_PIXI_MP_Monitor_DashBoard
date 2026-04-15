@@ -375,25 +375,41 @@ tr:hover td { background: var(--surface2); }
 #page-overview .chart-box { min-height: 0; padding: 14px; }
 #page-overview .chart-box h3 { margin-bottom: 10px; }
 #page-overview .chart-box canvas { height: calc(100% - 28px) !important; }
-#page-overview .chart-row.primary-row { grid-template-columns: 3fr 1fr; }
+#page-overview .chart-row.primary-row { grid-template-columns: 1fr 3fr; }
+#page-overview .chart-row.primary-row .donut-compact { grid-column: 1; }
+#page-overview .chart-row.primary-row .yield-wide { grid-column: 2; }
 #page-overview .donut-compact {
     display: flex;
     flex-direction: column;
 }
-#page-overview .status-lights {
+#page-overview .status-legend {
     display: flex;
-    gap: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
     margin-bottom: 8px;
 }
-#page-overview .status-lights .light {
+#page-overview .status-legend .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text2);
+}
+#page-overview .status-legend .swatch {
     width: 10px;
     height: 10px;
     border-radius: 50%;
     display: inline-block;
 }
-#page-overview .status-lights .light.pass { background: #30d158; }
-#page-overview .status-lights .light.fail { background: #ff453a; }
-#page-overview .status-lights .light.stop { background: #ff9f0a; }
+#page-overview .status-legend .swatch.pass { background: #30d158; }
+#page-overview .status-legend .swatch.fail { background: #ff453a; }
+#page-overview .status-legend .swatch.stop { background: #ff9f0a; }
+#yieldTrendMeta {
+    font-size: 11px;
+    color: var(--text3);
+    font-weight: 500;
+    margin-left: 8px;
+}
 #page-overview .donut-compact canvas {
     height: auto !important;
     width: 100% !important;
@@ -502,19 +518,19 @@ tr:hover td { background: var(--surface2); }
 
 <!-- ═══ Sidebar ═══════════════════════════════════════════════════════════ -->
 <aside class="sidebar">
-    <div class="sidebar-header">
-        <div class="clock" id="clock">--:--:--</div>
-        <div class="clock-date" id="clockDate"></div>
-    </div>
     <div class="logo">
         <span class="org-name">TechNexion - Produxion</span>
         <h1>Solo PIXI<br>Module Test Analysis</h1>
         <span>QCA9377 BT + WiFi QC</span>
     </div>
+    <div class="sidebar-header">
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="clock-date" id="clockDate"></div>
+    </div>
     <nav>
         <div class="section-label">Overview</div>
         <a href="#" data-page="overview" class="active">📊 Dashboard</a>
-        <a href="#" data-page="workorders">📋 Date Units</a>
+        <a href="#" data-page="workorders">📋 Work Orders</a>
         <a href="#" data-page="fails">⚠️ Fail List</a>
         <div class="section-label">Analysis</div>
         <a href="#" data-page="bt">📡 BT Analysis</a>
@@ -554,29 +570,33 @@ tr:hover td { background: var(--surface2); }
         <label>Day</label>
         <select id="filterDay"><option value="">All</option></select>
     </div>
+    <div class="filter-group">
+        <label>Work Order</label>
+        <select id="filterWorkOrder"><option value="">All</option></select>
+    </div>
     <button class="filter-reset" id="btnFilterReset" title="Reset all filters">✕ Reset</button>
 </div>
 
 <!-- ─── Overview ──────────────────────────────────────────────────────── -->
 <div class="page active" id="page-overview">
     <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card"><div class="kpi-label">Yield %</div><div class="kpi-value green" id="kpiYield">—</div></div>
         <div class="kpi-card"><div class="kpi-label">Total Tested</div><div class="kpi-value teal" id="kpiTotal">—</div></div>
         <div class="kpi-card"><div class="kpi-label">PASS</div><div class="kpi-value green" id="kpiPass">—</div></div>
         <div class="kpi-card"><div class="kpi-label">FAIL</div><div class="kpi-value red" id="kpiFail">—</div></div>
         <div class="kpi-card"><div class="kpi-label">STOP</div><div class="kpi-value orange" id="kpiStop">—</div></div>
-        <div class="kpi-card"><div class="kpi-label">Yield %</div><div class="kpi-value green" id="kpiYield">—</div></div>
         <div class="kpi-card"><div class="kpi-label">Retry Rate %</div><div class="kpi-value purple" id="kpiRetry">—</div></div>
     </div>
     <div class="chart-row primary-row">
-        <div class="chart-box yield-wide"><h3>Hourly Yield Trend</h3><canvas id="chartYield"></canvas></div>
         <div class="chart-box donut-compact">
-            <div class="status-lights" title="PASS / FAIL / STOP status lights">
-                <span class="light pass"></span>
-                <span class="light fail"></span>
-                <span class="light stop"></span>
+            <div class="status-legend" title="PASS / FAIL / STOP color legend">
+                <span class="item"><span class="swatch pass"></span>PASS</span>
+                <span class="item"><span class="swatch fail"></span>FAIL</span>
+                <span class="item"><span class="swatch stop"></span>STOP</span>
             </div>
             <canvas id="chartDonut"></canvas>
         </div>
+        <div class="chart-box yield-wide"><h3>Hourly Yield Trend <span id="yieldTrendMeta">Latest: —</span></h3><canvas id="chartYield"></canvas></div>
     </div>
     <div class="chart-row monthly-row">
         <div class="chart-box"><h3>Monthly Test Units</h3><canvas id="chartMonthlyUnits"></canvas></div>
@@ -584,13 +604,13 @@ tr:hover td { background: var(--surface2); }
     </div>
 </div>
 
-<!-- ─── Date Units ───────────────────────────────────────────────────── -->
+<!-- ─── Work Orders ──────────────────────────────────────────────────── -->
 <div class="page" id="page-workorders">
-    <h2 class="page-title">Date Units</h2>
+    <h2 class="page-title">Work Orders</h2>
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
-                <th>Date Unit</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th>
+                <th>Work Order</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th>
             </tr></thead><tbody id="tbWO"></tbody></table>
         </div>
     </div>
@@ -674,34 +694,71 @@ tr:hover td { background: var(--surface2); }
                 <button class="tweak-btn secondary" id="btnTweakRefresh">Refresh</button>
                 <button class="tweak-btn danger" id="btnTweakLogout">Logout</button>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
-                <label style="font-size:12px;color:var(--text2)">Delete by Date Unit:</label>
-                <select id="tweakUnitDateSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
-                    <option value="">— select —</option>
-                </select>
-                <button class="tweak-btn danger" id="btnTweakDeleteDateUnit" disabled>Delete Exact Date Unit</button>
+            <div style="display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:8px">
+                <div>
+                    <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Year</label>
+                    <select id="tweakFilterYear" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:110px">
+                        <option value="">All Years</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Month</label>
+                    <select id="tweakFilterMonth" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:120px">
+                        <option value="">All Months</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Week</label>
+                    <select id="tweakFilterWeek" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:110px">
+                        <option value="">All Weeks</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Day</label>
+                    <select id="tweakFilterDay" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:140px">
+                        <option value="">All Days</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:4px">Work Order</label>
+                    <select id="tweakFilterWorkOrder" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;min-width:200px">
+                        <option value="">All Work Orders</option>
+                    </select>
+                </div>
+                <button class="tweak-btn secondary" id="btnTweakResetFilters">Reset Filters</button>
+                <button class="tweak-btn danger" id="btnTweakDeleteScope" disabled>Delete Filtered Records</button>
             </div>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px">
-                <label style="font-size:12px;color:var(--text2)">Delete by Date:</label>
-                <select id="tweakYearSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
-                    <option value="">— Year —</option>
-                </select>
-                <select id="tweakMonthSelect" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
-                    <option value="">All Months</option>
-                </select>
-                <span id="tweakDateCount" style="font-size:12px;color:var(--text3)"></span>
-                <button class="tweak-btn danger" id="btnTweakDeleteDate" disabled>Delete by Date</button>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px">
+                <div id="tweakResultSummary" style="font-size:12px;color:var(--text2)">No records loaded.</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <label style="font-size:12px;color:var(--text2)">Rows per page:</label>
+                    <select id="tweakPageSize" style="padding:6px 10px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px">
+                        <option value="10">10</option>
+                        <option value="50" selected>50</option>
+                        <option value="100">100</option>
+                        <option value="All">All</option>
+                    </select>
+                </div>
             </div>
         </div>
         <div class="data-table-wrap" style="margin-top:16px">
             <div class="table-scroll" style="max-height:600px">
                 <table>
                     <thead><tr>
-                        <th>ID</th><th>Time</th><th>MAC1</th><th>Date Unit</th><th>Result</th>
+                        <th>ID</th><th>Time</th><th>MAC1</th><th>Work Order</th><th>Date Unit</th><th>Result</th>
                         <th>Duration</th><th>Fail Step</th><th>Source</th><th>Actions</th>
                     </tr></thead>
                     <tbody id="tbTweak"></tbody>
                 </table>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:12px">
+            <div id="tweakPageInfo" style="font-size:12px;color:var(--text2)">Page 0 / 0</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <button class="tweak-btn secondary" id="btnTweakTop" disabled>Top</button>
+                <button class="tweak-btn secondary" id="btnTweakPrev" disabled>Previous</button>
+                <button class="tweak-btn secondary" id="btnTweakNext" disabled>Next</button>
+                <button class="tweak-btn secondary" id="btnTweakBottom" disabled>Bottom</button>
             </div>
         </div>
     </div>
@@ -741,10 +798,12 @@ function getFilter() {
     const m = document.getElementById('filterMonth').value;
     const w = document.getElementById('filterWeek').value;
     const d = document.getElementById('filterDay').value;
+    const wo = document.getElementById('filterWorkOrder').value;
     if (y) p.set('year', y);
     if (m) p.set('month', m);
     if (w) p.set('week', w);
     if (d) p.set('day', d);
+    if (wo) p.set('work_order', wo);
     return p.toString() ? '?' + p.toString() : '';
 }
 
@@ -759,12 +818,14 @@ async function loadFilterOptions() {
     const m = document.getElementById('filterMonth').value;
     const w = document.getElementById('filterWeek').value;
     const d = document.getElementById('filterDay').value;
+    const wo = document.getElementById('filterWorkOrder').value;
 
     const p = new URLSearchParams();
     if (y) p.set('year', y);
     if (m) p.set('month', m);
     if (w) p.set('week', w);
     if (d) p.set('day', d);
+    if (wo) p.set('work_order', wo);
     const qs = p.toString() ? '?' + p.toString() : '';
 
     try {
@@ -773,6 +834,7 @@ async function loadFilterOptions() {
         fillSelect('filterMonth', opts.months, m, v => `${v} (${MONTH_NAMES[v]||v})`);
         fillSelect('filterWeek', opts.weeks, w, v => `W${v}`);
         fillSelect('filterDay', opts.days, d, v => v);
+        fillSelect('filterWorkOrder', opts.work_orders, wo, v => v);
     } catch(e) { console.warn('filter-options error', e); }
 }
 
@@ -794,23 +856,30 @@ document.getElementById('filterYear').addEventListener('change', () => {
     document.getElementById('filterMonth').value = '';
     document.getElementById('filterWeek').value = '';
     document.getElementById('filterDay').value = '';
+    document.getElementById('filterWorkOrder').value = '';
     loadFilterOptions().then(reloadActivePage);
 });
 document.getElementById('filterMonth').addEventListener('change', () => {
     document.getElementById('filterWeek').value = '';
     document.getElementById('filterDay').value = '';
+    document.getElementById('filterWorkOrder').value = '';
     loadFilterOptions().then(reloadActivePage);
 });
 document.getElementById('filterWeek').addEventListener('change', () => {
     document.getElementById('filterDay').value = '';
+    document.getElementById('filterWorkOrder').value = '';
     loadFilterOptions().then(reloadActivePage);
 });
 document.getElementById('filterDay').addEventListener('change', () => {
+    document.getElementById('filterWorkOrder').value = '';
+    loadFilterOptions().then(reloadActivePage);
+});
+document.getElementById('filterWorkOrder').addEventListener('change', () => {
     loadFilterOptions().then(reloadActivePage);
 });
 
 document.getElementById('btnFilterReset').addEventListener('click', () => {
-    ['filterYear','filterMonth','filterWeek','filterDay'].forEach(id => document.getElementById(id).value = '');
+    ['filterYear','filterMonth','filterWeek','filterDay','filterWorkOrder'].forEach(id => document.getElementById(id).value = '');
     loadFilterOptions().then(reloadActivePage);
 });
 
@@ -827,6 +896,48 @@ Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display
 const chartInstances = {};
 function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
 
+function getActiveFilterSummary() {
+    const y = document.getElementById('filterYear').value;
+    const m = document.getElementById('filterMonth').value;
+    const w = document.getElementById('filterWeek').value;
+    const d = document.getElementById('filterDay').value;
+    const wo = document.getElementById('filterWorkOrder').value;
+    const parts = [];
+    if (y) parts.push(`Y${y}`);
+    if (m) parts.push(`M${String(m).padStart(2, '0')}`);
+    if (w) parts.push(`W${w}`);
+    if (d) parts.push(`D${d}`);
+    if (wo) parts.push(`WO:${wo}`);
+    return parts.length ? parts.join(' | ') : 'All';
+}
+
+const donutPercentLabelPlugin = {
+    id: 'donutPercentLabelPlugin',
+    afterDatasetsDraw(chart) {
+        const dataset = chart.data.datasets[0];
+        if (!dataset || !dataset.data || !dataset.data.length) return;
+        const total = dataset.data.reduce((s, n) => s + Number(n || 0), 0);
+        if (!total) return;
+
+        const meta = chart.getDatasetMeta(0);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        meta.data.forEach((arc, i) => {
+            const value = Number(dataset.data[i] || 0);
+            if (!value) return;
+            const p = (value / total) * 100;
+            const pos = arc.tooltipPosition();
+            ctx.fillText(`${p.toFixed(1)}%`, pos.x, pos.y);
+        });
+        ctx.restore();
+    }
+};
+
 /* ═══ Load overview ══════════════════════════════════════════════════════ */
 async function loadOverview() {
     const [summary, trend, split, monthly] = await Promise.all([
@@ -839,6 +950,18 @@ async function loadOverview() {
     document.getElementById('kpiStop').textContent = summary.stop ?? '—';
     document.getElementById('kpiYield').textContent = summary.yield_pct != null ? summary.yield_pct + '%' : '—';
     document.getElementById('kpiRetry').textContent = summary.retry_rate != null ? summary.retry_rate + '%' : '—';
+
+    const trendMeta = document.getElementById('yieldTrendMeta');
+    const latest = trend.length ? trend[trend.length - 1] : null;
+    const selectedWo = document.getElementById('filterWorkOrder').value || 'All Work Orders';
+    if (latest && latest.hour) {
+        const dt = new Date(latest.hour);
+        const datePart = dt.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
+        const timePart = dt.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+        trendMeta.textContent = `Latest: ${datePart} ${timePart} | WO: ${selectedWo}`;
+    } else {
+        trendMeta.textContent = `Latest: — | WO: ${selectedWo}`;
+    }
 
     destroyChart('chartYield');
     const labels = trend.map(r => {
@@ -903,17 +1026,24 @@ async function loadOverview() {
                 tooltip: {
                     callbacks: {
                         title: () => '',
-                        label: (ctx) => `${ctx.parsed}`
+                        label: (ctx) => {
+                            const total = (ctx.dataset.data || []).reduce((s, n) => s + Number(n || 0), 0);
+                            const pct = total ? (ctx.parsed * 100 / total).toFixed(1) : '0.0';
+                            return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                        }
                     }
                 }
             }
         }
+        ,
+        plugins: [donutPercentLabelPlugin]
     });
 
     // Monthly Test Units chart
     destroyChart('chartMonthlyUnits');
     const mLabels = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     const mData = monthly.months || [];
+    const activeFilterText = getActiveFilterSummary();
     chartInstances['chartMonthlyUnits'] = new Chart(document.getElementById('chartMonthlyUnits'), {
         type: 'bar',
         data: {
@@ -925,7 +1055,10 @@ async function loadOverview() {
         options: {
             responsive: true,
             scales: { y: { beginAtZero: true, title: { display: true, text: 'Units' } } },
-            plugins: { legend: { display: false }, title: { display: true, text: `Year: ${monthly.year || ''}`, font: { size: 12 }, color: '#8888aa' } }
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: `Year: ${monthly.year || ''} | Filter: ${activeFilterText}`, font: { size: 12 }, color: '#8888aa' }
+            }
         }
     });
 
@@ -943,20 +1076,22 @@ async function loadOverview() {
         options: {
             responsive: true,
             scales: { y: { beginAtZero: true, title: { display: true, text: 'Count' } } },
-            plugins: { title: { display: true, text: `Year: ${monthly.year || ''}`, font: { size: 12 }, color: '#8888aa' } }
+            plugins: {
+                title: { display: true, text: `Year: ${monthly.year || ''} | Filter: ${activeFilterText}`, font: { size: 12 }, color: '#8888aa' }
+            }
         }
     });
 }
 
 /* ═══ Load work orders ═══════════════════════════════════════════════════ */
 async function loadWorkOrders() {
-    const rows = await api('/api/date-units');
+    const rows = await api('/api/work-order-summary');
     const tbody = document.getElementById('tbWO');
     tbody.innerHTML = rows.map(r => {
         const y = parseFloat(r.yield_pct) || 0;
         const color = y >= 95 ? 'var(--green)' : y >= 80 ? 'var(--orange)' : 'var(--red)';
         return `<tr>
-            <td><strong>${r.unit_date||'—'}</strong></td>
+            <td><strong>${r.work_order||'—'}</strong></td>
             <td>${r.total}</td>
             <td>${r.test_attempts ?? 0}</td>
             <td><span class="badge pass">${r.passed}</span></td>
@@ -1135,6 +1270,137 @@ async function loadFailAnalysis() {
 
 /* ═══ DB Tweak ═══════════════════════════════════════════════════════════ */
 let tweakToken = null;
+const tweakState = {
+    page: 1,
+    pageSize: '50',
+    total: 0,
+    totalPages: 0,
+};
+
+function handleTweakUnauthorized() {
+    document.getElementById('btnTweakLogout').click();
+}
+
+function getTweakFilters() {
+    return {
+        year: document.getElementById('tweakFilterYear').value,
+        month: document.getElementById('tweakFilterMonth').value,
+        week: document.getElementById('tweakFilterWeek').value,
+        day: document.getElementById('tweakFilterDay').value,
+        work_order: document.getElementById('tweakFilterWorkOrder').value,
+    };
+}
+
+function getTweakFilterParams(includePaging = true) {
+    const params = new URLSearchParams();
+    const filters = getTweakFilters();
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.set(key, value);
+    });
+    if (includePaging) {
+        params.set('page', String(tweakState.page));
+        params.set('page_size', tweakState.pageSize);
+    }
+    return params;
+}
+
+function fillTweakSelect(id, values, currentValue, placeholder, labelFn) {
+    const sel = document.getElementById(id);
+    const normalized = currentValue == null ? '' : String(currentValue);
+    sel.innerHTML = '';
+    const placeholderOption = document.createElement('option');
+    placeholderOption.value = '';
+    placeholderOption.textContent = placeholder;
+    sel.appendChild(placeholderOption);
+
+    let hasCurrent = !normalized;
+    (values || []).forEach(value => {
+        const option = document.createElement('option');
+        option.value = String(value);
+        option.textContent = labelFn ? labelFn(value) : value;
+        if (String(value) === normalized) {
+            option.selected = true;
+            hasCurrent = true;
+        }
+        sel.appendChild(option);
+    });
+
+    if (!hasCurrent) sel.value = '';
+}
+
+function resetTweakDateFilters(changedKey) {
+    if (changedKey === 'tweakFilterYear') {
+        document.getElementById('tweakFilterMonth').value = '';
+        document.getElementById('tweakFilterWeek').value = '';
+        document.getElementById('tweakFilterDay').value = '';
+    } else if (changedKey === 'tweakFilterMonth') {
+        document.getElementById('tweakFilterWeek').value = '';
+        document.getElementById('tweakFilterDay').value = '';
+    } else if (changedKey === 'tweakFilterWeek') {
+        document.getElementById('tweakFilterDay').value = '';
+    }
+}
+
+function updateTweakPager() {
+    const info = document.getElementById('tweakPageInfo');
+    const totalPages = tweakState.totalPages || 0;
+    const total = tweakState.total || 0;
+    info.textContent = totalPages ? `Page ${tweakState.page} / ${totalPages} · ${total.toLocaleString()} records` : `Page 0 / 0 · ${total.toLocaleString()} records`;
+
+    document.getElementById('btnTweakTop').disabled = tweakState.page <= 1 || totalPages === 0;
+    document.getElementById('btnTweakPrev').disabled = tweakState.page <= 1 || totalPages === 0;
+    document.getElementById('btnTweakNext').disabled = tweakState.page >= totalPages || totalPages === 0;
+    document.getElementById('btnTweakBottom').disabled = tweakState.page >= totalPages || totalPages === 0;
+}
+
+function buildTweakScopeLabel() {
+    const filters = getTweakFilters();
+    const parts = [];
+    if (filters.year) parts.push(`Year ${filters.year}`);
+    if (filters.month) parts.push(`Month ${String(filters.month).padStart(2, '0')}`);
+    if (filters.week) parts.push(`Week ${filters.week}`);
+    if (filters.day) parts.push(`Day ${filters.day}`);
+    if (filters.work_order) parts.push(`Work Order ${filters.work_order}`);
+    return parts.length ? parts.join(' | ') : 'All Records';
+}
+
+function updateTweakDeleteButton() {
+    const hasScopedFilter = Object.values(getTweakFilters()).some(Boolean);
+    document.getElementById('btnTweakDeleteScope').disabled = !hasScopedFilter;
+}
+
+function resetTweakPanelState() {
+    tweakState.page = 1;
+    tweakState.pageSize = document.getElementById('tweakPageSize').value;
+    tweakState.total = 0;
+    tweakState.totalPages = 0;
+    document.getElementById('tbTweak').innerHTML = '';
+    document.getElementById('tweakResultSummary').textContent = 'No records loaded.';
+    updateTweakDeleteButton();
+    updateTweakPager();
+}
+
+async function loadTweakFilterOptions() {
+    if (!tweakToken) return;
+    try {
+        const params = getTweakFilterParams(false);
+        const qs = params.toString() ? `?${params.toString()}` : '';
+        const r = await fetch('/api/tweak/filter-options' + qs, {
+            headers: {'X-Tweak-Token': tweakToken}
+        });
+        if (r.status === 401) { handleTweakUnauthorized(); return; }
+        const data = await r.json();
+        const current = getTweakFilters();
+        fillTweakSelect('tweakFilterYear', data.years, current.year, 'All Years', v => v);
+        fillTweakSelect('tweakFilterMonth', data.months, current.month, 'All Months', v => `${v} (${MONTH_NAMES[v] || v})`);
+        fillTweakSelect('tweakFilterWeek', data.weeks, current.week, 'All Weeks', v => `W${v}`);
+        fillTweakSelect('tweakFilterDay', data.days, current.day, 'All Days', v => v);
+        fillTweakSelect('tweakFilterWorkOrder', data.work_orders, current.work_order, 'All Work Orders', v => v);
+        updateTweakDeleteButton();
+    } catch (e) {
+        console.error('tweak filter-options error', e);
+    }
+}
 
 document.getElementById('btnTweakLogin').addEventListener('click', async () => {
     const user = document.getElementById('tweakUser').value.trim();
@@ -1152,8 +1418,9 @@ document.getElementById('btnTweakLogin').addEventListener('click', async () => {
             tweakToken = data.token;
             document.getElementById('tweakLogin').style.display = 'none';
             document.getElementById('tweakPanel').style.display = 'block';
-            loadTweakRecords();
-            loadTweakDateOptions();
+            resetTweakPanelState();
+            await loadTweakFilterOptions();
+            await loadTweakRecords();
         } else {
             msg.textContent = data.message || 'Login failed';
             msg.style.display = 'block';
@@ -1176,143 +1443,136 @@ document.getElementById('btnTweakLogout').addEventListener('click', () => {
     document.getElementById('tweakUser').value = '';
     document.getElementById('tweakPass').value = '';
     document.getElementById('tweakLoginMsg').style.display = 'none';
+    ['tweakFilterYear','tweakFilterMonth','tweakFilterWeek','tweakFilterDay','tweakFilterWorkOrder'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    resetTweakPanelState();
 });
 
-document.getElementById('btnTweakRefresh').addEventListener('click', loadTweakRecords);
-
-document.getElementById('tweakUnitDateSelect').addEventListener('change', function() {
-    document.getElementById('btnTweakDeleteDateUnit').disabled = !this.value;
+document.getElementById('btnTweakRefresh').addEventListener('click', async () => {
+    tweakState.page = 1;
+    await loadTweakFilterOptions();
+    await loadTweakRecords();
 });
 
-document.getElementById('btnTweakDeleteDateUnit').addEventListener('click', async () => {
-    const unitDate = document.getElementById('tweakUnitDateSelect').value;
-    if (!unitDate) return;
-    if (!confirm(`⚠️ Delete ALL records for date unit "${unitDate}"?\nThis cannot be undone.`)) return;
+document.getElementById('btnTweakResetFilters').addEventListener('click', async () => {
+    ['tweakFilterYear','tweakFilterMonth','tweakFilterWeek','tweakFilterDay','tweakFilterWorkOrder'].forEach(id => {
+        document.getElementById(id).value = '';
+    });
+    tweakState.page = 1;
+    await loadTweakFilterOptions();
+    await loadTweakRecords();
+});
+
+['tweakFilterYear','tweakFilterMonth','tweakFilterWeek','tweakFilterDay','tweakFilterWorkOrder'].forEach(id => {
+    document.getElementById(id).addEventListener('change', async () => {
+        resetTweakDateFilters(id);
+        tweakState.page = 1;
+        await loadTweakFilterOptions();
+        await loadTweakRecords();
+    });
+});
+
+document.getElementById('tweakPageSize').addEventListener('change', async event => {
+    tweakState.pageSize = event.target.value;
+    tweakState.page = 1;
+    await loadTweakRecords();
+});
+
+document.getElementById('btnTweakTop').addEventListener('click', async () => {
+    if (tweakState.page <= 1) return;
+    tweakState.page = 1;
+    await loadTweakRecords();
+});
+
+document.getElementById('btnTweakPrev').addEventListener('click', async () => {
+    if (tweakState.page <= 1) return;
+    tweakState.page -= 1;
+    await loadTweakRecords();
+});
+
+document.getElementById('btnTweakNext').addEventListener('click', async () => {
+    if (tweakState.page >= tweakState.totalPages) return;
+    tweakState.page += 1;
+    await loadTweakRecords();
+});
+
+document.getElementById('btnTweakBottom').addEventListener('click', async () => {
+    if (!tweakState.totalPages || tweakState.page >= tweakState.totalPages) return;
+    tweakState.page = tweakState.totalPages;
+    await loadTweakRecords();
+});
+
+document.getElementById('btnTweakDeleteScope').addEventListener('click', async () => {
+    const filters = getTweakFilters();
+    if (!Object.values(filters).some(Boolean)) return;
+    const scopeLabel = buildTweakScopeLabel();
+    if (!confirm(`⚠️ Delete ALL records for ${scopeLabel}?\nThis cannot be undone.`)) return;
     try {
-        const r = await fetch(`/api/tweak/date-unit/${encodeURIComponent(unitDate)}`, {
-            method: 'DELETE', headers: {'X-Tweak-Token': tweakToken}
+        const params = getTweakFilterParams(false);
+        const r = await fetch(`/api/tweak/delete-scope?${params.toString()}`, {
+            method: 'DELETE',
+            headers: {'X-Tweak-Token': tweakToken}
         });
+        if (r.status === 401) { handleTweakUnauthorized(); return; }
         const data = await r.json();
-        alert(`Deleted ${data.deleted} record(s) for date unit: ${unitDate}`);
-        loadTweakRecords();
-        loadFilterOptions();
-        loadTweakDateOptions();
-    } catch(e) { alert('Error: ' + e.message); }
-});
-
-/* ─── Delete by Date ─────────────────────────────────────────────────── */
-const MONTH_LABELS = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-let tweakDateData = [];
-
-async function loadTweakDateOptions() {
-    if (!tweakToken) return;
-    try {
-        const r = await fetch('/api/tweak/date-options', { headers: {'X-Tweak-Token': tweakToken} });
-        if (r.status === 401) return;
-        const data = await r.json();
-        tweakDateData = data.year_months || [];
-        const ySel = document.getElementById('tweakYearSelect');
-        ySel.innerHTML = '<option value="">— Year —</option>';
-        (data.years || []).forEach(y => {
-            const o = document.createElement('option');
-            o.value = y; o.textContent = y;
-            ySel.appendChild(o);
-        });
-        updateTweakMonthSelect();
-    } catch(e) { console.warn('date-options error', e); }
-}
-
-function updateTweakMonthSelect() {
-    const year = document.getElementById('tweakYearSelect').value;
-    const mSel = document.getElementById('tweakMonthSelect');
-    mSel.innerHTML = '<option value="">All Months</option>';
-    if (year) {
-        const months = tweakDateData.filter(r => r.year === parseInt(year));
-        months.sort((a,b) => a.month - b.month);
-        months.forEach(r => {
-            const o = document.createElement('option');
-            o.value = r.month;
-            o.textContent = `${r.month} (${MONTH_LABELS[r.month]}) — ${r.cnt} records`;
-            mSel.appendChild(o);
-        });
+        if (!r.ok) throw new Error(data.error || 'Delete failed');
+        alert(`Deleted ${data.deleted} record(s) for ${scopeLabel}`);
+        tweakState.page = 1;
+        await loadFilterOptions();
+        await loadTweakFilterOptions();
+        await loadTweakRecords();
+        const activePage = document.querySelector('.sidebar nav a.active')?.dataset?.page;
+        if (activePage && activePage !== 'dbtweak') loadPageData(activePage);
+    } catch (e) {
+        alert('Error: ' + e.message);
     }
-    updateTweakDateCount();
-}
-
-function updateTweakDateCount() {
-    const year = document.getElementById('tweakYearSelect').value;
-    const month = document.getElementById('tweakMonthSelect').value;
-    const span = document.getElementById('tweakDateCount');
-    const btn = document.getElementById('btnTweakDeleteDate');
-    if (!year) { span.textContent = ''; btn.disabled = true; return; }
-    let cnt = 0;
-    if (month) {
-        const match = tweakDateData.find(r => r.year === parseInt(year) && r.month === parseInt(month));
-        cnt = match ? match.cnt : 0;
-    } else {
-        cnt = tweakDateData.filter(r => r.year === parseInt(year)).reduce((s, r) => s + r.cnt, 0);
-    }
-    span.textContent = `(${cnt} records)`;
-    btn.disabled = false;
-}
-
-document.getElementById('tweakYearSelect').addEventListener('change', () => {
-    document.getElementById('tweakMonthSelect').value = '';
-    updateTweakMonthSelect();
-});
-document.getElementById('tweakMonthSelect').addEventListener('change', updateTweakDateCount);
-
-document.getElementById('btnTweakDeleteDate').addEventListener('click', async () => {
-    const year = document.getElementById('tweakYearSelect').value;
-    const month = document.getElementById('tweakMonthSelect').value;
-    if (!year) return;
-    const label = month ? `${year}-${String(month).padStart(2,'0')} (${MONTH_LABELS[parseInt(month)]})` : year;
-    if (!confirm(`⚠️ Delete ALL records for ${label}?\nThis cannot be undone.`)) return;
-    try {
-        const params = new URLSearchParams({ year });
-        if (month) params.set('month', month);
-        const r = await fetch(`/api/tweak/by-date?${params}`, {
-            method: 'DELETE', headers: {'X-Tweak-Token': tweakToken}
-        });
-        const data = await r.json();
-        alert(`Deleted ${data.deleted} record(s) for ${label}`);
-        loadTweakRecords();
-        loadFilterOptions();
-        loadTweakDateOptions();
-    } catch(e) { alert('Error: ' + e.message); }
 });
 
 async function loadTweakRecords() {
     if (!tweakToken) return;
     try {
-        const r = await fetch('/api/tweak/records' + getFilter(), {
+        const params = getTweakFilterParams(true);
+        const qs = params.toString() ? `?${params.toString()}` : '';
+
+        const r = await fetch('/api/tweak/records' + qs, {
             headers: {'X-Tweak-Token': tweakToken}
         });
-        if (r.status === 401) { document.getElementById('btnTweakLogout').click(); return; }
-        const rows = await r.json();
+        if (r.status === 401) { handleTweakUnauthorized(); return; }
+        const payload = await r.json();
+        if (!r.ok) throw new Error(payload.error || 'Unable to load records');
+        const rows = payload.items || [];
 
-        // Populate exact date-unit select
-        const unitDates = [...new Set(rows.map(r => r.unit_date).filter(Boolean))].sort();
-        const sel = document.getElementById('tweakUnitDateSelect');
-        sel.innerHTML = '<option value="">— select —</option>';
-        unitDates.forEach(unitDate => { const o = document.createElement('option'); o.value = unitDate; o.textContent = unitDate; sel.appendChild(o); });
+        tweakState.total = payload.total || 0;
+        tweakState.page = payload.page || 1;
+        tweakState.totalPages = payload.total_pages || 0;
+        updateTweakPager();
+        const scopeLabel = buildTweakScopeLabel();
+        document.getElementById('tweakResultSummary').textContent = tweakState.total
+            ? `${scopeLabel} · ${tweakState.total.toLocaleString()} records`
+            : `${scopeLabel} · no records`;
+        updateTweakDeleteButton();
 
-        // Table
         const tbody = document.getElementById('tbTweak');
-        tbody.innerHTML = rows.map(r => {
-            const rc = r.result === 'PASS' ? 'pass' : r.result === 'FAIL' ? 'fail' : 'stop';
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:24px">No records match the current DB Tweak filters.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(row => {
+            const rc = row.result === 'PASS' ? 'pass' : row.result === 'FAIL' ? 'fail' : 'stop';
             return `<tr>
-                <td>${r.id}</td>
-                <td>${fmtTime(r.start_time)}</td>
-                <td><code>${r.mac1||''}</code></td>
-            <td>${r.unit_date||'—'}</td>
-                <td><span class="badge ${rc}">${r.result}</span></td>
-                <td>${r.test_duration_sec != null ? r.test_duration_sec.toFixed(1)+'s' : '—'}</td>
-                <td>${r.fail_step_name||'—'}</td>
-                <td title="${esc(r.source_file||'')}" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.source_file||'—'}</td>
+                <td>${row.id}</td>
+                <td>${fmtTime(row.start_time)}</td>
+                <td><code>${row.mac1||''}</code></td>
+                <td>${row.work_order||'—'}</td>
+                <td>${row.unit_date||'—'}</td>
+                <td><span class="badge ${rc}">${row.result}</span></td>
+                <td>${row.test_duration_sec != null ? row.test_duration_sec.toFixed(1)+'s' : '—'}</td>
+                <td>${row.fail_step_name||'—'}</td>
+                <td title="${esc(row.source_file||'')}" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row.source_file||'—'}</td>
                 <td style="white-space:nowrap">
-                    ${r.has_raw_log ? `<button class="tweak-action-btn dl" onclick="tweakDownload(${r.id})">📥 Raw Log</button>` : '<span style="color:var(--text3);font-size:11px">no log</span>'}
-                    <button class="tweak-action-btn del" onclick="tweakDelete(${r.id},'${esc(r.mac1||'')}')">🗑 Del</button>
+                    ${row.has_raw_log ? `<button class="tweak-action-btn dl" onclick="tweakDownload(${row.id})">📥 Raw Log</button>` : '<span style="color:var(--text3);font-size:11px">no log</span>'}
+                    <button class="tweak-action-btn del" onclick="tweakDelete(${row.id},'${esc(row.mac1||'')}')">🗑 Del</button>
                 </td>
             </tr>`;
         }).join('');
@@ -1325,8 +1585,15 @@ async function tweakDelete(id, mac) {
         const r = await fetch(`/api/tweak/records/${id}`, {
             method: 'DELETE', headers: {'X-Tweak-Token': tweakToken}
         });
+        if (r.status === 401) { handleTweakUnauthorized(); return; }
         const data = await r.json();
-        if (data.deleted) loadTweakRecords();
+        if (data.deleted) {
+            await loadFilterOptions();
+            await loadTweakFilterOptions();
+            await loadTweakRecords();
+            const activePage = document.querySelector('.sidebar nav a.active')?.dataset?.page;
+            if (activePage && activePage !== 'dbtweak') loadPageData(activePage);
+        }
         else alert('Record not found');
     } catch(e) { alert('Error: ' + e.message); }
 }
@@ -1350,7 +1617,10 @@ function downloadFailLog(id) {
 }
 
 function loadDBTweak() {
-    if (tweakToken) { loadTweakRecords(); loadTweakDateOptions(); }
+    if (tweakToken) {
+        loadTweakFilterOptions();
+        loadTweakRecords();
+    }
 }
 
 /* ═══ Page data loader ═══════════════════════════════════════════════════ */
@@ -1411,8 +1681,19 @@ function buildHistogram(values, binSize) {
 })();
 
 /* ═══ Init ═══════════════════════════════════════════════════════════════ */
-loadFilterOptions();
-loadOverview();
+async function initDashboard() {
+    await loadFilterOptions();
+    const currentYear = String(new Date().getFullYear());
+    const yearSel = document.getElementById('filterYear');
+    const hasCurrentYear = Array.from(yearSel.options).some(o => o.value === currentYear);
+    if (hasCurrentYear) {
+        yearSel.value = currentYear;
+        await loadFilterOptions();
+    }
+    loadOverview();
+}
+
+initDashboard();
 </script>
 </body>
 </html>

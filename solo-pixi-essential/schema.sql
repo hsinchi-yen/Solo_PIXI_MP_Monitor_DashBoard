@@ -121,6 +121,7 @@ CREATE INDEX IF NOT EXISTS idx_mt_result      ON module_test(result);
 CREATE INDEX IF NOT EXISTS idx_mt_mac1        ON module_test(mac1);
 CREATE INDEX IF NOT EXISTS idx_mt_wo_time     ON module_test(work_order, start_time);
 CREATE INDEX IF NOT EXISTS idx_mt_unit_date_time ON module_test(unit_date, start_time);
+CREATE INDEX IF NOT EXISTS idx_mt_workorder_mac1_time ON module_test(work_order, mac1, start_time);
 
 -- ─── Views ──────────────────────────────────────────────────────────────────
 
@@ -150,17 +151,43 @@ WHERE result = 'FAIL'
 GROUP BY fail_step_name, fail_message
 ORDER BY occurrences DESC;
 
--- Retry units (same mac1 tested more than once)
+-- Retry units (same work_order + mac1 tested more than once)
 CREATE OR REPLACE VIEW v_retry_units AS
+WITH grouped AS (
+    SELECT
+        COALESCE(work_order, '') AS work_order_key,
+        mac1,
+        COUNT(*)                                      AS attempts,
+        COUNT(*) FILTER (WHERE result = 'PASS')       AS pass_count,
+        COUNT(*) FILTER (WHERE result = 'FAIL')       AS fail_count,
+        COUNT(*) FILTER (WHERE result = 'STOP')       AS stop_count,
+        MIN(start_time)                               AS first_attempt,
+        MAX(start_time)                               AS last_attempt
+    FROM module_test
+    GROUP BY COALESCE(work_order, ''), mac1
+    HAVING COUNT(*) > 1
+),
+latest_meta AS (
+    SELECT DISTINCT ON (COALESCE(work_order, ''), mac1)
+        COALESCE(work_order, '') AS work_order_key,
+        NULLIF(work_order, '') AS work_order,
+        mac1,
+        mac2,
+        COALESCE(unit_date, start_time::date) AS unit_date
+    FROM module_test
+    ORDER BY COALESCE(work_order, ''), mac1, start_time DESC
+)
 SELECT
-    mac1, mac2, unit_date,
-    COUNT(*)                                      AS attempts,
-    COUNT(*) FILTER (WHERE result = 'PASS')       AS pass_count,
-    COUNT(*) FILTER (WHERE result = 'FAIL')       AS fail_count,
-    COUNT(*) FILTER (WHERE result = 'STOP')       AS stop_count,
-    MIN(start_time)                               AS first_attempt,
-    MAX(start_time)                               AS last_attempt
-FROM module_test
-GROUP BY mac1, mac2, unit_date
-HAVING COUNT(*) > 1
-ORDER BY attempts DESC;
+    latest_meta.work_order,
+    grouped.mac1,
+    latest_meta.mac2,
+    latest_meta.unit_date,
+    grouped.attempts,
+    grouped.pass_count,
+    grouped.fail_count,
+    grouped.stop_count,
+    grouped.first_attempt,
+    grouped.last_attempt
+FROM grouped
+JOIN latest_meta ON latest_meta.work_order_key = grouped.work_order_key AND latest_meta.mac1 = grouped.mac1
+ORDER BY grouped.attempts DESC, grouped.last_attempt DESC;

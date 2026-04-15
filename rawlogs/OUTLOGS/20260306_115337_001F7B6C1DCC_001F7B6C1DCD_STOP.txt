@@ -1,0 +1,218 @@
+MAC1:	001F7B6C1DCC
+MAC2:	001F7B6C1DCD
+Start:	2026/03/06 11:53:37
+
+1. ATC_CONNECT_TESTER
+	Serial number: IQ112EA2387
+	Test time: 0.05sec
+
+2. ATC_INSERT_DUT
+	Technology: BT
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.2 (2024-05-14)
+
+	Test time: 0.03sec
+
+3. ATC_INITIALIZE_DUT
+	Technology: BT
+	DUT_NAME=Qualcomm9377 V1.0.2 (2024-05-14)
+
+	Test time: 0.32sec
+
+4. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+5. BT_TX_BDR
+	Frequency: 2402,Packet Type: 1DH1, Tx Power: 5.0
+
+	Ini Freq Error      33.567 KHz          (75.0 ~ -75.0)      <-- pass
+	Freq Drift          -1.296 KHz          (25.0 ~ -25.0)      <-- pass
+	Delta F2 Max        163.713 KHz         (200.0 ~ 115.0)     <-- pass
+	Power               4.315 dBm           (10.0 ~ 0.0)        <-- pass
+	Freq Delta F1 Avg   149.809 KHz         (175.0 ~ 140.0)     <-- pass
+	DELTA_F2_F1_AV_RATIO1.146               (100.0 ~ 0.8)       <-- pass
+	Test time: 0.74sec
+
+6. BT_TX_EDR
+	Frequency: 2441,Packet Type: 2DH1, Tx Power: 5.0
+
+	DEVM Avg            4.243 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          9.622 %             (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.473 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         35.374 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         -2.092 KHz          (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        33.544 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               1.924 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.42sec
+
+7. BT_TX_EDR
+	Frequency: 2480,Packet Type: 3DH1, Tx Power: 5.0
+
+	DEVM Avg            4.496 %             (13.0 ~ 0.0)        <-- pass
+	DEVM Peakg          9.263 %             (25.0 ~ 0.0)        <-- pass
+	Power Diff          -0.491 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         34.674 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         -1.279 KHz          (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        34.256 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               2.715 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.41sec
+
+8. BT_TX_LE
+	Frequency: 2402,Packet Type: 1LE, Tx Power: 5.0
+
+	Ini Freq Error      31.690 KHz          (150.0 ~ -150.0)    <-- pass
+	Delta F2 Avg        284.457 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F2 Max        289.356 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F0 Fn Max     3.265 KHz           (50.0 ~ 0.0)        <-- pass
+	Delta F1 F0         2.453 KHz           (20.0 ~ 0.0)        <-- pass
+	Delta Fn Fn5 Max    1.963 KHz           (20.0 ~ 0.0)        <-- pass
+	Power               4.282 dBm           (10.0 ~ 0.0)        <-- pass
+	Delta F1 Avg        247.931 KHz         (275.0 ~ 225.0)     <-- pass
+	Ratio of F2 To F1   1.147               (10.0 ~ 0.8)        <-- pass
+	Test time: 0.71sec
+
+9. BT_RX_BER
+	Frequency: 2441, Packet Type: 2DH1, Rx Power: -83.0
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 0.79sec
+
+10. BT_RX_BER
+	Frequency: 2480, Packet Type: 3DH1, Rx Power: -83.0
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 0.81sec
+
+11. BT_RX_LE
+	Frequency: 2402, Packet Type: 1LE, Rx Power: -85.0
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.04sec
+
+12. ATC_TESTER_RELEASE_CONTROL
+	Test time: 0.00sec
+
+13. ATC_REMOVE_DUT
+	Remove DUT (Technology: BT)
+	Test time: 0.02sec
+
+14. ATC_INSERT_DUT
+	Technology: WIFI
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.1 (2018-08-15)
+
+	Test time: 0.03sec
+
+15. ATC_INITIALIZE_DUT
+	Technology: WIFI
+	DUT_NAME=Qualcomm9377 V1.0.0 (2018-08-15)
+
+	DUT_DRIVER_INFO=QLIB V6.1.174,QPHONEMS
+	Test time: 0.23sec
+
+16. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+17. WIFI_TX_CALIBRATION
+	Xtal Calibration
+	-----------------------------------------------
+	Xtal_cap:12	Xtal_freqerrppm:1.332	
+	2G Calibration
+	-----------------------------------------------
+	txChainMask : WLAN_ANT_1	 Channel : 2412
+	MeasPower0:21.32	Gain0:16	DacGain0:0
+	MeasPower1:19.59	Gain1:16	DacGain1:-16
+	MeasPower2:19.60	Gain2:16	DacGain2:-16
+	MeasPower3:19.61	Gain3:16	DacGain3:-16
+	MeasPower4:17.26	Gain4:16	DacGain4:-16
+	THERMCAL:154
+
+	txChainMask : WLAN_ANT_1	 Channel : 2442
+	MeasPower0:20.56	Gain0:15	DacGain0:0
+	MeasPower1:18.64	Gain1:15	DacGain1:-16
+	MeasPower2:18.65	Gain2:15	DacGain2:-16
+	MeasPower3:18.63	Gain3:15	DacGain3:-16
+	MeasPower4:16.08	Gain4:15	DacGain4:-16
+	THERMCAL:155
+
+	txChainMask : WLAN_ANT_1	 Channel : 2462
+	MeasPower0:21.53	Gain0:16	DacGain0:0
+	MeasPower1:19.75	Gain1:16	DacGain1:-16
+	MeasPower2:19.85	Gain2:16	DacGain2:-16
+	MeasPower3:19.77	Gain3:16	DacGain3:-16
+	MeasPower4:17.40	Gain4:16	DacGain4:-16
+	THERMCAL:155
+
+	5G Calibration
+	-----------------------------------------------
+	txChainMask : WLAN_ANT_1	 Channel : 5180
+	MeasPower0:15.63	Gain0:8	DacGain0:0
+	MeasPower1:12.55	Gain1:6	DacGain1:0
+	MeasPower2:9.18	Gain2:4	DacGain2:0
+	MeasPower3:3.68	Gain3:4	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5240
+	MeasPower0:15.10	Gain0:8	DacGain0:0
+	MeasPower1:11.68	Gain1:6	DacGain1:0
+	MeasPower2:10.08	Gain2:5	DacGain2:0
+	MeasPower3:3.49	Gain3:4	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5320
+	MeasPower0:15.99	Gain0:9	DacGain0:0
+	MeasPower1:11.40	Gain1:6	DacGain1:0
+	MeasPower2:9.59	Gain2:5	DacGain2:0
+	MeasPower3:3.60	Gain3:4	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5500
+	MeasPower0:15.49	Gain0:10	DacGain0:0
+	MeasPower1:11.71	Gain1:7	DacGain1:0
+	MeasPower2:7.98	Gain2:5	DacGain2:0
+	MeasPower3:2.79	Gain3:4	DacGain3:0
+	THERMCAL:160
+
+	txChainMask : WLAN_ANT_1	 Channel : 5600
+	MeasPower0:15.94	Gain0:11	DacGain0:0
+	MeasPower1:11.48	Gain1:7	DacGain1:0
+	MeasPower2:9.59	Gain2:6	DacGain2:0
+	MeasPower3:2.63	Gain3:4	DacGain3:0
+	THERMCAL:159
+
+	txChainMask : WLAN_ANT_1	 Channel : 5700
+	MeasPower0:15.63	Gain0:11	DacGain0:0
+	MeasPower1:13.06	Gain1:8	DacGain1:0
+	MeasPower2:9.33	Gain2:6	DacGain2:0
+	MeasPower3:4.25	Gain3:5	DacGain3:0
+	THERMCAL:160
+
+	txChainMask : WLAN_ANT_1	 Channel : 5745
+	MeasPower0:16.19	Gain0:11	DacGain0:0
+	MeasPower1:11.40	Gain1:7	DacGain1:0
+	MeasPower2:9.69	Gain2:6	DacGain2:0
+	MeasPower3:2.67	Gain3:4	DacGain3:0
+	THERMCAL:160
+
+	txChainMask : WLAN_ANT_1	 Channel : 5825
+	MeasPower0:15.47	Gain0:12	DacGain0:0
+	MeasPower1:12.67	Gain1:9	DacGain1:0
+	MeasPower2:9.97	Gain2:7	DacGain2:0
+	MeasPower3:4.88	Gain3:6	DacGain3:0
+	THERMCAL:160
+
+	Calibration Done.
+
+	
+	
+	Test time: 20.44sec
+
+	Remove DUT (Technology: WIFI)
+		*****************
+		**** S T O P ****
+		*****************
+
+End:		2026/03/06 11:54:03
+
+Test Time:  00:26.4
+
+

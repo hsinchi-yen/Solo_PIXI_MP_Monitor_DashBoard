@@ -43,15 +43,16 @@ def run_migrations():
     """)
     cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_unit_date ON module_test(unit_date)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_unit_date_time ON module_test(unit_date, start_time)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_workorder_mac1_time ON module_test(work_order, mac1, start_time)")
     conn.commit()
     cur.close()
     conn.close()
 
 
-# ─── Latest record CTE (dedup retries — keep latest per mac1) ───────────────
+# ─── Latest record CTE (dedup retries — keep latest per work_order+mac1) ───
 LATEST_CTE = """
 WITH latest AS (
-    SELECT *, ROW_NUMBER() OVER (PARTITION BY mac1 ORDER BY start_time DESC) AS rn
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY work_order, mac1 ORDER BY start_time DESC) AS rn
     FROM module_test {where}
 )
 """
@@ -63,7 +64,7 @@ def _build_where(unit_date=None, work_order=None, year=None, month=None, week=No
     if unit_date:
         clauses.append("COALESCE(unit_date, start_time::date) = %s")
         params.append(unit_date)
-    elif work_order:
+    if work_order:
         clauses.append("work_order = %s")
         params.append(work_order)
     if year:
@@ -80,6 +81,78 @@ def _build_where(unit_date=None, work_order=None, year=None, month=None, week=No
         params.append(day)
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
     return where, params
+
+
+def _get_filter_options(work_order=None, year=None, month=None, week=None, day=None):
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute("SELECT DISTINCT EXTRACT(YEAR FROM COALESCE(unit_date, start_time::date))::int AS v FROM module_test ORDER BY v DESC")
+    years = [r['v'] for r in cur.fetchall()]
+
+    m_where, m_params = _build_where(work_order=work_order, year=year)
+    cur.execute(
+        f"SELECT DISTINCT EXTRACT(MONTH FROM COALESCE(unit_date, start_time::date))::int AS v FROM module_test {m_where} ORDER BY v DESC",
+        m_params,
+    )
+    months = [r['v'] for r in cur.fetchall()]
+
+    w_where, w_params = _build_where(work_order=work_order, year=year, month=month)
+    cur.execute(
+        f"SELECT DISTINCT EXTRACT(WEEK FROM COALESCE(unit_date, start_time::date))::int AS v FROM module_test {w_where} ORDER BY v DESC",
+        w_params,
+    )
+    weeks = [r['v'] for r in cur.fetchall()]
+
+    d_where, d_params = _build_where(work_order=work_order, year=year, month=month, week=week)
+    cur.execute(
+        f"SELECT DISTINCT COALESCE(unit_date, start_time::date) AS v FROM module_test {d_where} ORDER BY v DESC",
+        d_params,
+    )
+    days = [str(r['v']) for r in cur.fetchall()]
+
+    u_where, u_params = _build_where(work_order=work_order, year=year, month=month, week=week, day=day)
+    cur.execute(
+        f"SELECT DISTINCT COALESCE(unit_date, start_time::date) AS v FROM module_test {u_where} ORDER BY v DESC",
+        u_params,
+    )
+    unit_dates = [str(r['v']) for r in cur.fetchall()]
+
+    wo_where, wo_params = _build_where(year=year, month=month, week=week, day=day)
+    cur.execute(f"""
+        SELECT work_order AS v
+        FROM module_test {wo_where}
+        {'AND' if wo_where else 'WHERE'} work_order IS NOT NULL AND work_order <> ''
+        GROUP BY work_order
+        ORDER BY MAX(start_time) DESC, work_order
+    """, wo_params)
+    work_orders = [r['v'] for r in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+    return {
+        "years": years,
+        "months": months,
+        "weeks": weeks,
+        "days": days,
+        "unit_dates": unit_dates,
+        "work_orders": work_orders,
+    }
+
+
+def _normalize_page_size(page_size):
+    if page_size is None:
+        return 50
+    if isinstance(page_size, str):
+        if page_size.lower() == "all":
+            return None
+        try:
+            page_size = int(page_size)
+        except ValueError as exc:
+            raise ValueError("Invalid page_size") from exc
+    if page_size <= 0:
+        raise ValueError("page_size must be positive")
+    return page_size
 
 
 # ─── Serve dashboard ─────────────────────────────────────────────────────────
@@ -125,13 +198,16 @@ def api_summary(unit_date: str = None, work_order: str = None, year: int = None,
     cur.execute(f"""
         WITH filtered AS (
             SELECT * FROM module_test {where}
+        ),
+        grouped_pairs AS (
+            SELECT COALESCE(work_order, '') AS work_order_key, mac1, COUNT(*) AS attempts
+            FROM filtered
+            GROUP BY COALESCE(work_order, ''), mac1
         )
         SELECT
-            COUNT(DISTINCT mac1) FILTER (
-                WHERE mac1 IN (SELECT mac1 FROM filtered GROUP BY mac1 HAVING COUNT(*) > 1)
-            ) AS retry_macs,
-            COUNT(DISTINCT mac1) AS total_macs
-        FROM filtered
+            COUNT(*) FILTER (WHERE attempts > 1) AS retry_macs,
+            COUNT(*) AS total_macs
+        FROM grouped_pairs
     """, params)
     rr = cur.fetchone()
     retry_units = rr['retry_macs'] or 0
@@ -149,24 +225,40 @@ def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = N
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # If no filters, default to latest day's last 12 hours
+    # If no filters, default to latest day in deduped latest records.
     no_filter = not any([unit_date, work_order, year, month, week, day])
     if no_filter:
-        cur.execute("SELECT MAX(start_time::date) AS latest_day FROM module_test")
+        cur.execute("""
+            WITH latest AS (
+                SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+                FROM module_test
+            )
+            SELECT MAX(COALESCE(unit_date, start_time::date)) AS latest_day
+            FROM latest
+            WHERE rn = 1
+        """)
         row = cur.fetchone()
         if row and row['latest_day']:
             day = str(row['latest_day'])
             where, params = _build_where(day=day)
 
     sql = f"""
-    WITH bounds AS (
+    WITH latest AS (
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+        FROM module_test {where}
+    ),
+    dedup AS (
+        SELECT * FROM latest WHERE rn = 1
+    ),
+    bounds AS (
         SELECT date_trunc('hour', MIN(start_time)) AS t_min,
                date_trunc('hour', MAX(start_time)) AS t_max
-        FROM module_test {where}
+        FROM dedup
     ),
     hours AS (
         SELECT generate_series(t_min, t_max, '1 hour'::interval) AS hour
         FROM bounds
+        WHERE t_min IS NOT NULL AND t_max IS NOT NULL
     ),
     data AS (
         SELECT date_trunc('hour', start_time) AS hour,
@@ -174,7 +266,7 @@ def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = N
                COUNT(*) FILTER (WHERE result = 'PASS')               AS passed,
                ROUND(COUNT(*) FILTER (WHERE result = 'PASS') * 100.0
                      / NULLIF(COUNT(*), 0), 2)                       AS yield_pct
-        FROM module_test {where}
+        FROM dedup
         GROUP BY 1
     )
     SELECT h.hour, COALESCE(d.total, 0) AS total,
@@ -183,7 +275,7 @@ def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = N
     FROM hours h LEFT JOIN data d ON h.hour = d.hour
     ORDER BY h.hour
     """
-    cur.execute(sql, params + params)
+    cur.execute(sql, params)
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -197,9 +289,15 @@ def api_pass_fail_split(unit_date: str = None, work_order: str = None, year: int
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
+        WITH latest AS (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+            FROM module_test {where}
+        )
         SELECT result, COUNT(*) AS count
-        FROM module_test {where}
-        GROUP BY result ORDER BY result
+        FROM latest
+        WHERE rn = 1
+        GROUP BY result
+        ORDER BY result
     """, params)
     rows = cur.fetchall()
     cur.close()
@@ -252,25 +350,32 @@ def api_config_analysis(unit_date: str = None, work_order: str = None, year: int
 
 # ─── Monthly test count (full Jan-Dec axis) ──────────────────────────────────
 @app.get("/api/monthly-count")
-def api_monthly_count(year: int = None):
+def api_monthly_count(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if not year:
-        cur.execute("SELECT EXTRACT(YEAR FROM MAX(start_time))::int AS y FROM module_test")
+        y_where, y_params = _build_where(work_order=work_order, month=month, week=week, day=day)
+        cur.execute(f"SELECT EXTRACT(YEAR FROM MAX(COALESCE(unit_date, start_time::date)))::int AS y FROM module_test {y_where}", y_params)
         r = cur.fetchone()
         year = r['y'] if r and r['y'] else 2024
-    cur.execute("""
+
+    where, params = _build_where(work_order=work_order, year=year, month=month, week=week, day=day)
+    cur.execute(f"""
         WITH months AS (
             SELECT generate_series(1, 12) AS m
         ),
+        latest AS (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+            FROM module_test {where}
+        ),
         data AS (
-            SELECT EXTRACT(MONTH FROM start_time)::int AS m,
+            SELECT EXTRACT(MONTH FROM COALESCE(unit_date, start_time::date))::int AS m,
                    COUNT(*) AS total,
                    COUNT(*) FILTER (WHERE result = 'PASS') AS passed,
                    COUNT(*) FILTER (WHERE result = 'FAIL') AS failed,
                    COUNT(*) FILTER (WHERE result = 'STOP') AS stopped
-            FROM module_test
-            WHERE EXTRACT(YEAR FROM start_time) = %s
+            FROM latest
+            WHERE rn = 1
             GROUP BY 1
         )
         SELECT months.m AS month, COALESCE(d.total, 0) AS total,
@@ -279,7 +384,7 @@ def api_monthly_count(year: int = None):
                COALESCE(d.stopped, 0) AS stopped
         FROM months LEFT JOIN data d ON months.m = d.m
         ORDER BY months.m
-    """, [year])
+    """, params)
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -428,8 +533,8 @@ def api_calibration(unit_date: str = None, work_order: str = None, year: int = N
 # ─── Work Orders ─────────────────────────────────────────────────────────────
 @app.get("/api/date-units")
 @app.get("/api/work-orders")
-def api_work_orders(unit_date: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(unit_date=unit_date, year=year, month=month, week=week, day=day)
+def api_work_orders(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date=unit_date, work_order=work_order, year=year, month=month, week=week, day=day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
@@ -439,7 +544,7 @@ def api_work_orders(unit_date: str = None, year: int = None, month: int = None, 
         ),
         latest AS (
             SELECT *,
-                   ROW_NUMBER() OVER (PARTITION BY mac1 ORDER BY start_time DESC) AS rn
+                   ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
             FROM filtered
         ),
         latest_agg AS (
@@ -461,18 +566,18 @@ def api_work_orders(unit_date: str = None, year: int = None, month: int = None, 
                 COUNT(*)                                              AS test_attempts,
                 MIN(start_time)                                       AS first_test,
                 MAX(start_time)                                       AS last_test,
-                COUNT(DISTINCT mac1)                                  AS total_macs
+                COUNT(DISTINCT (COALESCE(work_order, ''), mac1))      AS total_pairs
             FROM filtered
             GROUP BY effective_unit_date
         ),
         retry AS (
             SELECT
                 effective_unit_date AS unit_date,
-                COUNT(*) AS retry_macs
+                COUNT(*) AS retry_pairs
             FROM (
-                SELECT effective_unit_date, mac1
+                SELECT effective_unit_date, COALESCE(work_order, '') AS work_order_key, mac1
                 FROM filtered
-                GROUP BY effective_unit_date, mac1
+                GROUP BY effective_unit_date, COALESCE(work_order, ''), mac1
                 HAVING COUNT(*) > 1
             ) grouped_retry
             GROUP BY effective_unit_date
@@ -485,12 +590,85 @@ def api_work_orders(unit_date: str = None, year: int = None, month: int = None, 
             l.failed,
             l.stopped,
             l.yield_pct,
-            ROUND(COALESCE(r.retry_macs, 0) * 100.0 / NULLIF(a.total_macs, 0), 2) AS retry_rate,
+            ROUND(COALESCE(r.retry_pairs, 0) * 100.0 / NULLIF(a.total_pairs, 0), 2) AS retry_rate,
             a.first_test,
             a.last_test
         FROM latest_agg l
         JOIN attempts a ON a.unit_date = l.unit_date
         LEFT JOIN retry r ON r.unit_date = l.unit_date
+        ORDER BY a.last_test DESC
+    """, params)
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+# ─── Work Order Summary (grouped by work_order) ──────────────────────────────
+@app.get("/api/work-order-summary")
+def api_work_order_summary(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date=unit_date, work_order=work_order, year=year, month=month, week=week, day=day)
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(f"""
+        WITH filtered AS (
+            SELECT *, COALESCE(work_order, '(unknown)') AS effective_wo
+            FROM module_test {where}
+        ),
+        latest AS (
+            SELECT *,
+                   ROW_NUMBER() OVER (PARTITION BY effective_wo, mac1 ORDER BY start_time DESC) AS rn
+            FROM filtered
+        ),
+        latest_agg AS (
+            SELECT
+                effective_wo                                          AS work_order,
+                COUNT(*)                                              AS total,
+                COUNT(*) FILTER (WHERE result = 'PASS')               AS passed,
+                COUNT(*) FILTER (WHERE result = 'FAIL')               AS failed,
+                COUNT(*) FILTER (WHERE result = 'STOP')               AS stopped,
+                ROUND(COUNT(*) FILTER (WHERE result = 'PASS') * 100.0
+                      / NULLIF(COUNT(*), 0), 2)                       AS yield_pct
+            FROM latest
+            WHERE rn = 1
+            GROUP BY effective_wo
+        ),
+        attempts AS (
+            SELECT
+                effective_wo                                          AS work_order,
+                COUNT(*)                                              AS test_attempts,
+                MIN(start_time)                                       AS first_test,
+                MAX(start_time)                                       AS last_test,
+                COUNT(DISTINCT mac1)                                  AS total_pairs
+            FROM filtered
+            GROUP BY effective_wo
+        ),
+        retry AS (
+            SELECT
+                effective_wo AS work_order,
+                COUNT(*) AS retry_pairs
+            FROM (
+                SELECT effective_wo, mac1
+                FROM filtered
+                GROUP BY effective_wo, mac1
+                HAVING COUNT(*) > 1
+            ) grouped_retry
+            GROUP BY effective_wo
+        )
+        SELECT
+            l.work_order,
+            l.total,
+            a.test_attempts,
+            l.passed,
+            l.failed,
+            l.stopped,
+            l.yield_pct,
+            ROUND(COALESCE(r.retry_pairs, 0) * 100.0 / NULLIF(a.total_pairs, 0), 2) AS retry_rate,
+            a.first_test,
+            a.last_test
+        FROM latest_agg l
+        JOIN attempts a ON a.work_order = l.work_order
+        LEFT JOIN retry r ON r.work_order = l.work_order
         ORDER BY a.last_test DESC
     """, params)
     rows = [dict(r) for r in cur.fetchall()]
@@ -528,23 +706,54 @@ def api_retries(unit_date: str = None, work_order: str = None, year: int = None,
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
+        WITH filtered AS (
+            SELECT *
+            FROM module_test {where}
+        ),
+        grouped AS (
+            SELECT
+                COALESCE(work_order, '') AS work_order_key,
+                mac1,
+                COUNT(*) AS attempts,
+                COUNT(*) FILTER (WHERE result = 'PASS') AS pass_count,
+                COUNT(*) FILTER (WHERE result = 'FAIL') AS fail_count,
+                COUNT(*) FILTER (WHERE result = 'STOP') AS stop_count,
+                MIN(start_time) AS first_attempt,
+                MAX(start_time) AS last_attempt
+            FROM filtered
+            GROUP BY COALESCE(work_order, ''), mac1
+            HAVING COUNT(*) > 1
+        ),
+        latest_meta AS (
+            SELECT DISTINCT ON (COALESCE(work_order, ''), mac1)
+                COALESCE(work_order, '') AS work_order_key,
+                NULLIF(work_order, '') AS work_order,
+                mac1,
+                mac2,
+                COALESCE(unit_date, start_time::date) AS unit_date
+            FROM filtered
+            ORDER BY COALESCE(work_order, ''), mac1, start_time DESC
+        )
         SELECT
-            mac1, mac2, COALESCE(unit_date, start_time::date) AS unit_date,
-            COUNT(*) AS attempts,
-            COUNT(*) FILTER (WHERE result = 'PASS') AS pass_count,
-            COUNT(*) FILTER (WHERE result = 'FAIL') AS fail_count,
-            COUNT(*) FILTER (WHERE result = 'STOP') AS stop_count,
-            MIN(start_time) AS first_attempt,
-            MAX(start_time) AS last_attempt,
+            m.work_order,
+            g.mac1,
+            m.mac2,
+            m.unit_date,
+            g.attempts,
+            g.pass_count,
+            g.fail_count,
+            g.stop_count,
+            g.first_attempt,
+            g.last_attempt,
             CASE
-                WHEN COUNT(*) >= 4 THEN 'high'
-                WHEN COUNT(*) >= 3 THEN 'medium'
+                WHEN g.attempts >= 4 THEN 'high'
+                WHEN g.attempts >= 3 THEN 'medium'
                 ELSE 'low'
             END AS retry_risk
-        FROM module_test {where}
-        GROUP BY mac1, mac2, COALESCE(unit_date, start_time::date)
-        HAVING COUNT(*) > 1
-        ORDER BY COUNT(*) DESC
+        FROM grouped g
+        JOIN latest_meta m
+          ON m.work_order_key = g.work_order_key AND m.mac1 = g.mac1
+        ORDER BY g.attempts DESC, g.last_attempt DESC
     """, params)
     rows = [dict(r) for r in cur.fetchall()]
     cur.close()
@@ -572,38 +781,9 @@ def api_test_duration(unit_date: str = None, work_order: str = None, year: int =
 
 # ─── Filter options (cascading) ──────────────────────────────────────────────
 @app.get("/api/filter-options")
-def api_filter_options(year: int = None, month: int = None, week: int = None, day: str = None):
+def api_filter_options(work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
     """Return available filter values for cascading dropdowns."""
-    conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
-    # Years — always all
-    cur.execute("SELECT DISTINCT EXTRACT(YEAR FROM start_time)::int AS v FROM module_test ORDER BY v")
-    years = [r['v'] for r in cur.fetchall()]
-
-    # Months — filtered by year
-    m_where, m_params = _build_where(year=year)
-    cur.execute(f"SELECT DISTINCT EXTRACT(MONTH FROM start_time)::int AS v FROM module_test {m_where} ORDER BY v", m_params)
-    months = [r['v'] for r in cur.fetchall()]
-
-    # Weeks — filtered by year+month
-    w_where, w_params = _build_where(year=year, month=month)
-    cur.execute(f"SELECT DISTINCT EXTRACT(WEEK FROM start_time)::int AS v FROM module_test {w_where} ORDER BY v", w_params)
-    weeks = [r['v'] for r in cur.fetchall()]
-
-    # Days — filtered by year+month+week
-    d_where, d_params = _build_where(year=year, month=month, week=week)
-    cur.execute(f"SELECT DISTINCT start_time::date AS v FROM module_test {d_where} ORDER BY v", d_params)
-    days = [str(r['v']) for r in cur.fetchall()]
-
-    # Date units — filtered by all date selections
-    u_where, u_params = _build_where(year=year, month=month, week=week, day=day)
-    cur.execute(f"SELECT DISTINCT COALESCE(unit_date, start_time::date) AS v FROM module_test {u_where} ORDER BY v", u_params)
-    unit_dates = [str(r['v']) for r in cur.fetchall()]
-
-    cur.close()
-    conn.close()
-    return {"years": years, "months": months, "weeks": weeks, "days": days, "unit_dates": unit_dates, "work_orders": []}
+    return _get_filter_options(work_order=work_order, year=year, month=month, week=week, day=day)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -637,26 +817,105 @@ def tweak_login(body: dict = Body(...)):
 @app.get("/api/tweak/records")
 def tweak_records(
     unit_date: str = None, work_order: str = None, year: int = None, month: int = None,
-    week: int = None, day: str = None, limit: int = 200,
+    week: int = None, day: str = None, page: int = 1, page_size: str = "50",
     x_tweak_token: str = Header(None),
 ):
     if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    try:
+        normalized_page_size = _normalize_page_size(page_size)
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+
+    page = max(int(page or 1), 1)
     where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute(f"SELECT COUNT(*) AS total FROM module_test {where}", params)
+    total = int(cur.fetchone()["total"] or 0)
+
+    if normalized_page_size is None:
+        total_pages = 1 if total else 0
+        current_page = 1
+        limit_clause = ""
+        query_params = list(params)
+    else:
+        total_pages = (total + normalized_page_size - 1) // normalized_page_size if total else 0
+        current_page = min(page, max(total_pages, 1))
+        offset = (current_page - 1) * normalized_page_size
+        limit_clause = "LIMIT %s OFFSET %s"
+        query_params = list(params) + [normalized_page_size, offset]
+
     cur.execute(f"""
-        SELECT id, mac1, mac2, COALESCE(unit_date, start_time::date) AS unit_date, start_time, end_time,
+        SELECT id, mac1, mac2, work_order, COALESCE(unit_date, start_time::date) AS unit_date, start_time, end_time,
                test_duration_sec, result, source_file,
                fail_step_name, fail_message,
                (raw_log IS NOT NULL AND raw_log != '') AS has_raw_log
         FROM module_test {where}
-        ORDER BY start_time DESC LIMIT %s
-    """, params + [limit])
+        ORDER BY start_time DESC, id DESC {limit_clause}
+    """, query_params)
     rows = [dict(r) for r in cur.fetchall()]
     cur.close()
     conn.close()
-    return rows
+    return {
+        "items": rows,
+        "total": total,
+        "page": current_page,
+        "page_size": "All" if normalized_page_size is None else normalized_page_size,
+        "total_pages": total_pages,
+        "has_prev": current_page > 1,
+        "has_next": total_pages > 0 and current_page < total_pages,
+    }
+
+
+@app.get("/api/tweak/filter-options")
+def tweak_filter_options(
+    work_order: str = None,
+    year: int = None,
+    month: int = None,
+    week: int = None,
+    day: str = None,
+    x_tweak_token: str = Header(None),
+):
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    return _get_filter_options(work_order=work_order, year=year, month=month, week=week, day=day)
+
+
+@app.delete("/api/tweak/delete-scope")
+def tweak_delete_scope(
+    work_order: str = None,
+    year: int = None,
+    month: int = None,
+    week: int = None,
+    day: str = None,
+    x_tweak_token: str = Header(None),
+):
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
+    if not any([work_order, year, month, week, day]):
+        return JSONResponse({"error": "At least one filter is required for scoped delete"}, status_code=400)
+
+    where, params = _build_where(work_order=work_order, year=year, month=month, week=week, day=day)
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"DELETE FROM module_test {where}", params)
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {
+        "deleted": deleted,
+        "filters": {
+            "year": year,
+            "month": month,
+            "week": week,
+            "day": day,
+            "work_order": work_order,
+        },
+    }
 
 
 @app.delete("/api/tweak/records/{record_id}")

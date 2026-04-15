@@ -8,13 +8,13 @@ import hashlib
 from datetime import datetime
 
 # ─── Filename patterns ───────────────────────────────────────────────────────
-# New: {YYYYMMDD}_{HHMMSS}_{MAC1}_{MAC2}_{RESULT}.txt
-# Old: {WO}_{YYYYMMDD}_{HHMMSS}_{MAC1}_{MAC2}_{RESULT}.txt
+# Canonical: {WO}_{YYYYMMDD}_{HHMMSS}_{MAC1}_{MAC2}_{RESULT}.txt
+# Legacy:    {YYYYMMDD}_{HHMMSS}_{MAC1}_{MAC2}_{RESULT}.txt
 FILENAME_RE = re.compile(
-    r'^(\d{8})_(\d{6})_([0-9A-Fa-f]+)_([0-9A-Fa-f]+)_(PASS|FAIL|STOP)\.txt$'
+    r'^([A-Za-z0-9]+-[A-Za-z0-9]{8,})_(\d{8})_(\d{6})_([0-9A-Fa-f]+)_([0-9A-Fa-f]+)_(PASS|FAIL|STOP)\.txt$'
 )
 LEGACY_FILENAME_RE = re.compile(
-    r'^(.+?)_(\d{8})_(\d{6})_([0-9A-Fa-f]+)_([0-9A-Fa-f]+)_(PASS|FAIL|STOP)\.txt$'
+    r'^(\d{8})_(\d{6})_([0-9A-Fa-f]+)_([0-9A-Fa-f]+)_(PASS|FAIL|STOP)\.txt$'
 )
 
 # ─── Step header ─────────────────────────────────────────────────────────────
@@ -80,30 +80,30 @@ def parse_filename(filename):
     base = os.path.basename(filename)
     m = FILENAME_RE.match(base)
     if m:
-        unit_date = datetime.strptime(m.group(1), '%Y%m%d').date()
+        unit_date = datetime.strptime(m.group(2), '%Y%m%d').date()
         return {
-            'work_order': None,
+            'work_order': m.group(1),
             'unit_date':  unit_date,
-            'date_str':   m.group(1),
-            'time_str':   m.group(2),
-            'mac1':       m.group(3).upper(),
-            'mac2':       m.group(4).upper(),
-            'result':     m.group(5),
+            'date_str':   m.group(2),
+            'time_str':   m.group(3),
+            'mac1':       m.group(4).upper(),
+            'mac2':       m.group(5).upper(),
+            'result':     m.group(6),
         }
 
     m = LEGACY_FILENAME_RE.match(base)
     if not m:
         return None
 
-    unit_date = datetime.strptime(m.group(2), '%Y%m%d').date()
+    unit_date = datetime.strptime(m.group(1), '%Y%m%d').date()
     return {
-        'work_order': m.group(1),
+        'work_order': None,
         'unit_date':  unit_date,
-        'date_str':   m.group(2),
-        'time_str':   m.group(3),
-        'mac1':       m.group(4).upper(),
-        'mac2':       m.group(5).upper(),
-        'result':     m.group(6),
+        'date_str':   m.group(1),
+        'time_str':   m.group(2),
+        'mac1':       m.group(3).upper(),
+        'mac2':       m.group(4).upper(),
+        'result':     m.group(5),
     }
 
 
@@ -471,7 +471,7 @@ def scan_and_ingest(folder, conn, on_progress=None):
     """
     files = sorted([
         f for f in os.listdir(folder)
-        if f.endswith('.txt') and f != 'summary.txt' and FILENAME_RE.match(f)
+        if f.endswith('.txt') and f != 'summary.txt' and (FILENAME_RE.match(f) or LEGACY_FILENAME_RE.match(f))
     ])
     total = len(files)
     stats = {'total': total, 'uploaded': 0, 'skipped': 0, 'failed': 0}
@@ -514,12 +514,12 @@ if __name__ == '__main__':
 
     if args.dry_run:
         files = [f for f in os.listdir(args.path)
-                 if f.endswith('.txt') and f != 'summary.txt' and FILENAME_RE.match(f)]
+                 if f.endswith('.txt') and f != 'summary.txt' and (FILENAME_RE.match(f) or LEGACY_FILENAME_RE.match(f))]
         for fname in sorted(files)[:3]:
             rec = parse_log_file(os.path.join(args.path, fname))
             print(f"\n{'='*60}")
             print(f"File: {fname}")
-            print(f"  result={rec['result']}  mac1={rec['mac1']}  unit_date={rec['unit_date']}")
+            print(f"  work_order={rec.get('work_order')}  result={rec['result']}  mac1={rec['mac1']}  unit_date={rec['unit_date']}")
             print(f"  start={rec['start_time']}  end={rec['end_time']}  dur={rec['test_duration_sec']}s")
             print(f"  BDR: power={rec.get('bdr_power')}  pass={rec.get('bdr_pass')}")
             print(f"  EDR1: devm={rec.get('edr1_devm_avg')}  pass={rec.get('edr1_pass')}")

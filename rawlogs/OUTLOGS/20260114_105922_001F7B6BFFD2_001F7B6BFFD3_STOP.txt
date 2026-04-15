@@ -1,0 +1,133 @@
+MAC1:	001F7B6BFFD2
+MAC2:	001F7B6BFFD3
+Start:	2026/01/14 10:59:22
+
+1. ATC_CONNECT_TESTER
+	Serial number: IQ112EA2387
+	Test time: 0.03sec
+
+2. ATC_INSERT_DUT
+	Technology: BT
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.2 (2024-05-14)
+
+	Test time: 0.02sec
+
+3. ATC_INITIALIZE_DUT
+	Technology: BT
+	DUT_NAME=Qualcomm9377 V1.0.2 (2024-05-14)
+
+	Test time: 3.36sec
+
+4. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+5. BT_TX_BDR
+	Frequency: 2402,Packet Type: 1DH1, Tx Power: 5.0
+
+	Ini Freq Error      46.915 KHz          (75.0 ~ -75.0)      <-- pass
+	Freq Drift          -0.888 KHz          (25.0 ~ -25.0)      <-- pass
+	Delta F2 Max        161.535 KHz         (200.0 ~ 115.0)     <-- pass
+	Power               5.645 dBm           (10.0 ~ 0.0)        <-- pass
+	Freq Delta F1 Avg   150.264 KHz         (175.0 ~ 140.0)     <-- pass
+	DELTA_F2_F1_AV_RATIO1.131               (100.0 ~ 0.8)       <-- pass
+	Test time: 0.84sec
+
+6. BT_TX_EDR
+	Frequency: 2441,Packet Type: 2DH1, Tx Power: 5.0
+
+	DEVM Avg            3.738 %             (20.0 ~ 0.0)        <-- pass
+	DEVM Peakg          8.638 %             (35.0 ~ 0.0)        <-- pass
+	Power Diff          -0.484 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         49.229 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         -2.944 KHz          (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        46.474 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               3.328 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.65sec
+
+7. BT_TX_EDR
+	Frequency: 2480,Packet Type: 3DH1, Tx Power: 5.0
+
+	DEVM Avg            4.184 %             (13.0 ~ 0.0)        <-- pass
+	DEVM Peakg          10.711 %            (25.0 ~ 0.0)        <-- pass
+	Power Diff          -0.500 dB           (1.0 ~ -4.0)        <-- pass
+	Edr Omega I         47.411 KHz          (75.0 ~ -75.0)      <-- pass
+	Edr Omega 0         -0.655 KHz          (10.0 ~ -10.0)      <-- pass
+	Edr Omega I0        47.415 KHz          (75.0 ~ -75.0)      <-- pass
+	DEVM 99PCT          100.000 %           (100.0 ~ 99.0)      <-- pass
+	Power               4.112 dBm           (10.0 ~ 0.0)        <-- pass
+	Test time: 0.44sec
+
+8. BT_TX_LE
+	Frequency: 2402,Packet Type: 1LE, Tx Power: 5.0
+
+	Ini Freq Error      45.456 KHz          (150.0 ~ -150.0)    <-- pass
+	Delta F2 Avg        282.541 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F2 Max        287.076 KHz         (320.0 ~ 185.0)     <-- pass
+	Delta F0 Fn Max     1.658 KHz           (50.0 ~ 0.0)        <-- pass
+	Delta F1 F0         1.233 KHz           (20.0 ~ 0.0)        <-- pass
+	Delta Fn Fn5 Max    1.182 KHz           (20.0 ~ 0.0)        <-- pass
+	Power               5.572 dBm           (10.0 ~ 0.0)        <-- pass
+	Delta F1 Avg        248.167 KHz         (275.0 ~ 225.0)     <-- pass
+	Ratio of F2 To F1   1.139               (10.0 ~ 0.8)        <-- pass
+	Test time: 0.81sec
+
+9. BT_RX_BER
+	Frequency: 2441, Packet Type: 2DH1, Rx Power: -83.0
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 1.15sec
+
+10. BT_RX_BER
+	Frequency: 2480, Packet Type: 3DH1, Rx Power: -83.0
+	BER                 0.000 %             (0.010 ~ 0.000)     <-- pass
+	Test time: 1.18sec
+
+11. BT_RX_LE
+	Frequency: 2402, Packet Type: 1LE, Rx Power: -85.0
+	PER                 0.000 %             (10.0 ~ 0.0)        <-- pass
+	Test time: 1.07sec
+
+12. ATC_TESTER_RELEASE_CONTROL
+	Test time: 0.00sec
+
+13. ATC_REMOVE_DUT
+	Remove DUT (Technology: BT)
+	Test time: 0.02sec
+
+14. ATC_INSERT_DUT
+	Technology: WIFI
+	DUT DLL: QCA_9377.dll
+	DUT_VERSION=1.0.1 (2018-08-15)
+
+	Test time: 0.03sec
+
+15. ATC_INITIALIZE_DUT
+	Technology: WIFI
+	DUT_NAME=Qualcomm9377 V1.0.0 (2018-08-15)
+
+	DUT_DRIVER_INFO=QLIB V6.1.174,QPHONEMS
+	Test time: 0.24sec
+
+16. ATC_TESTER_OBTAIN_CONTROL
+	Test time: 0.00sec
+
+17. WIFI_TX_CALIBRATION
+	Xtal Calibration
+	-----------------------------------------------
+	QLIB_FTM_WLAN_Atheros_xtal_CAL failed!
+	DUT failed at wifi_tx_calibration!
+
+	Test time: 50.51sec
+
+	Remove DUT (Technology: WIFI)
+	Remove DUT (Technology: WIFI)
+		*****************
+		**** S T O P ****
+		*****************
+
+End:		2026/01/14 11:00:22
+
+Test Time:  01:00.8
+
+
