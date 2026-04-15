@@ -6,10 +6,22 @@ Ubuntu Yaru-style desktop UI.
 import sys
 import os
 import importlib.util
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PARSER_PATH = os.path.join(BASE_DIR, 'solo-pixi-essential', 'module_log_parser.py')
-DB_SERVER_CONF_PATH = os.path.join(BASE_DIR, 'dbservip.conf')
+def get_base_dir():
+    if getattr(sys, '_MEIPASS', None):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def get_resource_path(*parts):
+    return os.path.join(get_base_dir(), *parts)
+
+
+BASE_DIR = get_base_dir()
+PARSER_PATH = get_resource_path('solo-pixi-essential', 'module_log_parser.py')
+DB_SERVER_CONF_PATH = get_resource_path('dbservip.conf')
+APP_ICON_PATH = get_resource_path('build_assets', 'icons', 'solo_pixi_uploader.ico')
 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLineEdit, QLabel,
@@ -17,6 +29,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QMessageBox, QProgressBar, QListWidget,
                              QAbstractItemView, QFrame, QSizePolicy)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
+from PyQt5.QtGui import QIcon
 
 APP_VERSION = "1.2.0"
 DB_CONNECT_TIMEOUT = 3
@@ -328,6 +341,8 @@ class LogUploaderApp(QMainWindow):
         self.setWindowTitle(f'Solo PIXI — Log Uploader  (v{APP_VERSION})')
         self.setMinimumSize(1120, 920)
         self.setStyleSheet(YARU_STYLESHEET)
+        if os.path.exists(APP_ICON_PATH):
+            self.setWindowIcon(QIcon(APP_ICON_PATH))
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -853,6 +868,8 @@ class LogUploaderApp(QMainWindow):
 # ========================================================
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    if os.path.exists(APP_ICON_PATH):
+        app.setWindowIcon(QIcon(APP_ICON_PATH))
     window = LogUploaderApp()
     window.show()
     sys.exit(app.exec_())

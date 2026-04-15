@@ -8,6 +8,20 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QFileDialog, QTextEdit, QGroupBox, QGridLayout, 
                              QMessageBox, QFormLayout, QFrame, QStyle)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize
+from PyQt5.QtGui import QIcon
+
+
+def get_base_dir():
+    if getattr(sys, '_MEIPASS', None):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def get_resource_path(*parts):
+    return os.path.join(get_base_dir(), *parts)
+
+
+APP_ICON_PATH = get_resource_path('build_assets', 'icons', 'solo_pixi_splitter.ico')
 
 # ========================================================
 # Ubuntu / Yaru Style UI Stylesheet
@@ -387,6 +401,8 @@ class LogSplitterApp(QMainWindow):
         self.setWindowTitle('Production Log Splitter')
         self.setMinimumSize(860, 700)
         self.setStyleSheet(UBUNTU_STYLESHEET)
+        if os.path.exists(APP_ICON_PATH):
+            self.setWindowIcon(QIcon(APP_ICON_PATH))
 
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
@@ -682,6 +698,8 @@ if __name__ == '__main__':
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
     
     app = QApplication(sys.argv)
+    if os.path.exists(APP_ICON_PATH):
+        app.setWindowIcon(QIcon(APP_ICON_PATH))
     ex = LogSplitterApp()
     ex.show()
     sys.exit(app.exec_())
