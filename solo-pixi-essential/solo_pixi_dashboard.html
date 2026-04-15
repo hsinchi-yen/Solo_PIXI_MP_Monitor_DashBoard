@@ -952,15 +952,15 @@ async function loadOverview() {
     document.getElementById('kpiRetry').textContent = summary.retry_rate != null ? summary.retry_rate + '%' : '—';
 
     const trendMeta = document.getElementById('yieldTrendMeta');
-    const latest = trend.length ? trend[trend.length - 1] : null;
     const selectedWo = document.getElementById('filterWorkOrder').value || 'All Work Orders';
-    if (latest && latest.hour) {
-        const dt = new Date(latest.hour);
+    const selectedDay = document.getElementById('filterDay').value;
+    const activeTrendDay = trend.length && trend[0].hour ? trend[0].hour : selectedDay;
+    if (activeTrendDay) {
+        const dt = new Date(activeTrendDay);
         const datePart = dt.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' });
-        const timePart = dt.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
-        trendMeta.textContent = `Latest: ${datePart} ${timePart} | WO: ${selectedWo}`;
+        trendMeta.textContent = `Window: ${datePart} 07:00-19:00 | WO: ${selectedWo}`;
     } else {
-        trendMeta.textContent = `Latest: — | WO: ${selectedWo}`;
+        trendMeta.textContent = `Window: — | WO: ${selectedWo}`;
     }
 
     destroyChart('chartYield');

@@ -83,6 +83,31 @@ def _build_where(unit_date=None, work_order=None, year=None, month=None, week=No
     return where, params
 
 
+def _resolve_trend_day(cur, unit_date=None, work_order=None, year=None, month=None, week=None, day=None):
+    if day:
+        return day
+    if unit_date:
+        return unit_date
+
+    where, params = _build_where(
+        work_order=work_order,
+        year=year,
+        month=month,
+        week=week,
+    )
+    cur.execute(f"""
+        WITH latest AS (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+            FROM module_test {where}
+        )
+        SELECT MAX(COALESCE(unit_date, start_time::date)) AS target_day
+        FROM latest
+        WHERE rn = 1
+    """, params)
+    row = cur.fetchone()
+    return str(row['target_day']) if row and row['target_day'] else None
+
+
 def _get_filter_options(work_order=None, year=None, month=None, week=None, day=None):
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -221,26 +246,24 @@ def api_summary(unit_date: str = None, work_order: str = None, year: int = None,
 # ─── Yield trend (hourly, gap-filled) ───────────────────────────────────────
 @app.get("/api/yield-trend")
 def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
-    where, params = _build_where(unit_date, work_order, year, month, week, day)
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # If no filters, default to latest day in deduped latest records.
-    no_filter = not any([unit_date, work_order, year, month, week, day])
-    if no_filter:
-        cur.execute("""
-            WITH latest AS (
-                SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
-                FROM module_test
-            )
-            SELECT MAX(COALESCE(unit_date, start_time::date)) AS latest_day
-            FROM latest
-            WHERE rn = 1
-        """)
-        row = cur.fetchone()
-        if row and row['latest_day']:
-            day = str(row['latest_day'])
-            where, params = _build_where(day=day)
+    target_day = _resolve_trend_day(
+        cur,
+        unit_date=unit_date,
+        work_order=work_order,
+        year=year,
+        month=month,
+        week=week,
+        day=day,
+    )
+    if not target_day:
+        cur.close()
+        conn.close()
+        return []
+
+    where, params = _build_where(day=target_day, work_order=work_order, year=year, month=month, week=week)
 
     sql = f"""
     WITH latest AS (
@@ -250,15 +273,12 @@ def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = N
     dedup AS (
         SELECT * FROM latest WHERE rn = 1
     ),
-    bounds AS (
-        SELECT date_trunc('hour', MIN(start_time)) AS t_min,
-               date_trunc('hour', MAX(start_time)) AS t_max
-        FROM dedup
-    ),
     hours AS (
-        SELECT generate_series(t_min, t_max, '1 hour'::interval) AS hour
-        FROM bounds
-        WHERE t_min IS NOT NULL AND t_max IS NOT NULL
+        SELECT generate_series(
+            %s::date + time '07:00',
+            %s::date + time '19:00',
+            '1 hour'::interval
+        ) AS hour
     ),
     data AS (
         SELECT date_trunc('hour', start_time) AS hour,
@@ -267,6 +287,8 @@ def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = N
                ROUND(COUNT(*) FILTER (WHERE result = 'PASS') * 100.0
                      / NULLIF(COUNT(*), 0), 2)                       AS yield_pct
         FROM dedup
+        WHERE start_time >= %s::date + time '07:00'
+          AND start_time < %s::date + time '20:00'
         GROUP BY 1
     )
     SELECT h.hour, COALESCE(d.total, 0) AS total,
@@ -275,7 +297,7 @@ def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = N
     FROM hours h LEFT JOIN data d ON h.hour = d.hour
     ORDER BY h.hour
     """
-    cur.execute(sql, params)
+    cur.execute(sql, params + [target_day, target_day, target_day, target_day])
     rows = cur.fetchall()
     cur.close()
     conn.close()
