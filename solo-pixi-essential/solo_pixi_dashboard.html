@@ -448,6 +448,132 @@ tr:hover td { background: var(--surface2); }
 }
 .filter-reset:hover { background: var(--red); color: #fff; }
 
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+.summary-grid .kpi-card {
+    padding: 14px 16px;
+}
+.summary-grid .kpi-card .kpi-label {
+    font-size: 11px;
+    margin-bottom: 6px;
+}
+.summary-grid .kpi-card .kpi-value {
+    font-size: 24px;
+}
+.list-toolbar {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.list-toolbar-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 220px;
+}
+.list-toolbar-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+.list-toolbar-note {
+    font-size: 12px;
+    color: var(--text2);
+}
+.list-toolbar-controls {
+    display: flex;
+    align-items: end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.list-control {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.list-control label {
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+.list-input,
+.list-select {
+    padding: 8px 10px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    min-width: 130px;
+    outline: none;
+}
+.list-input {
+    min-width: 220px;
+}
+.list-input:focus,
+.list-select:focus {
+    border-color: var(--blue);
+}
+.pager-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.pager-info {
+    font-size: 12px;
+    color: var(--text2);
+}
+.pager-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.pager-btn {
+    padding: 7px 12px;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.pager-btn:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+}
+.pager-btn:disabled {
+    opacity: .45;
+    cursor: default;
+    color: var(--text3);
+    border-color: var(--border);
+}
+.table-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 24px;
+}
+
 /* ─── DB Tweak ────────────────────────────────────────────────────────────── */
 .tweak-login-box {
     max-width: 380px;
@@ -607,6 +733,47 @@ tr:hover td { background: var(--surface2); }
 <!-- ─── Work Orders ──────────────────────────────────────────────────── -->
 <div class="page" id="page-workorders">
     <h2 class="page-title">Work Orders</h2>
+    <div class="summary-grid" id="woSummary"></div>
+    <div class="list-toolbar">
+        <div class="list-toolbar-meta">
+            <div class="list-toolbar-title">Work Order Explorer</div>
+            <div class="list-toolbar-note" id="woMeta">Loading work orders...</div>
+        </div>
+        <div class="list-toolbar-controls">
+            <div class="list-control">
+                <label for="woSearch">Search</label>
+                <input class="list-input" id="woSearch" type="search" placeholder="Search work order">
+            </div>
+            <div class="list-control">
+                <label for="woQuickFilter">Quick Filter</label>
+                <select class="list-select" id="woQuickFilter">
+                    <option value="all">All Work Orders</option>
+                    <option value="attention">Has FAIL / STOP</option>
+                    <option value="retry">Retry Rate &gt; 0</option>
+                    <option value="lowyield">Yield &lt; 95%</option>
+                </select>
+            </div>
+            <div class="list-control">
+                <label for="woSort">Sort By</label>
+                <select class="list-select" id="woSort">
+                    <option value="last_test_desc">Last Test, newest</option>
+                    <option value="yield_asc">Yield, low to high</option>
+                    <option value="fail_desc">FAIL count, high to low</option>
+                    <option value="retry_desc">Retry rate, high to low</option>
+                    <option value="work_order_asc">Work Order, A to Z</option>
+                </select>
+            </div>
+            <div class="list-control">
+                <label for="woPageSize">Rows</label>
+                <select class="list-select" id="woPageSize">
+                    <option value="10">10</option>
+                    <option value="25" selected>25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+        </div>
+    </div>
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
@@ -614,11 +781,39 @@ tr:hover td { background: var(--surface2); }
             </tr></thead><tbody id="tbWO"></tbody></table>
         </div>
     </div>
+    <div class="pager-bar">
+        <div class="pager-info" id="woPageInfo">Page 0 / 0</div>
+        <div class="pager-actions">
+            <button class="pager-btn" id="woPrevBtn" disabled>Previous</button>
+            <button class="pager-btn" id="woNextBtn" disabled>Next</button>
+        </div>
+    </div>
 </div>
 
 <!-- ─── Fail List ────────────────────────────────────────────────────── -->
 <div class="page" id="page-fails">
     <h2 class="page-title">Fail List</h2>
+    <div class="summary-grid" id="failSummary"></div>
+    <div class="list-toolbar">
+        <div class="list-toolbar-meta">
+            <div class="list-toolbar-title">Latest 50 records</div>
+            <div class="list-toolbar-note" id="failMeta">Loading fail and stop records...</div>
+        </div>
+        <div class="list-toolbar-controls">
+            <div class="list-control">
+                <label for="failSearch">Search</label>
+                <input class="list-input" id="failSearch" type="search" placeholder="Search MAC, step, message">
+            </div>
+            <div class="list-control">
+                <label for="failResultFilter">Result</label>
+                <select class="list-select" id="failResultFilter">
+                    <option value="all">FAIL + STOP</option>
+                    <option value="FAIL">FAIL only</option>
+                    <option value="STOP">STOP only</option>
+                </select>
+            </div>
+        </div>
+    </div>
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
@@ -656,6 +851,33 @@ tr:hover td { background: var(--surface2); }
     <h2 class="page-title">Fail Analysis</h2>
     <div class="chart-box" style="margin-bottom:28px"><h3>Top Fail Steps</h3><canvas id="chartFailSteps"></canvas></div>
     <div class="chart-box device-config-box" style="margin-bottom:28px"><h3>DeviceConfigure (Unidentified Cause)</h3><canvas id="chartConfigSteps"></canvas></div>
+    <div class="summary-grid" id="failAnalysisSummary"></div>
+    <div class="list-toolbar">
+        <div class="list-toolbar-meta">
+            <div class="list-toolbar-title">Latest 50 fail/stop records</div>
+            <div class="list-toolbar-note" id="failAnalysisMeta">Loading fail analysis records...</div>
+        </div>
+        <div class="list-toolbar-controls">
+            <div class="list-control">
+                <label for="failAnalysisSearch">Search</label>
+                <input class="list-input" id="failAnalysisSearch" type="search" placeholder="Search MAC, error code, message">
+            </div>
+            <div class="list-control">
+                <label for="failAnalysisResultFilter">Result</label>
+                <select class="list-select" id="failAnalysisResultFilter">
+                    <option value="all">FAIL + STOP</option>
+                    <option value="FAIL">FAIL only</option>
+                    <option value="STOP">STOP only</option>
+                </select>
+            </div>
+            <div class="list-control">
+                <label for="failAnalysisCategoryFilter">Category</label>
+                <select class="list-select" id="failAnalysisCategoryFilter">
+                    <option value="all">All Categories</option>
+                </select>
+            </div>
+        </div>
+    </div>
     <div class="data-table-wrap">
         <h3>Fail / Stop Records</h3>
         <div class="table-scroll">
@@ -772,11 +994,7 @@ const navLinks = document.querySelectorAll('.sidebar nav a');
 navLinks.forEach(link => {
     link.addEventListener('click', e => {
         e.preventDefault();
-        navLinks.forEach(l => l.classList.remove('active'));
-        link.classList.add('active');
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        document.getElementById('page-' + link.dataset.page).classList.add('active');
-        loadPageData(link.dataset.page);
+        setActivePage(link.dataset.page, { reload: true });
     });
 });
 
@@ -791,6 +1009,50 @@ updateClock();
 
 /* ═══ Filter State ═══════════════════════════════════════════════════════ */
 const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const TOP_FILTER_IDS = ['filterYear', 'filterMonth', 'filterWeek', 'filterDay', 'filterWorkOrder'];
+const IDLE_ROTATION_DELAY_MS = 3 * 60 * 1000;
+const AUTO_REFRESH_CHECK_MS = 30 * 1000;
+const LATEST_DAY_CACHE_MS = 5 * 60 * 1000;
+const AUTO_REFRESH_START_HOUR = 9;
+const AUTO_REFRESH_END_HOUR = 18;
+const AUTO_ROTATION_STEPS = [
+    { page: 'overview', filterMode: 'all', durationMs: 20000 },
+    { page: 'workorders', filterMode: 'all', durationMs: 20000 },
+    { page: 'bt', filterMode: 'all', durationMs: 10000 },
+    { page: 'wifi', filterMode: 'all', durationMs: 10000 },
+    { page: 'overview', filterMode: 'latest_day', durationMs: 20000 },
+    { page: 'workorders', filterMode: 'latest_day', durationMs: 20000 },
+    { page: 'bt', filterMode: 'latest_day', durationMs: 10000 },
+    { page: 'wifi', filterMode: 'latest_day', durationMs: 10000 },
+];
+
+const automationState = {
+    lastInteractionAt: Date.now(),
+    idleTimerId: null,
+    hourlyCheckId: null,
+    rotationTimerId: null,
+    rotationToken: 0,
+    rotationIndex: 0,
+    rotationActive: false,
+    latestDayValue: '',
+    latestDayFetchedAt: 0,
+    lastRefreshHourKey: '',
+};
+
+function getActivePage() {
+    return document.querySelector('.sidebar nav a.active')?.dataset?.page || 'overview';
+}
+
+function setActivePage(page, { reload = true } = {}) {
+    navLinks.forEach(link => link.classList.toggle('active', link.dataset.page === page));
+    document.querySelectorAll('.page').forEach(section => section.classList.toggle('active', section.id === `page-${page}`));
+    return reload ? loadPageData(page) : Promise.resolve();
+}
+
+async function fetchJson(path) {
+    const response = await fetch(path);
+    return response.json();
+}
 
 function getFilter() {
     const p = new URLSearchParams();
@@ -808,8 +1070,16 @@ function getFilter() {
 }
 
 async function api(path) {
-    const r = await fetch(path + getFilter());
-    return r.json();
+    return fetchJson(path + getFilter());
+}
+
+async function fetchFilterOptions(qs = '') {
+    try {
+        return await fetchJson('/api/filter-options' + qs);
+    } catch (e) {
+        console.warn('filter-options error', e);
+        return null;
+    }
 }
 
 /* ═══ Cascading filter load ══════════════════════════════════════════════ */
@@ -828,14 +1098,13 @@ async function loadFilterOptions() {
     if (wo) p.set('work_order', wo);
     const qs = p.toString() ? '?' + p.toString() : '';
 
-    try {
-        const opts = await (await fetch('/api/filter-options' + qs)).json();
-        fillSelect('filterYear', opts.years, y, v => v);
-        fillSelect('filterMonth', opts.months, m, v => `${v} (${MONTH_NAMES[v]||v})`);
-        fillSelect('filterWeek', opts.weeks, w, v => `W${v}`);
-        fillSelect('filterDay', opts.days, d, v => v);
-        fillSelect('filterWorkOrder', opts.work_orders, wo, v => v);
-    } catch(e) { console.warn('filter-options error', e); }
+    const opts = await fetchFilterOptions(qs);
+    if (!opts) return;
+    fillSelect('filterYear', opts.years, y, v => v);
+    fillSelect('filterMonth', opts.months, m, v => `${v} (${MONTH_NAMES[v]||v})`);
+    fillSelect('filterWeek', opts.weeks, w, v => `W${v}`);
+    fillSelect('filterDay', opts.days, d, v => v);
+    fillSelect('filterWorkOrder', opts.work_orders, wo, v => v);
 }
 
 function fillSelect(id, values, currentVal, labelFn) {
@@ -879,13 +1148,12 @@ document.getElementById('filterWorkOrder').addEventListener('change', () => {
 });
 
 document.getElementById('btnFilterReset').addEventListener('click', () => {
-    ['filterYear','filterMonth','filterWeek','filterDay','filterWorkOrder'].forEach(id => document.getElementById(id).value = '');
+    TOP_FILTER_IDS.forEach(id => document.getElementById(id).value = '');
     loadFilterOptions().then(reloadActivePage);
 });
 
 function reloadActivePage() {
-    const pg = document.querySelector('.sidebar nav a.active')?.dataset?.page || 'overview';
-    loadPageData(pg);
+    return loadPageData(getActivePage());
 }
 
 /* ═══ Chart.js defaults ══════════════════════════════════════════════════ */
@@ -895,6 +1163,201 @@ Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "SF Pro Display
 
 const chartInstances = {};
 function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+
+const dashboardState = {
+    workorders: {
+        rows: [],
+        filterKey: '',
+        search: '',
+        quickFilter: 'all',
+        sort: 'last_test_desc',
+        page: 1,
+        pageSize: 25,
+    },
+    fails: {
+        rows: [],
+        filterKey: '',
+        search: '',
+        result: 'all',
+    },
+    failAnalysis: {
+        rows: [],
+        filterKey: '',
+        search: '',
+        result: 'all',
+        category: 'all',
+    },
+};
+
+const failRowsCache = {
+    filterKey: '',
+    rows: null,
+};
+
+function clearDashboardCaches() {
+    failRowsCache.filterKey = '';
+    failRowsCache.rows = null;
+    automationState.latestDayFetchedAt = 0;
+    automationState.latestDayValue = '';
+}
+
+function setTopFilterValues(values) {
+    TOP_FILTER_IDS.forEach(id => {
+        document.getElementById(id).value = values[id] ?? '';
+    });
+}
+
+function getLatestDayFromOptions(days) {
+    return [...(days || [])]
+        .filter(Boolean)
+        .sort((left, right) => {
+            const leftTs = safeDateValue(left);
+            const rightTs = safeDateValue(right);
+            if (leftTs && rightTs && leftTs !== rightTs) return rightTs - leftTs;
+            return String(right).localeCompare(String(left));
+        })[0] || '';
+}
+
+async function resolveLatestDayValue() {
+    const now = Date.now();
+    if (automationState.latestDayValue && (now - automationState.latestDayFetchedAt) < LATEST_DAY_CACHE_MS) {
+        return automationState.latestDayValue;
+    }
+    const opts = await fetchFilterOptions();
+    automationState.latestDayValue = getLatestDayFromOptions(opts?.days || []);
+    automationState.latestDayFetchedAt = now;
+    return automationState.latestDayValue;
+}
+
+async function applyRotationFilterMode(mode) {
+    if (mode === 'all') {
+        setTopFilterValues({
+            filterYear: '',
+            filterMonth: '',
+            filterWeek: '',
+            filterDay: '',
+            filterWorkOrder: '',
+        });
+        await loadFilterOptions();
+        return;
+    }
+
+    const latestDay = await resolveLatestDayValue();
+    const nextFilters = {
+        filterYear: '',
+        filterMonth: '',
+        filterWeek: '',
+        filterDay: latestDay,
+        filterWorkOrder: '',
+    };
+    const match = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/.exec(String(latestDay || ''));
+    if (match) {
+        nextFilters.filterYear = match[1];
+        nextFilters.filterMonth = String(Number(match[2]));
+    }
+    setTopFilterValues(nextFilters);
+    await loadFilterOptions();
+}
+
+function isDashboardIdle() {
+    return (Date.now() - automationState.lastInteractionAt) >= IDLE_ROTATION_DELAY_MS;
+}
+
+function stopAutoRotation() {
+    automationState.rotationActive = false;
+    automationState.rotationToken += 1;
+    if (automationState.rotationTimerId) {
+        clearTimeout(automationState.rotationTimerId);
+        automationState.rotationTimerId = null;
+    }
+}
+
+function scheduleIdleRotation() {
+    if (automationState.idleTimerId) clearTimeout(automationState.idleTimerId);
+    automationState.idleTimerId = setTimeout(() => {
+        startAutoRotation();
+    }, IDLE_ROTATION_DELAY_MS);
+}
+
+async function runAutoRotationStep(index, token) {
+    if (!automationState.rotationActive || token !== automationState.rotationToken) return;
+    automationState.rotationIndex = index % AUTO_ROTATION_STEPS.length;
+    const step = AUTO_ROTATION_STEPS[automationState.rotationIndex];
+
+    await applyRotationFilterMode(step.filterMode);
+    if (!automationState.rotationActive || token !== automationState.rotationToken) return;
+
+    await setActivePage(step.page, { reload: true });
+    if (!automationState.rotationActive || token !== automationState.rotationToken) return;
+
+    automationState.rotationTimerId = setTimeout(() => {
+        runAutoRotationStep(automationState.rotationIndex + 1, token);
+    }, step.durationMs);
+}
+
+function startAutoRotation() {
+    if (automationState.rotationActive) return;
+    automationState.rotationActive = true;
+    automationState.rotationToken += 1;
+    if (automationState.idleTimerId) {
+        clearTimeout(automationState.idleTimerId);
+        automationState.idleTimerId = null;
+    }
+    runAutoRotationStep(0, automationState.rotationToken);
+}
+
+function isWithinAutoRefreshWindow(date = new Date()) {
+    const hour = date.getHours();
+    return hour >= AUTO_REFRESH_START_HOUR && hour <= AUTO_REFRESH_END_HOUR;
+}
+
+function buildRefreshHourKey(date = new Date()) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hour = String(date.getHours()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hour}`;
+}
+
+async function runIdleRefresh() {
+    if (!isDashboardIdle()) return;
+    if (getActivePage() === 'dbtweak' && !automationState.rotationActive) return;
+
+    clearDashboardCaches();
+    if (automationState.rotationActive) {
+        const step = AUTO_ROTATION_STEPS[automationState.rotationIndex] || AUTO_ROTATION_STEPS[0];
+        await applyRotationFilterMode(step.filterMode);
+    } else {
+        await loadFilterOptions();
+    }
+    await reloadActivePage();
+}
+
+function checkHourlyIdleRefresh() {
+    const now = new Date();
+    if (!isWithinAutoRefreshWindow(now)) return;
+    if (now.getMinutes() !== 0) return;
+    const hourKey = buildRefreshHourKey(now);
+    if (automationState.lastRefreshHourKey === hourKey) return;
+
+    automationState.lastRefreshHourKey = hourKey;
+    runIdleRefresh();
+}
+
+function handleUserActivity(event) {
+    if (event && event.isTrusted === false) return;
+    automationState.lastInteractionAt = Date.now();
+    if (automationState.rotationActive) stopAutoRotation();
+    scheduleIdleRotation();
+}
+
+function initDashboardAutomation() {
+    ['pointerdown', 'wheel', 'keydown', 'touchstart'].forEach(eventName => {
+        document.addEventListener(eventName, handleUserActivity, { passive: true });
+    });
+    scheduleIdleRotation();
+    automationState.hourlyCheckId = setInterval(checkHourlyIdleRefresh, AUTO_REFRESH_CHECK_MS);
+}
 
 function getActiveFilterSummary() {
     const y = document.getElementById('filterYear').value;
@@ -909,6 +1372,334 @@ function getActiveFilterSummary() {
     if (d) parts.push(`D${d}`);
     if (wo) parts.push(`WO:${wo}`);
     return parts.length ? parts.join(' | ') : 'All';
+}
+
+function normalizeText(value) {
+    return String(value || '').trim().toLowerCase();
+}
+
+function safeNumber(value) {
+    const num = Number(value);
+    return Number.isFinite(num) ? num : 0;
+}
+
+function safeDateValue(value) {
+    const ts = value ? new Date(value).getTime() : 0;
+    return Number.isFinite(ts) ? ts : 0;
+}
+
+function renderSummaryCards(containerId, cards) {
+    document.getElementById(containerId).innerHTML = cards.map(card => `
+        <div class="kpi-card">
+            <div class="kpi-label">${card.label}</div>
+            <div class="kpi-value ${card.color || ''}">${card.value}</div>
+        </div>
+    `).join('');
+}
+
+function renderTableEmptyState(tbodyId, colspan, message) {
+    document.getElementById(tbodyId).innerHTML = `<tr><td colspan="${colspan}" class="table-empty">${message}</td></tr>`;
+}
+
+function getTopLabel(rows, valueGetter, fallback = '—') {
+    const counts = new Map();
+    rows.forEach(row => {
+        const label = valueGetter(row);
+        if (!label) return;
+        counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    if (!counts.size) return fallback;
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function updateSelectOptions(selectId, values, selectedValue, placeholder) {
+    const select = document.getElementById(selectId);
+    const normalizedSelected = selectedValue || 'all';
+    select.innerHTML = `<option value="all">${placeholder}</option>`;
+    values.forEach(value => {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        if (value === normalizedSelected) option.selected = true;
+        select.appendChild(option);
+    });
+    if (!values.includes(normalizedSelected)) select.value = 'all';
+}
+
+async function loadFailRows() {
+    const filterKey = getFilter();
+    if (failRowsCache.filterKey !== filterKey || !Array.isArray(failRowsCache.rows)) {
+        failRowsCache.rows = await api('/api/fails');
+        failRowsCache.filterKey = filterKey;
+    }
+    return failRowsCache.rows;
+}
+
+function applyWorkOrderFilters(rows) {
+    const state = dashboardState.workorders;
+    let filtered = [...rows];
+    const query = normalizeText(state.search);
+    if (query) {
+        filtered = filtered.filter(row => normalizeText(row.work_order).includes(query));
+    }
+    if (state.quickFilter === 'attention') {
+        filtered = filtered.filter(row => safeNumber(row.failed) > 0 || safeNumber(row.stopped) > 0);
+    } else if (state.quickFilter === 'retry') {
+        filtered = filtered.filter(row => safeNumber(row.retry_rate) > 0);
+    } else if (state.quickFilter === 'lowyield') {
+        filtered = filtered.filter(row => safeNumber(row.yield_pct) < 95);
+    }
+
+    filtered.sort((left, right) => {
+        switch (state.sort) {
+            case 'yield_asc':
+                return safeNumber(left.yield_pct) - safeNumber(right.yield_pct);
+            case 'fail_desc':
+                return safeNumber(right.failed) - safeNumber(left.failed);
+            case 'retry_desc':
+                return safeNumber(right.retry_rate) - safeNumber(left.retry_rate);
+            case 'work_order_asc':
+                return String(left.work_order || '').localeCompare(String(right.work_order || ''));
+            case 'last_test_desc':
+            default:
+                return safeDateValue(right.last_test) - safeDateValue(left.last_test);
+        }
+    });
+
+    return filtered;
+}
+
+function renderWorkOrders() {
+    const state = dashboardState.workorders;
+    const filtered = applyWorkOrderFilters(state.rows);
+    const total = filtered.length;
+    const totalPages = total ? Math.ceil(total / state.pageSize) : 0;
+    state.page = totalPages ? Math.min(state.page, totalPages) : 1;
+    const startIndex = total ? (state.page - 1) * state.pageSize : 0;
+    const endIndex = total ? Math.min(startIndex + state.pageSize, total) : 0;
+    const pageRows = filtered.slice(startIndex, endIndex);
+
+    const totalLatestUnits = filtered.reduce((sum, row) => sum + safeNumber(row.total), 0);
+    const attentionCount = filtered.filter(row => safeNumber(row.failed) > 0 || safeNumber(row.stopped) > 0).length;
+    const avgYield = filtered.length ? (filtered.reduce((sum, row) => sum + safeNumber(row.yield_pct), 0) / filtered.length).toFixed(1) + '%' : '—';
+
+    renderSummaryCards('woSummary', [
+        { label: 'Visible Work Orders', value: total, color: 'blue' },
+        { label: 'Latest Total Units', value: totalLatestUnits, color: 'teal' },
+        { label: 'Need Attention', value: attentionCount, color: attentionCount ? 'red' : 'green' },
+        { label: 'Average Yield', value: avgYield, color: 'green' },
+    ]);
+
+    document.getElementById('woMeta').textContent = total
+        ? `Showing ${startIndex + 1}-${endIndex} of ${total} work orders | Filter: ${getActiveFilterSummary()}`
+        : `No work orders match the current filters | Filter: ${getActiveFilterSummary()}`;
+    document.getElementById('woPageInfo').textContent = totalPages
+        ? `Page ${state.page} / ${totalPages}`
+        : 'Page 0 / 0';
+    document.getElementById('woPrevBtn').disabled = state.page <= 1;
+    document.getElementById('woNextBtn').disabled = !totalPages || state.page >= totalPages;
+
+    const tbody = document.getElementById('tbWO');
+    if (!pageRows.length) {
+        renderTableEmptyState('tbWO', 10, 'No work orders match the current search or quick filter.');
+        return;
+    }
+
+    tbody.innerHTML = pageRows.map(r => {
+        const y = parseFloat(r.yield_pct) || 0;
+        const color = y >= 95 ? 'var(--green)' : y >= 80 ? 'var(--orange)' : 'var(--red)';
+        return `<tr>
+            <td><strong>${r.work_order||'—'}</strong></td>
+            <td>${r.total}</td>
+            <td>${r.test_attempts ?? 0}</td>
+            <td><span class="badge pass">${r.passed}</span></td>
+            <td><span class="badge fail">${r.failed}</span></td>
+            <td><span class="badge stop">${r.stopped}</span></td>
+            <td><span class="yield-bar"><span class="fill" style="width:${y}%;background:${color}"></span></span>${y}%</td>
+            <td>${r.retry_rate != null ? parseFloat(r.retry_rate).toFixed(1) + '%' : '—'}</td>
+            <td>${fmtTime(r.first_test)}</td>
+            <td>${fmtTime(r.last_test)}</td>
+        </tr>`;
+    }).join('');
+}
+
+function applyFailListFilters(rows) {
+    const state = dashboardState.fails;
+    const query = normalizeText(state.search);
+    let filtered = [...rows];
+    if (state.result !== 'all') {
+        filtered = filtered.filter(row => row.result === state.result);
+    }
+    if (query) {
+        filtered = filtered.filter(row => [
+            row.work_order,
+            row.mac1,
+            row.mac2,
+            row.fail_step_name,
+            row.fail_message,
+        ].some(value => normalizeText(value).includes(query)));
+    }
+    return filtered;
+}
+
+function renderFails() {
+    const rows = applyFailListFilters(dashboardState.fails.rows);
+    const failCount = rows.filter(row => row.result === 'FAIL').length;
+    const stopCount = rows.filter(row => row.result === 'STOP').length;
+    const topStep = getTopLabel(rows, row => row.fail_step_name);
+    const latestTime = rows.length ? fmtTime(rows[0].start_time) : '—';
+
+    renderSummaryCards('failSummary', [
+        { label: 'Visible Records', value: rows.length, color: 'blue' },
+        { label: 'FAIL', value: failCount, color: failCount ? 'red' : 'green' },
+        { label: 'STOP', value: stopCount, color: stopCount ? 'orange' : 'green' },
+        { label: 'Latest Time', value: latestTime, color: 'teal' },
+    ]);
+
+    document.getElementById('failMeta').textContent = rows.length
+        ? `Latest 50 records | Showing ${rows.length} records | Top step: ${topStep}`
+        : 'Latest 50 records | No records match the current search or result filter';
+
+    if (!rows.length) {
+        renderTableEmptyState('tbFails', 9, 'No fail or stop records match the current search or filter.');
+        return;
+    }
+
+    document.getElementById('tbFails').innerHTML = rows.map(r => {
+        const rc = r.result === 'FAIL' ? 'fail' : 'stop';
+        return `<tr>
+        <td>${r.work_order||'—'}</td>
+        <td>${fmtTime(r.start_time)}</td>
+        <td><code>${r.mac1}</code></td>
+        <td><code>${r.mac2||''}</code></td>
+        <td>${r.unit_date||'—'}</td>
+        <td><span class="badge ${rc}">${r.result}</span></td>
+        <td>${r.fail_step_name||'—'}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${r.fail_message||'—'}</td>
+        <td>${r.test_duration_sec != null ? r.test_duration_sec.toFixed(1) + 's' : '—'}</td>
+    </tr>`;
+    }).join('');
+}
+
+function applyFailAnalysisFilters(rows) {
+    const state = dashboardState.failAnalysis;
+    const query = normalizeText(state.search);
+    let filtered = [...rows];
+    if (state.result !== 'all') {
+        filtered = filtered.filter(row => row.result === state.result);
+    }
+    if (state.category !== 'all') {
+        filtered = filtered.filter(row => (row.fail_category || '—') === state.category);
+    }
+    if (query) {
+        filtered = filtered.filter(row => [
+            row.work_order,
+            row.mac1,
+            row.fail_error_code,
+            row.fail_step_name,
+            row.fail_message,
+            row.fail_category,
+        ].some(value => normalizeText(value).includes(query)));
+    }
+    return filtered;
+}
+
+function renderFailAnalysisRows() {
+    const state = dashboardState.failAnalysis;
+    const categories = [...new Set(state.rows.map(row => row.fail_category || '—'))].sort((a, b) => a.localeCompare(b));
+    updateSelectOptions('failAnalysisCategoryFilter', categories, state.category, 'All Categories');
+    if (!categories.includes(state.category)) state.category = 'all';
+
+    const rows = applyFailAnalysisFilters(state.rows);
+    const failCount = rows.filter(row => row.result === 'FAIL').length;
+    const stopCount = rows.filter(row => row.result === 'STOP').length;
+    const distinctCodes = new Set(rows.map(row => row.fail_error_code).filter(Boolean)).size;
+    const topCategory = getTopLabel(rows, row => row.fail_category || '—');
+
+    renderSummaryCards('failAnalysisSummary', [
+        { label: 'Visible Records', value: rows.length, color: 'blue' },
+        { label: 'FAIL', value: failCount, color: failCount ? 'red' : 'green' },
+        { label: 'STOP', value: stopCount, color: stopCount ? 'orange' : 'green' },
+        { label: 'Distinct Error Codes', value: distinctCodes, color: 'purple' },
+    ]);
+
+    document.getElementById('failAnalysisMeta').textContent = rows.length
+        ? `Latest 50 fail/stop records | Showing ${rows.length} records | Top category: ${topCategory}`
+        : 'Latest 50 fail/stop records | No records match the current search or quick filters';
+
+    if (!rows.length) {
+        renderTableEmptyState('tbFailAnalysis', 9, 'No fail analysis records match the current search or filter.');
+        return;
+    }
+
+    document.getElementById('tbFailAnalysis').innerHTML = rows.map(r => {
+        const rc = r.result === 'FAIL' ? 'fail' : 'stop';
+        return `<tr>
+        <td>${r.work_order||'—'}</td>
+        <td>${fmtTime(r.start_time)}</td>
+        <td><code>${r.mac1||''}</code></td>
+        <td><span class="badge ${rc}">${r.result}</span></td>
+        <td>${r.fail_error_code||'—'}</td>
+        <td>${r.fail_step_name||'—'}</td>
+        <td>${r.fail_category||'—'}</td>
+        <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${r.fail_message||'—'}</td>
+        <td>${r.id ? `<button class="tweak-action-btn dl" onclick="downloadFailLog(${r.id})">📥</button>` : '—'}</td>
+    </tr>`;
+    }).join('');
+}
+
+function initDashboardInteractions() {
+    document.getElementById('woSearch').addEventListener('input', event => {
+        dashboardState.workorders.search = event.target.value;
+        dashboardState.workorders.page = 1;
+        renderWorkOrders();
+    });
+    document.getElementById('woQuickFilter').addEventListener('change', event => {
+        dashboardState.workorders.quickFilter = event.target.value;
+        dashboardState.workorders.page = 1;
+        renderWorkOrders();
+    });
+    document.getElementById('woSort').addEventListener('change', event => {
+        dashboardState.workorders.sort = event.target.value;
+        dashboardState.workorders.page = 1;
+        renderWorkOrders();
+    });
+    document.getElementById('woPageSize').addEventListener('change', event => {
+        dashboardState.workorders.pageSize = Number(event.target.value) || 25;
+        dashboardState.workorders.page = 1;
+        renderWorkOrders();
+    });
+    document.getElementById('woPrevBtn').addEventListener('click', () => {
+        if (dashboardState.workorders.page <= 1) return;
+        dashboardState.workorders.page -= 1;
+        renderWorkOrders();
+    });
+    document.getElementById('woNextBtn').addEventListener('click', () => {
+        dashboardState.workorders.page += 1;
+        renderWorkOrders();
+    });
+
+    document.getElementById('failSearch').addEventListener('input', event => {
+        dashboardState.fails.search = event.target.value;
+        renderFails();
+    });
+    document.getElementById('failResultFilter').addEventListener('change', event => {
+        dashboardState.fails.result = event.target.value;
+        renderFails();
+    });
+
+    document.getElementById('failAnalysisSearch').addEventListener('input', event => {
+        dashboardState.failAnalysis.search = event.target.value;
+        renderFailAnalysisRows();
+    });
+    document.getElementById('failAnalysisResultFilter').addEventListener('change', event => {
+        dashboardState.failAnalysis.result = event.target.value;
+        renderFailAnalysisRows();
+    });
+    document.getElementById('failAnalysisCategoryFilter').addEventListener('change', event => {
+        dashboardState.failAnalysis.category = event.target.value;
+        renderFailAnalysisRows();
+    });
 }
 
 const donutPercentLabelPlugin = {
@@ -1085,44 +1876,17 @@ async function loadOverview() {
 
 /* ═══ Load work orders ═══════════════════════════════════════════════════ */
 async function loadWorkOrders() {
-    const rows = await api('/api/work-order-summary');
-    const tbody = document.getElementById('tbWO');
-    tbody.innerHTML = rows.map(r => {
-        const y = parseFloat(r.yield_pct) || 0;
-        const color = y >= 95 ? 'var(--green)' : y >= 80 ? 'var(--orange)' : 'var(--red)';
-        return `<tr>
-            <td><strong>${r.work_order||'—'}</strong></td>
-            <td>${r.total}</td>
-            <td>${r.test_attempts ?? 0}</td>
-            <td><span class="badge pass">${r.passed}</span></td>
-            <td><span class="badge fail">${r.failed}</span></td>
-            <td><span class="badge stop">${r.stopped}</span></td>
-            <td><span class="yield-bar"><span class="fill" style="width:${y}%;background:${color}"></span></span>${y}%</td>
-            <td>${r.retry_rate != null ? parseFloat(r.retry_rate).toFixed(1) + '%' : '—'}</td>
-            <td>${fmtTime(r.first_test)}</td>
-            <td>${fmtTime(r.last_test)}</td>
-        </tr>`;
-    }).join('');
+    dashboardState.workorders.rows = await api('/api/work-order-summary');
+    dashboardState.workorders.filterKey = getFilter();
+    dashboardState.workorders.page = 1;
+    renderWorkOrders();
 }
 
 /* ═══ Load fails ═════════════════════════════════════════════════════════ */
 async function loadFails() {
-    const rows = await api('/api/fails');
-    const tbody = document.getElementById('tbFails');
-    tbody.innerHTML = rows.map(r => {
-        const rc = r.result === 'FAIL' ? 'fail' : 'stop';
-        return `<tr>
-        <td>${r.work_order||'—'}</td>
-        <td>${fmtTime(r.start_time)}</td>
-        <td><code>${r.mac1}</code></td>
-        <td><code>${r.mac2||''}</code></td>
-        <td>${r.unit_date||'—'}</td>
-        <td><span class="badge ${rc}">${r.result}</span></td>
-        <td>${r.fail_step_name||'—'}</td>
-        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${r.fail_message||'—'}</td>
-        <td>${r.test_duration_sec != null ? r.test_duration_sec.toFixed(1) + 's' : '—'}</td>
-    </tr>`;
-    }).join('');
+    dashboardState.fails.rows = await loadFailRows();
+    dashboardState.fails.filterKey = getFilter();
+    renderFails();
 }
 
 /* ═══ Load BT Analysis ═══════════════════════════════════════════════════ */
@@ -1221,7 +1985,7 @@ async function loadWiFi() {
 /* ═══ Load Fail Analysis ═════════════════════════════════════════════════ */
 async function loadFailAnalysis() {
     const [analysis, config, fails] = await Promise.all([
-        api('/api/fail-analysis'), api('/api/config-analysis'), api('/api/fails')
+        api('/api/fail-analysis'), api('/api/config-analysis'), loadFailRows()
     ]);
 
     // Top Fail Steps — gray horizontal bars
@@ -1254,20 +2018,9 @@ async function loadFailAnalysis() {
     }
 
     // Table with error code, result, and category
-    document.getElementById('tbFailAnalysis').innerHTML = fails.map(r => {
-        const rc = r.result === 'FAIL' ? 'fail' : 'stop';
-        return `<tr>
-        <td>${r.work_order||'—'}</td>
-        <td>${fmtTime(r.start_time)}</td>
-        <td><code>${r.mac1||''}</code></td>
-        <td><span class="badge ${rc}">${r.result}</span></td>
-        <td>${r.fail_error_code||'—'}</td>
-        <td>${r.fail_step_name||'—'}</td>
-        <td>${r.fail_category||'—'}</td>
-        <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.fail_message||'—'}</td>
-        <td>${r.id ? `<button class="tweak-action-btn dl" onclick="downloadFailLog(${r.id})">📥</button>` : '—'}</td>
-    </tr>`;
-    }).join('');
+    dashboardState.failAnalysis.rows = fails;
+    dashboardState.failAnalysis.filterKey = getFilter();
+    renderFailAnalysisRows();
 }
 
 /* ═══ DB Tweak ═══════════════════════════════════════════════════════════ */
@@ -1635,7 +2388,10 @@ const pageLoaders = {
     failanalysis: loadFailAnalysis,
     dbtweak: loadDBTweak,
 };
-function loadPageData(page) { if (pageLoaders[page]) pageLoaders[page](); }
+function loadPageData(page) {
+    if (!pageLoaders[page]) return Promise.resolve();
+    return pageLoaders[page]();
+}
 
 /* ═══ Utility ════════════════════════════════════════════════════════════ */
 function fmtTime(ts) {
@@ -1684,6 +2440,8 @@ function buildHistogram(values, binSize) {
 
 /* ═══ Init ═══════════════════════════════════════════════════════════════ */
 async function initDashboard() {
+    initDashboardInteractions();
+    initDashboardAutomation();
     await loadFilterOptions();
     const currentYear = String(new Date().getFullYear());
     const yearSel = document.getElementById('filterYear');
