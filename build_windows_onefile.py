@@ -101,6 +101,11 @@ def build_executable(name: str, entry_script: str, icon_path: Path, data_files: 
     run_pyinstaller(command)
 
 
+def copy_runtime_config(source: Path, destination_dir: Path) -> None:
+    ensure_dir(destination_dir)
+    shutil.copy2(source, destination_dir / source.name)
+
+
 def main() -> None:
     ensure_dir(RAWLOGS_DIR)
     ensure_dir(WORK_DIR)
@@ -122,9 +127,9 @@ def main() -> None:
         data_files=[
             (icons['uploader'], shared_icon_dir),
             (ROOT_DIR / 'solo-pixi-essential' / 'module_log_parser.py', 'solo-pixi-essential'),
-            (ROOT_DIR / 'dbservip.conf', '.'),
         ],
     )
+    copy_runtime_config(ROOT_DIR / 'dbservip.conf', RAWLOGS_DIR)
 
     print('Build completed successfully.')
     print(f'Artifacts: {RAWLOGS_DIR}')

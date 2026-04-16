@@ -8,19 +8,35 @@ import os
 import importlib.util
 from pathlib import Path
 
-def get_base_dir():
+def get_runtime_dir() -> Path:
+    if getattr(sys, 'frozen', False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+def get_bundle_dir() -> Path:
     if getattr(sys, '_MEIPASS', None):
-        return sys._MEIPASS
-    return os.path.dirname(os.path.abspath(__file__))
+        return Path(sys._MEIPASS)
+    return get_runtime_dir()
 
 
 def get_resource_path(*parts):
-    return os.path.join(get_base_dir(), *parts)
+    return os.path.join(get_bundle_dir(), *parts)
 
 
-BASE_DIR = get_base_dir()
+def get_db_server_conf_paths() -> list[Path]:
+    runtime_conf = get_runtime_dir() / 'dbservip.conf'
+    bundle_conf = get_bundle_dir() / 'dbservip.conf'
+
+    paths = [runtime_conf]
+    if bundle_conf != runtime_conf:
+        paths.append(bundle_conf)
+    return paths
+
+
+BASE_DIR = str(get_bundle_dir())
 PARSER_PATH = get_resource_path('solo-pixi-essential', 'module_log_parser.py')
-DB_SERVER_CONF_PATH = get_resource_path('dbservip.conf')
+DB_SERVER_CONF_PATHS = get_db_server_conf_paths()
 APP_ICON_PATH = get_resource_path('build_assets', 'icons', 'solo_pixi_uploader.ico')
 
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
@@ -49,26 +65,27 @@ def load_parser_module():
 
 
 def load_default_db_host():
-    if not os.path.exists(DB_SERVER_CONF_PATH):
-        return DEFAULT_DB_HOST
+    for conf_path in DB_SERVER_CONF_PATHS:
+        if not conf_path.exists():
+            continue
 
-    try:
-        with open(DB_SERVER_CONF_PATH, 'r', encoding='utf-8') as conf_file:
-            for raw_line in conf_file:
-                line = raw_line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    if key.strip().upper() == 'IP' and value.strip():
-                        return value.strip()
-                if '=' in line:
-                    key, value = line.split('=', 1)
-                    if key.strip().upper() == 'IP' and value.strip():
-                        return value.strip()
-                return line
-    except OSError:
-        return DEFAULT_DB_HOST
+        try:
+            with conf_path.open('r', encoding='utf-8') as conf_file:
+                for raw_line in conf_file:
+                    line = raw_line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if ':' in line:
+                        key, value = line.split(':', 1)
+                        if key.strip().upper() == 'IP' and value.strip():
+                            return value.strip()
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        if key.strip().upper() == 'IP' and value.strip():
+                            return value.strip()
+                    return line
+        except OSError:
+            continue
 
     return DEFAULT_DB_HOST
 
