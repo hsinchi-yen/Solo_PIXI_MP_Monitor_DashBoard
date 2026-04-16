@@ -539,6 +539,10 @@ class LogUploaderApp(QMainWindow):
 
         self.file_list = QListWidget()
         self.file_list.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.file_list.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.file_list.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.file_list.setTextElideMode(Qt.ElideNone)
+        self.file_list.setWordWrap(False)
         self.file_list.setMinimumHeight(150)
         self.file_list.setMaximumHeight(220)
         file_layout.addWidget(self.file_list)
