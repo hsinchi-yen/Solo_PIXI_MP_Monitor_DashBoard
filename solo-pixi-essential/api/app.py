@@ -659,6 +659,7 @@ def api_work_order_summary(unit_date: str = None, work_order: str = None, year: 
             SELECT
                 effective_wo                                          AS work_order,
                 COUNT(*)                                              AS test_attempts,
+                ROUND(AVG(test_duration_sec)::numeric, 2)             AS avg_duration_sec,
                 MIN(start_time)                                       AS first_test,
                 MAX(start_time)                                       AS last_test,
                 COUNT(DISTINCT mac1)                                  AS total_pairs
@@ -686,6 +687,7 @@ def api_work_order_summary(unit_date: str = None, work_order: str = None, year: 
             l.stopped,
             l.yield_pct,
             ROUND(COALESCE(r.retry_pairs, 0) * 100.0 / NULLIF(a.total_pairs, 0), 2) AS retry_rate,
+            a.avg_duration_sec,
             a.first_test,
             a.last_test
         FROM latest_agg l

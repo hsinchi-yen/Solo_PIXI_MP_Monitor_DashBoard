@@ -638,6 +638,78 @@ tr:hover td { background: var(--surface2); }
 .tweak-action-btn.dl:hover { background: rgba(10,132,255,.3); }
 .tweak-action-btn.del { background: rgba(255,69,58,.15); color: var(--red); }
 .tweak-action-btn.del:hover { background: rgba(255,69,58,.3); }
+
+.stats-note {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 6px;
+}
+
+@media (max-width: 1024px) {
+    :root { --sidebar-w: 78px; }
+    .sidebar .logo h1,
+    .sidebar .logo span,
+    .sidebar .logo .org-name,
+    .sidebar .section-label,
+    .sidebar .clock-date,
+    .theme-label,
+    .sidebar .sidebar-footer {
+        display: none;
+    }
+    .sidebar .logo { padding: 18px 12px; }
+    .sidebar nav a { justify-content: center; padding: 10px 8px; }
+    .main { padding: 20px 18px; }
+    .chart-row,
+    .chart-row.monthly-row,
+    #page-overview .chart-row.primary-row,
+    .grid-2 {
+        grid-template-columns: 1fr;
+    }
+    #page-overview.active {
+        display: block;
+        overflow: auto;
+    }
+    #page-overview .kpi-grid,
+    #page-overview .chart-row,
+    #page-overview .chart-box {
+        margin-bottom: 14px;
+    }
+}
+
+@media (max-width: 768px) {
+    :root { --sidebar-w: 0px; }
+    .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+    }
+    body {
+        display: block;
+    }
+    .main {
+        margin-left: 0;
+        height: auto;
+        min-height: calc(100vh - 60px);
+        padding: 14px;
+    }
+    .filter-bar,
+    .list-toolbar,
+    .pager-bar {
+        justify-content: flex-start;
+    }
+    .list-input {
+        min-width: 160px;
+    }
+    .table-scroll {
+        max-height: 420px;
+    }
+    .page-title {
+        font-size: 24px;
+        margin-bottom: 16px;
+    }
+}
 </style>
 </head>
 <body>
@@ -661,6 +733,7 @@ tr:hover td { background: var(--surface2); }
         <div class="section-label">Analysis</div>
         <a href="#" data-page="bt">📡 BT Analysis</a>
         <a href="#" data-page="wifi">📶 WiFi Analysis</a>
+        <a href="#" data-page="advanced">📈 Advanced Analytics</a>
         <a href="#" data-page="failanalysis">🔍 Fail Analysis</a>
         <div class="section-label">Management</div>
         <a href="#" data-page="dbtweak">🔧 DB Tweak</a>
@@ -777,7 +850,7 @@ tr:hover td { background: var(--surface2); }
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
-                <th>Work Order</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th>
+                <th>Work Order</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th><th>Duration</th>
             </tr></thead><tbody id="tbWO"></tbody></table>
         </div>
     </div>
@@ -812,6 +885,14 @@ tr:hover td { background: var(--surface2); }
                     <option value="STOP">STOP only</option>
                 </select>
             </div>
+            <div class="list-control">
+                <label for="failPageSize">Rows</label>
+                <select class="list-select" id="failPageSize">
+                    <option value="50" selected>50</option>
+                    <option value="200">200</option>
+                    <option value="500">500</option>
+                </select>
+            </div>
         </div>
     </div>
     <div class="data-table-wrap">
@@ -819,6 +900,13 @@ tr:hover td { background: var(--surface2); }
             <table><thead><tr>
                 <th>Work Order</th><th>Time</th><th>MAC1</th><th>MAC2</th><th>Date Unit</th><th>Result</th><th>Fail Step</th><th>Message</th><th>Duration</th>
             </tr></thead><tbody id="tbFails"></tbody></table>
+        </div>
+    </div>
+    <div class="pager-bar">
+        <div class="pager-info" id="failPageInfo">Page 0 / 0</div>
+        <div class="pager-actions">
+            <button class="pager-btn" id="failPrevBtn" disabled>Previous</button>
+            <button class="pager-btn" id="failNextBtn" disabled>Next</button>
         </div>
     </div>
 </div>
@@ -843,6 +931,48 @@ tr:hover td { background: var(--surface2); }
     <div class="grid-2">
         <div class="chart-box"><h3>Xtal Cap Distribution</h3><canvas id="chartXtalCap"></canvas></div>
         <div class="chart-box"><h3>Xtal Freq Error (ppm)</h3><canvas id="chartXtalPpm"></canvas></div>
+    </div>
+</div>
+
+<!-- ─── Advanced Analytics ────────────────────────────────────────────── -->
+<div class="page" id="page-advanced">
+    <h2 class="page-title">Advanced Analytics</h2>
+    <div class="summary-grid" id="advancedSummary"></div>
+    <div class="grid-2">
+        <div class="chart-box">
+            <h3>Retry Risk Distribution</h3>
+            <canvas id="chartRetryRisk"></canvas>
+            <div class="stats-note" id="retryRiskMeta">Loading retry analytics...</div>
+        </div>
+        <div class="chart-box">
+            <h3>Test Duration by Result (sec)</h3>
+            <canvas id="chartDuration"></canvas>
+            <div class="stats-note" id="durationMeta">Loading duration statistics...</div>
+        </div>
+    </div>
+    <div class="grid-2">
+        <div class="chart-box">
+            <h3>Calibration Trend (Xtal PPM by Time)</h3>
+            <canvas id="chartCalibrationTrend"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>WiFi Tail Risk (P90 / P95 EVM)</h3>
+            <canvas id="chartWifiTail"></canvas>
+        </div>
+    </div>
+    <div class="grid-2">
+        <div class="chart-box">
+            <h3>BT BER Comparison (2441 vs 2480)</h3>
+            <canvas id="chartBtBerCompare"></canvas>
+        </div>
+        <div class="data-table-wrap" style="margin-bottom:0">
+            <h3>Top Retry Units</h3>
+            <div class="table-scroll">
+                <table><thead><tr>
+                    <th>Work Order</th><th>MAC1</th><th>Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Risk</th><th>Last Attempt</th>
+                </tr></thead><tbody id="tbRetry"></tbody></table>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1016,14 +1146,14 @@ const LATEST_DAY_CACHE_MS = 5 * 60 * 1000;
 const AUTO_REFRESH_START_HOUR = 9;
 const AUTO_REFRESH_END_HOUR = 18;
 const AUTO_ROTATION_STEPS = [
-    { page: 'overview', filterMode: 'all', durationMs: 20000 },
-    { page: 'workorders', filterMode: 'all', durationMs: 20000 },
-    { page: 'bt', filterMode: 'all', durationMs: 10000 },
-    { page: 'wifi', filterMode: 'all', durationMs: 10000 },
-    { page: 'overview', filterMode: 'latest_day', durationMs: 20000 },
-    { page: 'workorders', filterMode: 'latest_day', durationMs: 20000 },
-    { page: 'bt', filterMode: 'latest_day', durationMs: 10000 },
-    { page: 'wifi', filterMode: 'latest_day', durationMs: 10000 },
+    { page: 'overview', filterMode: 'all', durationMs: 30000 },
+    { page: 'workorders', filterMode: 'all', durationMs: 30000 },
+    { page: 'bt', filterMode: 'all', durationMs: 20000 },
+    { page: 'wifi', filterMode: 'all', durationMs: 20000 },
+    { page: 'overview', filterMode: 'latest_day', durationMs: 30000 },
+    { page: 'workorders', filterMode: 'latest_day', durationMs: 30000 },
+    { page: 'bt', filterMode: 'latest_day', durationMs: 20000 },
+    { page: 'wifi', filterMode: 'latest_day', durationMs: 20000 },
 ];
 
 const automationState = {
@@ -1179,6 +1309,8 @@ const dashboardState = {
         filterKey: '',
         search: '',
         result: 'all',
+        page: 1,
+        pageSize: 50,
     },
     failAnalysis: {
         rows: [],
@@ -1187,18 +1319,27 @@ const dashboardState = {
         result: 'all',
         category: 'all',
     },
+    advanced: {
+        retries: [],
+        durations: [],
+        calibration: [],
+        wifi: null,
+        bt: null,
+        filterKey: '',
+    },
 };
 
 const failRowsCache = {
-    filterKey: '',
+    key: '',
     rows: null,
 };
 
 function clearDashboardCaches() {
-    failRowsCache.filterKey = '';
+    failRowsCache.key = '';
     failRowsCache.rows = null;
     automationState.latestDayFetchedAt = 0;
     automationState.latestDayValue = '';
+    dashboardState.advanced.filterKey = '';
 }
 
 function setTopFilterValues(values) {
@@ -1388,6 +1529,48 @@ function safeDateValue(value) {
     return Number.isFinite(ts) ? ts : 0;
 }
 
+function safeText(value, fallback = '—') {
+    if (value === null || value === undefined || value === '') return fallback;
+    return esc(String(value));
+}
+
+function jsStringEscape(value) {
+    return String(value || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/\n/g, ' ')
+        .replace(/\r/g, ' ');
+}
+
+function percentile(values, ratio) {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1));
+    return sorted[idx];
+}
+
+function mean(values) {
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function formatMetric(value, digits = 2, suffix = '') {
+    if (value == null || !Number.isFinite(Number(value))) return '—';
+    return Number(value).toFixed(digits) + suffix;
+}
+
+function formatElapsedSpan(firstTs, lastTs) {
+    const first = safeDateValue(firstTs);
+    const last = safeDateValue(lastTs);
+    if (!first || !last || last < first) return '—';
+    const diffMs = last - first;
+    const dayMs = 24 * 60 * 60 * 1000;
+    if (diffMs >= dayMs) {
+        return `${(diffMs / dayMs).toFixed(1)}D`;
+    }
+    return `${(diffMs / (60 * 60 * 1000)).toFixed(1)}H`;
+}
+
 function renderSummaryCards(containerId, cards) {
     document.getElementById(containerId).innerHTML = cards.map(card => `
         <div class="kpi-card">
@@ -1426,11 +1609,11 @@ function updateSelectOptions(selectId, values, selectedValue, placeholder) {
     if (!values.includes(normalizedSelected)) select.value = 'all';
 }
 
-async function loadFailRows() {
-    const filterKey = getFilter();
-    if (failRowsCache.filterKey !== filterKey || !Array.isArray(failRowsCache.rows)) {
-        failRowsCache.rows = await api('/api/fails');
-        failRowsCache.filterKey = filterKey;
+async function loadFailRows(limit = dashboardState.fails.pageSize) {
+    const filterKey = `${getFilter()}|limit=${limit}`;
+    if (failRowsCache.key !== filterKey || !Array.isArray(failRowsCache.rows)) {
+        failRowsCache.rows = await fetchJson(`/api/fails${getFilter()}${getFilter() ? '&' : '?'}limit=${encodeURIComponent(limit)}`);
+        failRowsCache.key = filterKey;
     }
     return failRowsCache.rows;
 }
@@ -1501,7 +1684,7 @@ function renderWorkOrders() {
 
     const tbody = document.getElementById('tbWO');
     if (!pageRows.length) {
-        renderTableEmptyState('tbWO', 10, 'No work orders match the current search or quick filter.');
+        renderTableEmptyState('tbWO', 11, 'No work orders match the current search or quick filter.');
         return;
     }
 
@@ -1509,7 +1692,7 @@ function renderWorkOrders() {
         const y = parseFloat(r.yield_pct) || 0;
         const color = y >= 95 ? 'var(--green)' : y >= 80 ? 'var(--orange)' : 'var(--red)';
         return `<tr>
-            <td><strong>${r.work_order||'—'}</strong></td>
+            <td><strong>${safeText(r.work_order)}</strong></td>
             <td>${r.total}</td>
             <td>${r.test_attempts ?? 0}</td>
             <td><span class="badge pass">${r.passed}</span></td>
@@ -1519,6 +1702,7 @@ function renderWorkOrders() {
             <td>${r.retry_rate != null ? parseFloat(r.retry_rate).toFixed(1) + '%' : '—'}</td>
             <td>${fmtTime(r.first_test)}</td>
             <td>${fmtTime(r.last_test)}</td>
+            <td>${formatElapsedSpan(r.first_test, r.last_test)}</td>
         </tr>`;
     }).join('');
 }
@@ -1544,6 +1728,12 @@ function applyFailListFilters(rows) {
 
 function renderFails() {
     const rows = applyFailListFilters(dashboardState.fails.rows);
+    const pageSize = dashboardState.fails.pageSize;
+    const totalPages = rows.length ? Math.ceil(rows.length / pageSize) : 0;
+    dashboardState.fails.page = totalPages ? Math.min(dashboardState.fails.page, totalPages) : 1;
+    const startIndex = rows.length ? (dashboardState.fails.page - 1) * pageSize : 0;
+    const endIndex = rows.length ? Math.min(startIndex + pageSize, rows.length) : 0;
+    const pageRows = rows.slice(startIndex, endIndex);
     const failCount = rows.filter(row => row.result === 'FAIL').length;
     const stopCount = rows.filter(row => row.result === 'STOP').length;
     const topStep = getTopLabel(rows, row => row.fail_step_name);
@@ -1557,25 +1747,30 @@ function renderFails() {
     ]);
 
     document.getElementById('failMeta').textContent = rows.length
-        ? `Latest 50 records | Showing ${rows.length} records | Top step: ${topStep}`
-        : 'Latest 50 records | No records match the current search or result filter';
+        ? `Latest ${dashboardState.fails.rows.length} records | Showing ${startIndex + 1}-${endIndex} of ${rows.length} | Top step: ${topStep}`
+        : `Latest ${dashboardState.fails.rows.length} records | No records match the current search or result filter`;
+    document.getElementById('failPageInfo').textContent = totalPages
+        ? `Page ${dashboardState.fails.page} / ${totalPages}`
+        : 'Page 0 / 0';
+    document.getElementById('failPrevBtn').disabled = dashboardState.fails.page <= 1;
+    document.getElementById('failNextBtn').disabled = !totalPages || dashboardState.fails.page >= totalPages;
 
-    if (!rows.length) {
+    if (!pageRows.length) {
         renderTableEmptyState('tbFails', 9, 'No fail or stop records match the current search or filter.');
         return;
     }
 
-    document.getElementById('tbFails').innerHTML = rows.map(r => {
+    document.getElementById('tbFails').innerHTML = pageRows.map(r => {
         const rc = r.result === 'FAIL' ? 'fail' : 'stop';
         return `<tr>
-        <td>${r.work_order||'—'}</td>
+        <td>${safeText(r.work_order)}</td>
         <td>${fmtTime(r.start_time)}</td>
-        <td><code>${r.mac1}</code></td>
-        <td><code>${r.mac2||''}</code></td>
-        <td>${r.unit_date||'—'}</td>
+        <td><code>${safeText(r.mac1, '')}</code></td>
+        <td><code>${safeText(r.mac2, '')}</code></td>
+        <td>${safeText(r.unit_date)}</td>
         <td><span class="badge ${rc}">${r.result}</span></td>
-        <td>${r.fail_step_name||'—'}</td>
-        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${r.fail_message||'—'}</td>
+        <td>${safeText(r.fail_step_name)}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${safeText(r.fail_message)}</td>
         <td>${r.test_duration_sec != null ? r.test_duration_sec.toFixed(1) + 's' : '—'}</td>
     </tr>`;
     }).join('');
@@ -1635,14 +1830,14 @@ function renderFailAnalysisRows() {
     document.getElementById('tbFailAnalysis').innerHTML = rows.map(r => {
         const rc = r.result === 'FAIL' ? 'fail' : 'stop';
         return `<tr>
-        <td>${r.work_order||'—'}</td>
+        <td>${safeText(r.work_order)}</td>
         <td>${fmtTime(r.start_time)}</td>
-        <td><code>${r.mac1||''}</code></td>
+        <td><code>${safeText(r.mac1, '')}</code></td>
         <td><span class="badge ${rc}">${r.result}</span></td>
-        <td>${r.fail_error_code||'—'}</td>
-        <td>${r.fail_step_name||'—'}</td>
-        <td>${r.fail_category||'—'}</td>
-        <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${r.fail_message||'—'}</td>
+        <td>${safeText(r.fail_error_code)}</td>
+        <td>${safeText(r.fail_step_name)}</td>
+        <td>${safeText(r.fail_category)}</td>
+        <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(r.fail_message||'')}">${safeText(r.fail_message)}</td>
         <td>${r.id ? `<button class="tweak-action-btn dl" onclick="downloadFailLog(${r.id})">📥</button>` : '—'}</td>
     </tr>`;
     }).join('');
@@ -1681,10 +1876,27 @@ function initDashboardInteractions() {
 
     document.getElementById('failSearch').addEventListener('input', event => {
         dashboardState.fails.search = event.target.value;
+        dashboardState.fails.page = 1;
         renderFails();
     });
     document.getElementById('failResultFilter').addEventListener('change', event => {
         dashboardState.fails.result = event.target.value;
+        dashboardState.fails.page = 1;
+        renderFails();
+    });
+    document.getElementById('failPageSize').addEventListener('change', async event => {
+        dashboardState.fails.pageSize = Number(event.target.value) || 50;
+        dashboardState.fails.page = 1;
+        dashboardState.fails.rows = await loadFailRows(dashboardState.fails.pageSize);
+        renderFails();
+    });
+    document.getElementById('failPrevBtn').addEventListener('click', () => {
+        if (dashboardState.fails.page <= 1) return;
+        dashboardState.fails.page -= 1;
+        renderFails();
+    });
+    document.getElementById('failNextBtn').addEventListener('click', () => {
+        dashboardState.fails.page += 1;
         renderFails();
     });
 
@@ -1884,8 +2096,9 @@ async function loadWorkOrders() {
 
 /* ═══ Load fails ═════════════════════════════════════════════════════════ */
 async function loadFails() {
-    dashboardState.fails.rows = await loadFailRows();
+    dashboardState.fails.rows = await loadFailRows(dashboardState.fails.pageSize);
     dashboardState.fails.filterKey = getFilter();
+    dashboardState.fails.page = 1;
     renderFails();
 }
 
@@ -1893,13 +2106,18 @@ async function loadFails() {
 async function loadBT() {
     const data = await api('/api/bt-metrics');
     const s = data.bt_summary || {};
+    const ber2441 = Number(s.avg_ber_2441);
+    const ber2480 = Number(s.avg_ber_2480);
+    const berDelta = (Number.isFinite(ber2441) && Number.isFinite(ber2480)) ? Math.abs(ber2441 - ber2480) : null;
     document.getElementById('btKpi').innerHTML = `
         <div class="kpi-card"><div class="kpi-label">BDR Pass</div><div class="kpi-value green">${s.bdr_passed??'—'}</div></div>
         <div class="kpi-card"><div class="kpi-label">BDR Fail</div><div class="kpi-value red">${s.bdr_failed??0}</div></div>
         <div class="kpi-card"><div class="kpi-label">LE Pass</div><div class="kpi-value green">${s.le_passed??'—'}</div></div>
         <div class="kpi-card"><div class="kpi-label">LE Fail</div><div class="kpi-value red">${s.le_failed??0}</div></div>
         <div class="kpi-card"><div class="kpi-label">Avg BER 2441</div><div class="kpi-value teal">${s.avg_ber_2441!=null?parseFloat(s.avg_ber_2441).toFixed(4):'—'}</div></div>
-        <div class="kpi-card"><div class="kpi-label">Avg PER LE</div><div class="kpi-value teal">${s.avg_per_le!=null?parseFloat(s.avg_per_le).toFixed(4):'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Avg BER 2480</div><div class="kpi-value teal">${s.avg_ber_2480!=null?parseFloat(s.avg_ber_2480).toFixed(4):'—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">BER Delta</div><div class="kpi-value ${berDelta != null && berDelta > 0.01 ? 'orange' : 'green'}">${berDelta != null ? berDelta.toFixed(4) : '—'}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Avg PER LE</div><div class="kpi-value purple">${s.avg_per_le!=null?parseFloat(s.avg_per_le).toFixed(4):'—'}</div></div>
     `;
 
     destroyChart('chartBdrPower');
@@ -1985,7 +2203,7 @@ async function loadWiFi() {
 /* ═══ Load Fail Analysis ═════════════════════════════════════════════════ */
 async function loadFailAnalysis() {
     const [analysis, config, fails] = await Promise.all([
-        api('/api/fail-analysis'), api('/api/config-analysis'), loadFailRows()
+        api('/api/fail-analysis'), api('/api/config-analysis'), loadFailRows(50)
     ]);
 
     // Top Fail Steps — gray horizontal bars
@@ -2021,6 +2239,222 @@ async function loadFailAnalysis() {
     dashboardState.failAnalysis.rows = fails;
     dashboardState.failAnalysis.filterKey = getFilter();
     renderFailAnalysisRows();
+}
+
+/* ═══ Load Advanced Analytics ═══════════════════════════════════════════ */
+function buildDurationSeries(rows, result) {
+    const values = rows
+        .filter(row => row.result === result)
+        .map(row => safeNumber(row.test_duration_sec))
+        .filter(value => value > 0);
+    return {
+        count: values.length,
+        p50: percentile(values, 0.5),
+        p90: percentile(values, 0.9),
+        p99: percentile(values, 0.99),
+        avg: mean(values),
+    };
+}
+
+function buildWifiTailMetrics(evmData) {
+    const metricMap = {
+        '2.4G CCK11': 'wifi24_cck11_evm',
+        '2.4G OFDM54': 'wifi24_ofdm54_evm',
+        '2.4G HT20': 'wifi24_ht20_evm',
+        '2.4G HT40': 'wifi24_ht40_evm',
+        '5G OFDM54': 'wifi5_ofdm54_evm',
+        '5G HT20': 'wifi5_ht20_evm',
+        '5G HT40': 'wifi5_ht40_evm',
+        '5G VHT80': 'wifi5_vht80_evm',
+    };
+    return Object.entries(metricMap).map(([label, key]) => {
+        const values = evmData
+            .map(row => Number(row[key]))
+            .filter(value => Number.isFinite(value));
+        return {
+            label,
+            p90: percentile(values, 0.9),
+            p95: percentile(values, 0.95),
+        };
+    });
+}
+
+function renderAdvanced() {
+    const retries = dashboardState.advanced.retries || [];
+    const durations = dashboardState.advanced.durations || [];
+    const calibration = dashboardState.advanced.calibration || [];
+    const wifi = dashboardState.advanced.wifi || {};
+    const bt = dashboardState.advanced.bt || {};
+
+    const highRiskCount = retries.filter(row => row.retry_risk === 'high').length;
+    const medRiskCount = retries.filter(row => row.retry_risk === 'medium').length;
+    const durationValues = durations
+        .map(row => safeNumber(row.test_duration_sec))
+        .filter(value => value > 0);
+    const p95Duration = percentile(durationValues, 0.95);
+    const ppmValues = calibration
+        .map(row => Number(row.xtal_freq_error_ppm))
+        .filter(value => Number.isFinite(value));
+    const ppmDrift = ppmValues.length
+        ? Math.max(...ppmValues) - Math.min(...ppmValues)
+        : null;
+
+    renderSummaryCards('advancedSummary', [
+        { label: 'Retry Units', value: retries.length, color: retries.length ? 'orange' : 'green' },
+        { label: 'High Retry Risk', value: highRiskCount, color: highRiskCount ? 'red' : 'green' },
+        { label: 'Duration P95', value: formatMetric(p95Duration, 1, 's'), color: 'teal' },
+        { label: 'Xtal PPM Drift', value: formatMetric(ppmDrift, 2), color: 'purple' },
+    ]);
+
+    const riskBuckets = ['high', 'medium', 'low'];
+    const riskCounts = riskBuckets.map(bucket => retries.filter(row => row.retry_risk === bucket).length);
+    document.getElementById('retryRiskMeta').textContent = retries.length
+        ? `High: ${highRiskCount} | Medium: ${medRiskCount} | Low: ${Math.max(0, retries.length - highRiskCount - medRiskCount)}`
+        : 'No retry records under current filter';
+
+    destroyChart('chartRetryRisk');
+    chartInstances.chartRetryRisk = new Chart(document.getElementById('chartRetryRisk'), {
+        type: 'bar',
+        data: {
+            labels: ['High', 'Medium', 'Low'],
+            datasets: [{
+                label: 'Units',
+                data: riskCounts,
+                backgroundColor: ['#ff453a', '#ff9f0a', '#30d158'],
+                borderRadius: 6,
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    const passSeries = buildDurationSeries(durations, 'PASS');
+    const failSeries = buildDurationSeries(durations, 'FAIL');
+    const stopSeries = buildDurationSeries(durations, 'STOP');
+    const durationSeries = [passSeries, failSeries, stopSeries];
+    const durationLabels = ['PASS', 'FAIL', 'STOP'];
+
+    document.getElementById('durationMeta').textContent = durationValues.length
+        ? `Overall P50 ${formatMetric(percentile(durationValues, 0.5), 1, 's')} | P90 ${formatMetric(percentile(durationValues, 0.9), 1, 's')} | P99 ${formatMetric(percentile(durationValues, 0.99), 1, 's')}`
+        : 'No duration records under current filter';
+
+    destroyChart('chartDuration');
+    chartInstances.chartDuration = new Chart(document.getElementById('chartDuration'), {
+        type: 'bar',
+        data: {
+            labels: durationLabels,
+            datasets: [
+                { label: 'P50', data: durationSeries.map(item => item.p50), backgroundColor: 'rgba(100,210,255,.7)', borderRadius: 6 },
+                { label: 'P90', data: durationSeries.map(item => item.p90), backgroundColor: 'rgba(255,159,10,.7)', borderRadius: 6 },
+                { label: 'P99', data: durationSeries.map(item => item.p99), backgroundColor: 'rgba(255,69,58,.7)', borderRadius: 6 },
+            ]
+        },
+        options: { responsive: true, scales: { y: { beginAtZero: true, title: { display: true, text: 'Seconds' } } } }
+    });
+
+    const calibrationSorted = [...calibration]
+        .filter(row => row.xtal_freq_error_ppm != null)
+        .sort((left, right) => safeDateValue(left.start_time) - safeDateValue(right.start_time));
+    const calibrationPreview = calibrationSorted.slice(-120);
+    destroyChart('chartCalibrationTrend');
+    chartInstances.chartCalibrationTrend = new Chart(document.getElementById('chartCalibrationTrend'), {
+        type: 'line',
+        data: {
+            labels: calibrationPreview.map(row => fmtTime(row.start_time)),
+            datasets: [{
+                label: 'Xtal Freq Error (ppm)',
+                data: calibrationPreview.map(row => Number(row.xtal_freq_error_ppm)),
+                borderColor: '#72efdd',
+                backgroundColor: 'rgba(114,239,221,.15)',
+                fill: true,
+                tension: 0.2,
+                pointRadius: 2,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { x: { ticks: { maxTicksLimit: 10 } } }
+        }
+    });
+
+    const wifiTail = buildWifiTailMetrics(wifi.evm_data || []);
+    destroyChart('chartWifiTail');
+    chartInstances.chartWifiTail = new Chart(document.getElementById('chartWifiTail'), {
+        type: 'bar',
+        data: {
+            labels: wifiTail.map(item => item.label),
+            datasets: [
+                { label: 'P90', data: wifiTail.map(item => item.p90), backgroundColor: 'rgba(10,132,255,.7)', borderRadius: 6 },
+                { label: 'P95', data: wifiTail.map(item => item.p95), backgroundColor: 'rgba(191,90,242,.7)', borderRadius: 6 },
+            ]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            scales: { x: { title: { display: true, text: 'EVM (dB)' } } }
+        }
+    });
+
+    const btSummary = bt.bt_summary || {};
+    const ber2441 = Number(btSummary.avg_ber_2441);
+    const ber2480 = Number(btSummary.avg_ber_2480);
+    const perLe = Number(btSummary.avg_per_le);
+    destroyChart('chartBtBerCompare');
+    chartInstances.chartBtBerCompare = new Chart(document.getElementById('chartBtBerCompare'), {
+        type: 'bar',
+        data: {
+            labels: ['BER 2441', 'BER 2480', 'PER LE'],
+            datasets: [{
+                label: 'Average',
+                data: [ber2441, ber2480, perLe],
+                backgroundColor: ['#64d2ff', '#00d4ff', '#ff9f0a'],
+                borderRadius: 6,
+            }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    const topRetries = [...retries]
+        .sort((left, right) => safeNumber(right.attempts) - safeNumber(left.attempts))
+        .slice(0, 20);
+    if (!topRetries.length) {
+        renderTableEmptyState('tbRetry', 8, 'No retry units under current filter.');
+    } else {
+        document.getElementById('tbRetry').innerHTML = topRetries.map(row => {
+            const risk = ['high', 'medium', 'low'].includes(String(row.retry_risk || '').toLowerCase())
+                ? String(row.retry_risk).toLowerCase()
+                : 'low';
+            return `<tr>
+            <td>${safeText(row.work_order)}</td>
+            <td><code>${safeText(row.mac1, '')}</code></td>
+            <td>${safeNumber(row.attempts)}</td>
+            <td>${safeNumber(row.pass_count)}</td>
+            <td>${safeNumber(row.fail_count)}</td>
+            <td>${safeNumber(row.stop_count)}</td>
+            <td><span class="badge ${risk}">${risk.toUpperCase()}</span></td>
+            <td>${fmtTime(row.last_attempt)}</td>
+        </tr>`;
+        }).join('');
+    }
+}
+
+async function loadAdvanced() {
+    const [retries, durations, calibration, wifi, bt] = await Promise.all([
+        api('/api/retries'),
+        api('/api/test-duration'),
+        api('/api/calibration'),
+        api('/api/wifi-metrics'),
+        api('/api/bt-metrics'),
+    ]);
+
+    dashboardState.advanced.retries = retries || [];
+    dashboardState.advanced.durations = durations || [];
+    dashboardState.advanced.calibration = calibration || [];
+    dashboardState.advanced.wifi = wifi || null;
+    dashboardState.advanced.bt = bt || null;
+    dashboardState.advanced.filterKey = getFilter();
+
+    renderAdvanced();
 }
 
 /* ═══ DB Tweak ═══════════════════════════════════════════════════════════ */
@@ -2318,16 +2752,16 @@ async function loadTweakRecords() {
             return `<tr>
                 <td>${row.id}</td>
                 <td>${fmtTime(row.start_time)}</td>
-                <td><code>${row.mac1||''}</code></td>
-                <td>${row.work_order||'—'}</td>
-                <td>${row.unit_date||'—'}</td>
+                <td><code>${safeText(row.mac1, '')}</code></td>
+                <td>${safeText(row.work_order)}</td>
+                <td>${safeText(row.unit_date)}</td>
                 <td><span class="badge ${rc}">${row.result}</span></td>
                 <td>${row.test_duration_sec != null ? row.test_duration_sec.toFixed(1)+'s' : '—'}</td>
-                <td>${row.fail_step_name||'—'}</td>
-                <td title="${esc(row.source_file||'')}" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${row.source_file||'—'}</td>
+                <td>${safeText(row.fail_step_name)}</td>
+                <td title="${esc(row.source_file||'')}" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safeText(row.source_file)}</td>
                 <td style="white-space:nowrap">
                     ${row.has_raw_log ? `<button class="tweak-action-btn dl" onclick="tweakDownload(${row.id})">📥 Raw Log</button>` : '<span style="color:var(--text3);font-size:11px">no log</span>'}
-                    <button class="tweak-action-btn del" onclick="tweakDelete(${row.id},'${esc(row.mac1||'')}')">🗑 Del</button>
+                    <button class="tweak-action-btn del" onclick="tweakDelete(${row.id},'${jsStringEscape(row.mac1 || '')}')">🗑 Del</button>
                 </td>
             </tr>`;
         }).join('');
@@ -2385,6 +2819,7 @@ const pageLoaders = {
     fails: loadFails,
     bt: loadBT,
     wifi: loadWiFi,
+    advanced: loadAdvanced,
     failanalysis: loadFailAnalysis,
     dbtweak: loadDBTweak,
 };
@@ -2402,16 +2837,47 @@ function fmtTime(ts) {
 function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
 function buildHistogram(values, binSize) {
-    if (!values.length) return { labels: [], counts: [] };
-    const min = Math.floor(Math.min(...values) / binSize) * binSize;
-    const max = Math.ceil(Math.max(...values) / binSize) * binSize;
+    const cleaned = (values || [])
+        .map(value => Number(value))
+        .filter(value => Number.isFinite(value));
+    if (!cleaned.length) return { labels: [], counts: [] };
+    const min = Math.floor(Math.min(...cleaned) / binSize) * binSize;
+    const max = Math.ceil(Math.max(...cleaned) / binSize) * binSize;
     const labels = [];
-    const counts = [];
+    const counts = new Array(Math.round((max - min) / binSize) + 1).fill(0);
     for (let b = min; b <= max; b += binSize) {
         labels.push(b.toFixed(1));
-        counts.push(values.filter(v => v >= b && v < b + binSize).length);
     }
+    cleaned.forEach(value => {
+        let index = Math.floor((value - min) / binSize);
+        if (index >= counts.length) index = counts.length - 1;
+        if (index < 0) index = 0;
+        counts[index] += 1;
+    });
     return { labels, counts };
+}
+
+function refreshAllChartsForTheme() {
+    const cs = getComputedStyle(document.documentElement);
+    const text2 = cs.getPropertyValue('--text2').trim();
+    const border = cs.getPropertyValue('--border').trim();
+    Object.values(chartInstances).forEach(chart => {
+        if (!chart) return;
+        chart.options.plugins = chart.options.plugins || {};
+        if (chart.options.plugins.title) chart.options.plugins.title.color = text2;
+        chart.options.scales = chart.options.scales || {};
+        Object.keys(chart.options.scales).forEach(key => {
+            const axis = chart.options.scales[key] || {};
+            axis.grid = axis.grid || {};
+            axis.ticks = axis.ticks || {};
+            axis.title = axis.title || {};
+            axis.grid.color = axis.grid.color || border;
+            axis.ticks.color = axis.ticks.color || text2;
+            if (axis.title.display) axis.title.color = text2;
+            chart.options.scales[key] = axis;
+        });
+        chart.update('none');
+    });
 }
 
 /* ═══ Theme Switcher ══════════════════════════════════════════════════════ */
@@ -2434,7 +2900,7 @@ function buildHistogram(values, binSize) {
         const cs = getComputedStyle(document.documentElement);
         Chart.defaults.color = cs.getPropertyValue('--text2').trim();
         Chart.defaults.borderColor = cs.getPropertyValue('--border').trim();
-        reloadActivePage();
+        refreshAllChartsForTheme();
     });
 })();
 
