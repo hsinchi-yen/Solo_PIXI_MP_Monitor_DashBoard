@@ -661,12 +661,10 @@ class LogUploaderApp(QMainWindow):
 
     # ─── Build DSN ───────────────────────────────────────────
     def _build_dsn(self):
-        host = self.inp_host.text().strip() or load_default_db_host()
-        port = self.inp_port.text().strip() or '5433'
-        db   = self.inp_db.text().strip()   or 'pixi_test'
-        user = self.inp_user.text().strip()  or 'pixi'
-        pw   = self.inp_pass.text().strip()  or 'pixipass'
-        return f"postgresql://{user}:{pw}@{host}:{port}/{db}"
+        return (
+            f"postgresql://{self.inp_user.text()}:{self.inp_pass.text()}"
+            f"@{self.inp_host.text()}:{self.inp_port.text()}/{self.inp_db.text()}"
+        )
 
     # ─── DB Heartbeat (auto-check every 15s) ─────────────────
     def _start_db_heartbeat(self):
@@ -693,7 +691,8 @@ class LogUploaderApp(QMainWindow):
             count = cur.fetchone()[0]
             cur.close()
             conn.close()
-            self._set_db_status("online", f"{count} records")
+            detail = f"{count} records, host={self.inp_host.text()}"
+            self._set_db_status("online", detail)
         except Exception as e:
             self._set_db_status("offline", str(e)[:80])
 
