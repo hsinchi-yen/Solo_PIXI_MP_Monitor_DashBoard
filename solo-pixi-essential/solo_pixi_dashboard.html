@@ -710,6 +710,65 @@ tr:hover td { background: var(--surface2); }
         margin-bottom: 16px;
     }
 }
+
+/* ─── Aligned KPI dual-row ────────────────────────────────────────────────── */
+.kpi-dual-wrapper { margin-bottom: 20px; }
+.kpi-dual-label {
+    font-size: 9px; font-weight: 700; letter-spacing: 1.2px;
+    text-transform: uppercase; padding: 2px 0 5px;
+    display: flex; align-items: center; gap: 6px;
+}
+.kpi-dual-label.aligned { color: var(--teal); }
+.kpi-dual-label.original { color: var(--text3); margin-top: 8px; }
+.kpi-row-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 12px;
+}
+.kpi-aligned-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    border: 1px solid rgba(100,210,255,.2);
+    border-top: 2px solid var(--teal);
+}
+.kpi-aligned-card .kpi-label {
+    font-size: 11px; color: var(--teal); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; opacity: .85;
+}
+.kpi-aligned-card .kpi-value {
+    font-size: 28px; font-weight: 700; letter-spacing: -0.8px;
+    font-variant-numeric: tabular-nums;
+}
+/* compact aligned KPIs on the overview full-screen page */
+#page-overview .kpi-dual-wrapper  { margin-bottom: 0; }
+#page-overview .kpi-dual-label    { padding: 0 0 3px; }
+#page-overview .kpi-row-grid .kpi-card         { padding: 10px 14px; }
+#page-overview .kpi-row-grid .kpi-card .kpi-value         { font-size: 20px; }
+#page-overview .kpi-row-grid .kpi-aligned-card { padding: 10px 14px; }
+#page-overview .kpi-row-grid .kpi-aligned-card .kpi-value { font-size: 20px; }
+
+/* ─── Data Alignment page ────────────────────────────────────────────────── */
+.align-input {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-size: 13px;
+    padding: 5px 8px; width: 90px; text-align: center; outline: none;
+    font-variant-numeric: tabular-nums;
+}
+.align-input:focus { border-color: var(--blue); }
+.align-input.dirty { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(100,210,255,.15); }
+.align-gap-pos  { color: var(--red);   font-weight: 600; }
+.align-gap-zero { color: var(--text3); }
+.align-info-box {
+    padding: 14px 16px; border-radius: var(--radius); margin-bottom: 16px;
+    background: rgba(0,212,255,.05); border: 1px solid rgba(0,212,255,.2);
+    font-size: 12px; color: var(--text2); line-height: 1.7;
+}
+.align-info-box strong { color: var(--teal); font-weight: 600; }
+
+/* ─── Performance hints ──────────────────────────────────────────────────── */
+.chart-box      { contain: layout; }
+.data-table-wrap{ contain: layout; }
 </style>
 </head>
 <body>
@@ -737,6 +796,7 @@ tr:hover td { background: var(--surface2); }
         <a href="#" data-page="failanalysis">🔍 Fail Analysis</a>
         <div class="section-label">Management</div>
         <a href="#" data-page="dbtweak">🔧 DB Tweak</a>
+        <a href="#" data-page="dataalign">⚖️ Data Alignment</a>
     </nav>
     <div class="sidebar-footer">
         <div class="theme-label">🎨 Theme</div>
@@ -778,13 +838,25 @@ tr:hover td { background: var(--surface2); }
 
 <!-- ─── Overview ──────────────────────────────────────────────────────── -->
 <div class="page active" id="page-overview">
-    <div class="kpi-grid" id="kpiGrid">
-        <div class="kpi-card"><div class="kpi-label">Yield %</div><div class="kpi-value green" id="kpiYield">—</div></div>
-        <div class="kpi-card"><div class="kpi-label">Total Tested</div><div class="kpi-value teal" id="kpiTotal">—</div></div>
-        <div class="kpi-card"><div class="kpi-label">PASS</div><div class="kpi-value green" id="kpiPass">—</div></div>
-        <div class="kpi-card"><div class="kpi-label">FAIL</div><div class="kpi-value red" id="kpiFail">—</div></div>
-        <div class="kpi-card"><div class="kpi-label">STOP</div><div class="kpi-value orange" id="kpiStop">—</div></div>
-        <div class="kpi-card"><div class="kpi-label">Retry Rate %</div><div class="kpi-value purple" id="kpiRetry">—</div></div>
+    <div class="kpi-dual-wrapper">
+        <div class="kpi-dual-label aligned">▲ Aligned KPI</div>
+        <div class="kpi-row-grid" id="alignedKpiGrid">
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Yield %</div><div class="kpi-value teal" id="kpiAlignedYield">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Total</div><div class="kpi-value teal" id="kpiAlignedTotal">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned PASS</div><div class="kpi-value green" id="kpiAlignedPass">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned FAIL</div><div class="kpi-value red" id="kpiAlignedFail">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned STOP</div><div class="kpi-value orange" id="kpiAlignedStop">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">STOP→PASS</div><div class="kpi-value teal" id="kpiGoldenStops">—</div></div>
+        </div>
+        <div class="kpi-dual-label original">▼ Raw KPI</div>
+        <div class="kpi-row-grid" id="kpiGrid">
+            <div class="kpi-card"><div class="kpi-label">Yield %</div><div class="kpi-value green" id="kpiYield">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Total Tested</div><div class="kpi-value teal" id="kpiTotal">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">PASS</div><div class="kpi-value green" id="kpiPass">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">FAIL</div><div class="kpi-value red" id="kpiFail">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">STOP</div><div class="kpi-value orange" id="kpiStop">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Retry Rate %</div><div class="kpi-value purple" id="kpiRetry">—</div></div>
+        </div>
     </div>
     <div class="chart-row primary-row">
         <div class="chart-box donut-compact">
@@ -1116,6 +1188,52 @@ tr:hover td { background: var(--surface2); }
     </div>
 </div>
 
+<!-- ─── Data Alignment ──────────────────────────────────────────────────── -->
+<div class="page" id="page-dataalign">
+    <h2 class="page-title">Data Alignment</h2>
+    <div class="align-info-box">
+        <strong>⚖️ 運作原理</strong><br>
+        <strong>Target Total：</strong>輸入每個工單的計畫生產數量。未被測試的數量 (Gap = Target − Tested) 自動計算為 FAIL，失效原因標記為「can't test」。<br>
+        <strong>STOP → PASS：</strong>曾有 PASS 記錄後被重驗機台 (golden sample re-validation) 而記為 STOP 的機台，在 Aligned KPI 中重新計入 PASS。<br>
+        設定值僅儲存於瀏覽器 localStorage，不寫入資料庫，無需登入。
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button class="tweak-btn primary" id="btnAlignSaveAll">💾 Save All Targets</button>
+            <button class="tweak-btn secondary" id="btnAlignRefresh">↻ Refresh</button>
+            <span id="alignSaveStatus" style="font-size:12px;color:var(--teal)"></span>
+        </div>
+        <button class="tweak-btn danger" id="btnAlignClearAll">⊗ Clear All Targets</button>
+    </div>
+    <div class="summary-grid" id="alignSummary"></div>
+    <div class="data-table-wrap">
+        <h3>Work Order Alignment — Target vs Tested</h3>
+        <div class="table-scroll" style="max-height:600px">
+            <table>
+                <thead><tr>
+                    <th>Work Order</th>
+                    <th>Last Test</th>
+                    <th>Tested</th>
+                    <th>PASS</th>
+                    <th>FAIL</th>
+                    <th>STOP</th>
+                    <th>Target Total</th>
+                    <th>Gap (Untested)</th>
+                    <th>STOP→PASS</th>
+                    <th>Aligned PASS</th>
+                    <th>Aligned FAIL</th>
+                    <th>Aligned Yield %</th>
+                </tr></thead>
+                <tbody id="tbAlignWO"></tbody>
+            </table>
+        </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6">
+        * STOP→PASS：統計同一 (Work Order, MAC1) 同時有 PASS 與 STOP 記錄的機台數量（golden sample 複驗場景）。<br>
+        * 設定的 Target Total 儲存於瀏覽器，刷新頁面不遺失。切換頂部篩選條件後，請重新整理以更新數據。
+    </div>
+</div>
+
 </main>
 
 <script>
@@ -1340,6 +1458,73 @@ function clearDashboardCaches() {
     automationState.latestDayFetchedAt = 0;
     automationState.latestDayValue = '';
     dashboardState.advanced.filterKey = '';
+}
+
+/* ═══ Debounce ═══════════════════════════════════════════════════════════ */
+function debounce(fn, ms) {
+    let tid;
+    return function(...args) { clearTimeout(tid); tid = setTimeout(() => fn.apply(this, args), ms); };
+}
+
+/* ═══ Alignment Store (localStorage, no login needed) ═══════════════════ */
+const ALIGN_STORE_KEY = 'pixi-align-v1';
+
+function alignGetStore() {
+    try { return JSON.parse(localStorage.getItem(ALIGN_STORE_KEY) || '{}'); }
+    catch { return {}; }
+}
+function alignSetStore(data) {
+    try { localStorage.setItem(ALIGN_STORE_KEY, JSON.stringify(data)); }
+    catch (e) { console.warn('align store write error', e); }
+}
+function alignGetTarget(workOrder) {
+    const store = alignGetStore();
+    const val = store[workOrder || '(unknown)']?.target;
+    return (val != null && Number.isFinite(Number(val))) ? Number(val) : null;
+}
+function alignSetTarget(workOrder, target) {
+    const store = alignGetStore();
+    const key = workOrder || '(unknown)';
+    if (target == null || target === '' || !Number.isFinite(Number(target))) {
+        delete store[key];
+    } else {
+        store[key] = { target: Math.max(0, Math.round(Number(target))) };
+    }
+    alignSetStore(store);
+}
+
+/* Compute aligned KPIs from summary + retries API data + WO list */
+function computeAlignedKPIs(summary, retries, woRows) {
+    const rawPass = safeNumber(summary.pass);
+    const rawFail = safeNumber(summary.fail);
+    const rawStop = safeNumber(summary.stop);
+    const rawTotal = safeNumber(summary.total);
+
+    /* Golden stops: units with both PASS and STOP records (golden sample re-validation).
+       We count retry entries where pass_count > 0 AND stop_count > 0.
+       These are units whose latest result is STOP but had a prior PASS. */
+    const goldenStops = (retries || []).filter(r =>
+        safeNumber(r.stop_count) > 0 && safeNumber(r.pass_count) > 0
+    ).length;
+
+    /* Gap from user-set target totals per WO */
+    let totalGap = 0;
+    (woRows || []).forEach(row => {
+        const target = alignGetTarget(row.work_order);
+        if (target != null) {
+            totalGap += Math.max(0, target - safeNumber(row.total));
+        }
+    });
+
+    const alignedPass  = rawPass + goldenStops;
+    const alignedStop  = Math.max(0, rawStop - goldenStops);
+    const alignedFail  = rawFail + totalGap;
+    const alignedTotal = rawTotal + totalGap;
+    const alignedYield = alignedTotal > 0
+        ? (alignedPass / alignedTotal * 100).toFixed(2)
+        : '—';
+
+    return { alignedPass, alignedStop, alignedFail, alignedTotal, alignedYield, goldenStops, totalGap };
 }
 
 function setTopFilterValues(values) {
@@ -1844,11 +2029,13 @@ function renderFailAnalysisRows() {
 }
 
 function initDashboardInteractions() {
-    document.getElementById('woSearch').addEventListener('input', event => {
+    const dWoSearch = debounce(event => {
         dashboardState.workorders.search = event.target.value;
         dashboardState.workorders.page = 1;
         renderWorkOrders();
-    });
+    }, 200);
+    document.getElementById('woSearch').addEventListener('input', dWoSearch);
+
     document.getElementById('woQuickFilter').addEventListener('change', event => {
         dashboardState.workorders.quickFilter = event.target.value;
         dashboardState.workorders.page = 1;
@@ -1874,11 +2061,13 @@ function initDashboardInteractions() {
         renderWorkOrders();
     });
 
-    document.getElementById('failSearch').addEventListener('input', event => {
+    const dFailSearch = debounce(event => {
         dashboardState.fails.search = event.target.value;
         dashboardState.fails.page = 1;
         renderFails();
-    });
+    }, 200);
+    document.getElementById('failSearch').addEventListener('input', dFailSearch);
+
     document.getElementById('failResultFilter').addEventListener('change', event => {
         dashboardState.fails.result = event.target.value;
         dashboardState.fails.page = 1;
@@ -1900,10 +2089,11 @@ function initDashboardInteractions() {
         renderFails();
     });
 
-    document.getElementById('failAnalysisSearch').addEventListener('input', event => {
+    const dFailAnalysisSearch = debounce(event => {
         dashboardState.failAnalysis.search = event.target.value;
         renderFailAnalysisRows();
-    });
+    }, 200);
+    document.getElementById('failAnalysisSearch').addEventListener('input', dFailAnalysisSearch);
     document.getElementById('failAnalysisResultFilter').addEventListener('change', event => {
         dashboardState.failAnalysis.result = event.target.value;
         renderFailAnalysisRows();
@@ -1943,16 +2133,27 @@ const donutPercentLabelPlugin = {
 
 /* ═══ Load overview ══════════════════════════════════════════════════════ */
 async function loadOverview() {
-    const [summary, trend, split, monthly] = await Promise.all([
-        api('/api/summary'), api('/api/yield-trend'), api('/api/pass-fail-split'), api('/api/monthly-count')
+    const [summary, trend, split, monthly, retries, woRows] = await Promise.all([
+        api('/api/summary'), api('/api/yield-trend'), api('/api/pass-fail-split'),
+        api('/api/monthly-count'), api('/api/retries'), api('/api/work-order-summary')
     ]);
 
+    /* ── Raw KPIs ── */
     document.getElementById('kpiTotal').textContent = summary.total ?? '—';
-    document.getElementById('kpiPass').textContent = summary.pass ?? '—';
-    document.getElementById('kpiFail').textContent = summary.fail ?? '—';
-    document.getElementById('kpiStop').textContent = summary.stop ?? '—';
-    document.getElementById('kpiYield').textContent = summary.yield_pct != null ? summary.yield_pct + '%' : '—';
+    document.getElementById('kpiPass').textContent  = summary.pass  ?? '—';
+    document.getElementById('kpiFail').textContent  = summary.fail  ?? '—';
+    document.getElementById('kpiStop').textContent  = summary.stop  ?? '—';
+    document.getElementById('kpiYield').textContent = summary.yield_pct  != null ? summary.yield_pct  + '%' : '—';
     document.getElementById('kpiRetry').textContent = summary.retry_rate != null ? summary.retry_rate + '%' : '—';
+
+    /* ── Aligned KPIs ── */
+    const aligned = computeAlignedKPIs(summary, retries, woRows);
+    document.getElementById('kpiAlignedYield').textContent  = aligned.alignedYield !== '—' ? aligned.alignedYield + '%' : '—';
+    document.getElementById('kpiAlignedTotal').textContent  = aligned.alignedTotal;
+    document.getElementById('kpiAlignedPass').textContent   = aligned.alignedPass;
+    document.getElementById('kpiAlignedFail').textContent   = aligned.alignedFail;
+    document.getElementById('kpiAlignedStop').textContent   = aligned.alignedStop;
+    document.getElementById('kpiGoldenStops').textContent   = aligned.goldenStops > 0 ? aligned.goldenStops : '—';
 
     const trendMeta = document.getElementById('yieldTrendMeta');
     const selectedWo = document.getElementById('filterWorkOrder').value || 'All Work Orders';
@@ -2457,6 +2658,136 @@ async function loadAdvanced() {
     renderAdvanced();
 }
 
+/* ═══ Load Data Alignment ════════════════════════════════════════════════ */
+async function loadDataAlign() {
+    const [woRows, retries] = await Promise.all([
+        api('/api/work-order-summary'),
+        api('/api/retries'),
+    ]);
+
+    /* Group retries by work_order key for per-WO golden stop computation */
+    const retryByWO = {};
+    (retries || []).forEach(r => {
+        const key = r.work_order || '(unknown)';
+        if (!retryByWO[key]) retryByWO[key] = [];
+        retryByWO[key].push(r);
+    });
+
+    const store = alignGetStore();
+    let totalGap = 0, totalGoldenStops = 0;
+    let totalAlignedPass = 0, totalAlignedFail = 0, totalAlignedTotal = 0;
+
+    const alignRows = (woRows || []).map(row => {
+        const key        = row.work_order || '(unknown)';
+        const target     = store[key]?.target ?? null;
+        const tested     = safeNumber(row.total);
+        const gap        = target != null ? Math.max(0, target - tested) : 0;
+        const woRetries  = retryByWO[key] || [];
+        const goldenStops = woRetries.filter(r =>
+            safeNumber(r.stop_count) > 0 && safeNumber(r.pass_count) > 0
+        ).length;
+        const alignedPass  = safeNumber(row.passed)  + goldenStops;
+        const alignedFail  = safeNumber(row.failed)  + gap;
+        const alignedStop  = Math.max(0, safeNumber(row.stopped) - goldenStops);
+        const alignedTotal = tested + gap;
+        const alignedYield = alignedTotal > 0
+            ? (alignedPass / alignedTotal * 100).toFixed(2) : '—';
+
+        totalGap          += gap;
+        totalGoldenStops  += goldenStops;
+        totalAlignedPass  += alignedPass;
+        totalAlignedFail  += alignedFail;
+        totalAlignedTotal += alignedTotal;
+
+        return { ...row, key, target, gap, goldenStops, alignedPass, alignedFail, alignedStop, alignedTotal, alignedYield };
+    });
+
+    const overallAlignedYield = totalAlignedTotal > 0
+        ? (totalAlignedPass / totalAlignedTotal * 100).toFixed(2) : '—';
+
+    renderSummaryCards('alignSummary', [
+        { label: 'Work Orders',        value: alignRows.length,
+          color: 'blue' },
+        { label: 'Total Gap (Untested)',value: totalGap > 0 ? '+' + totalGap : '0 ✓',
+          color: totalGap > 0 ? 'red' : 'green' },
+        { label: 'STOP→PASS (total)',   value: totalGoldenStops || '—',
+          color: 'teal' },
+        { label: 'Overall Aligned Yield', value: overallAlignedYield !== '—' ? overallAlignedYield + '%' : '—',
+          color: overallAlignedYield !== '—' ? (parseFloat(overallAlignedYield) >= 95 ? 'green' : 'orange') : '' },
+    ]);
+
+    const tbody = document.getElementById('tbAlignWO');
+    if (!alignRows.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="table-empty">No work orders found for current filter. Adjust the top filter bar.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = alignRows.map(r => {
+        const yVal   = parseFloat(r.alignedYield);
+        const yColor = Number.isFinite(yVal)
+            ? (yVal >= 95 ? 'var(--green)' : yVal >= 80 ? 'var(--orange)' : 'var(--red)')
+            : 'var(--text3)';
+        const yDisplay = r.alignedYield !== '—' ? r.alignedYield + '%' : '—';
+        return `<tr>
+            <td><strong>${safeText(r.work_order || '(unknown)')}</strong></td>
+            <td>${fmtTime(r.last_test)}</td>
+            <td>${safeNumber(r.total)}</td>
+            <td><span class="badge pass">${safeNumber(r.passed)}</span></td>
+            <td><span class="badge fail">${safeNumber(r.failed)}</span></td>
+            <td><span class="badge stop">${safeNumber(r.stopped)}</span></td>
+            <td>
+                <input class="align-input" data-wo="${esc(r.key)}"
+                    type="number" min="0" step="1"
+                    value="${r.target != null ? r.target : ''}"
+                    placeholder="—">
+            </td>
+            <td class="${r.gap > 0 ? 'align-gap-pos' : 'align-gap-zero'}">${r.gap > 0 ? '+' + r.gap : '—'}</td>
+            <td>${r.goldenStops > 0
+                ? `<span style="color:var(--teal);font-weight:600">${r.goldenStops}</span>`
+                : '<span style="color:var(--text3)">—</span>'}</td>
+            <td><span style="color:var(--green);font-weight:600">${r.alignedPass}</span></td>
+            <td><span style="color:var(--red);font-weight:600">${r.alignedFail}</span></td>
+            <td style="color:${yColor};font-weight:600">${yDisplay}</td>
+        </tr>`;
+    }).join('');
+}
+
+function initAlignPage() {
+    document.getElementById('btnAlignSaveAll').addEventListener('click', () => {
+        const inputs = document.querySelectorAll('#tbAlignWO .align-input');
+        inputs.forEach(inp => {
+            const wo  = inp.dataset.wo;
+            const val = inp.value.trim();
+            alignSetTarget(wo, val === '' ? null : parseInt(val, 10));
+            inp.classList.remove('dirty');
+        });
+        const statusEl = document.getElementById('alignSaveStatus');
+        statusEl.textContent = `✓ Saved ${inputs.length} WO target(s)`;
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        loadDataAlign();
+    });
+
+    document.getElementById('btnAlignRefresh').addEventListener('click', loadDataAlign);
+
+    document.getElementById('btnAlignClearAll').addEventListener('click', () => {
+        if (!confirm('Clear ALL alignment targets? This cannot be undone.')) return;
+        alignSetStore({});
+        const statusEl = document.getElementById('alignSaveStatus');
+        statusEl.textContent = 'All targets cleared';
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        loadDataAlign();
+    });
+
+    /* Mark inputs dirty when user changes value (not yet saved) */
+    document.getElementById('tbAlignWO').addEventListener('input', e => {
+        if (!e.target.classList.contains('align-input')) return;
+        const saved   = alignGetTarget(e.target.dataset.wo);
+        const val     = e.target.value.trim();
+        const changed = val === '' ? saved !== null : Number(val) !== saved;
+        e.target.classList.toggle('dirty', changed);
+    });
+}
+
 /* ═══ DB Tweak ═══════════════════════════════════════════════════════════ */
 let tweakToken = null;
 const tweakState = {
@@ -2822,6 +3153,7 @@ const pageLoaders = {
     advanced: loadAdvanced,
     failanalysis: loadFailAnalysis,
     dbtweak: loadDBTweak,
+    dataalign: loadDataAlign,
 };
 function loadPageData(page) {
     if (!pageLoaders[page]) return Promise.resolve();
@@ -2907,6 +3239,7 @@ function refreshAllChartsForTheme() {
 /* ═══ Init ═══════════════════════════════════════════════════════════════ */
 async function initDashboard() {
     initDashboardInteractions();
+    initAlignPage();
     initDashboardAutomation();
     await loadFilterOptions();
     const currentYear = String(new Date().getFullYear());
