@@ -1499,9 +1499,9 @@ body::after {
     <h2 class="page-title">Data Alignment</h2>
     <div class="align-info-box">
         <strong>⚖️ 運作原理</strong><br>
-        <strong>Target Total：</strong>輸入每個工單的計畫生產數量。未被測試的數量 (Gap = Target − Tested) 自動計算為 FAIL，失效原因標記為「can't test」。<br>
-        <strong>STOP → PASS：</strong>曾有 PASS 記錄後被重驗機台 (golden sample re-validation) 而記為 STOP 的機台，在 Aligned KPI 中重新計入 PASS。<br>
-        設定值僅儲存於瀏覽器 localStorage，不寫入資料庫，無需登入。
+        <strong>Target Total：</strong>輸入每個工單的計畫生產數量。未被測試的數量 (Gap = Target − Tested) 會自動被計算為潛在的不良品（Aligned FAIL = Raw FAIL + Gap）。<br>
+        <strong>PASS 優先認列 (Raw KPI)：</strong>系統會在產生 Raw KPI 時自動處理，同一 (Work Order, MAC1) 只要曾有 PASS 記錄，不論時間先後皆優先計為 PASS。<br>
+        <strong>雲端同步儲存：</strong>設定的 Target Total 直接寫入後端 PostgreSQL 資料庫，支援跨裝置即時同步，無需登入。
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1535,8 +1535,8 @@ body::after {
         </div>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6">
-        * STOP→PASS：統計同一 (Work Order, MAC1) 同時有 PASS 與 STOP 記錄的機台數量（golden sample 複驗場景）。<br>
-        * 設定的 Target Total 儲存於瀏覽器，刷新頁面不遺失。切換頂部篩選條件後，請重新整理以更新數據。
+        * STOP→PASS：僅為輔助參考資訊，顯示有多少台設備受惠於「PASS 優先認列」而被挽回為 PASS（如 Golden Sample 複驗），此數值已內含於 Raw PASS 之中，不再重複相加。<br>
+        * 設定的 Target Total 儲存於伺服器資料庫，點擊 Save All 後跨裝置即可同步，即使更換電腦資料也不會遺失。
     </div>
 </div>
 
