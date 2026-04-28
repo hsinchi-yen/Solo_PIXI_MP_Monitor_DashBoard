@@ -265,12 +265,19 @@ body {
     background: linear-gradient(135deg, #94a3b8 0%, #475569 100%); -webkit-background-clip: text; color: transparent;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
-.kpi-card .kpi-value.green { background: linear-gradient(135deg, #34d399 0%, #059669 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.red { background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.orange { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.blue { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.purple { background: linear-gradient(135deg, #c084fc 0%, #7e22ce 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.teal { background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.green { background: linear-gradient(135deg, #34d399 0%, #10b981 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.red { background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.orange { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.blue { background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.purple { background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.teal { background: linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%); -webkit-background-clip: text; color: transparent; }
+
+.kpi-aligned-card .kpi-value.deep-green { background: linear-gradient(135deg, #10b981 0%, #047857 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.kpi-aligned-card .kpi-value.deep-red { background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.kpi-aligned-card .kpi-value.deep-orange { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.kpi-aligned-card .kpi-value.deep-blue { background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.kpi-aligned-card .kpi-value.deep-purple { background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.kpi-aligned-card .kpi-value.deep-teal { background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
 
 /* ─── Chart containers ────────────────────────────────────────────────────── */
 .chart-row {
@@ -1140,12 +1147,12 @@ body::after {
     <div class="kpi-dual-wrapper">
         <div class="kpi-dual-label aligned">▲ Aligned KPI</div>
         <div class="kpi-row-grid" id="alignedKpiGrid">
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Yield %</div><div class="kpi-value teal" id="kpiAlignedYield">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Total</div><div class="kpi-value teal" id="kpiAlignedTotal">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned PASS</div><div class="kpi-value green" id="kpiAlignedPass">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned FAIL</div><div class="kpi-value red" id="kpiAlignedFail">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned STOP</div><div class="kpi-value orange" id="kpiAlignedStop">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">STOP→PASS</div><div class="kpi-value teal" id="kpiGoldenStops">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Yield %</div><div class="kpi-value deep-green" id="kpiAlignedYield">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Total</div><div class="kpi-value deep-teal" id="kpiAlignedTotal">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned PASS</div><div class="kpi-value deep-green" id="kpiAlignedPass">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned FAIL</div><div class="kpi-value deep-red" id="kpiAlignedFail">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Aligned STOP</div><div class="kpi-value deep-orange" id="kpiAlignedStop">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">STOP→PASS</div><div class="kpi-value deep-purple" id="kpiGoldenStops">—</div></div>
         </div>
         <div class="kpi-dual-label original">▼ Raw KPI</div>
         <div class="kpi-row-grid" id="kpiGrid">
