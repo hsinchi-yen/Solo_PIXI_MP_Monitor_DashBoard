@@ -44,6 +44,13 @@ def run_migrations():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_unit_date ON module_test(unit_date)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_unit_date_time ON module_test(unit_date, start_time)")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_mt_workorder_mac1_time ON module_test(work_order, mac1, start_time)")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS alignment_targets (
+            work_order TEXT PRIMARY KEY,
+            target_total INT NOT NULL,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    """)
     conn.commit()
     cur.close()
     conn.close()
@@ -52,7 +59,7 @@ def run_migrations():
 # ─── Latest record CTE (dedup retries — keep latest per work_order+mac1) ───
 LATEST_CTE = """
 WITH latest AS (
-    SELECT *, ROW_NUMBER() OVER (PARTITION BY work_order, mac1 ORDER BY start_time DESC) AS rn
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY CASE WHEN result = 'PASS' THEN 1 ELSE 2 END ASC, start_time DESC) AS rn
     FROM module_test {where}
 )
 """
@@ -97,7 +104,7 @@ def _resolve_trend_day(cur, unit_date=None, work_order=None, year=None, month=No
     )
     cur.execute(f"""
         WITH latest AS (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY CASE WHEN result = 'PASS' THEN 1 ELSE 2 END ASC, start_time DESC) AS rn
             FROM module_test {where}
         )
         SELECT MAX(COALESCE(unit_date, start_time::date)) AS target_day
@@ -178,6 +185,37 @@ def _normalize_page_size(page_size):
     if page_size <= 0:
         raise ValueError("page_size must be positive")
     return page_size
+
+
+# ─── Data Alignment ──────────────────────────────────────────────────────────
+@app.get("/api/alignment-targets")
+def api_get_alignment_targets():
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT work_order, target_total FROM alignment_targets")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return {row["work_order"]: row["target_total"] for row in rows}
+
+@app.post("/api/alignment-targets")
+def api_set_alignment_targets(targets: dict = Body(...)):
+    conn = get_conn()
+    cur = conn.cursor()
+    for wo, target in targets.items():
+        if target is None or target == "":
+            cur.execute("DELETE FROM alignment_targets WHERE work_order = %s", (wo,))
+        else:
+            cur.execute("""
+                INSERT INTO alignment_targets (work_order, target_total, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (work_order) DO UPDATE
+                SET target_total = EXCLUDED.target_total, updated_at = NOW()
+            """, (wo, target))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"status": "ok"}
 
 
 # ─── Serve dashboard ─────────────────────────────────────────────────────────
@@ -267,7 +305,7 @@ def api_yield_trend(unit_date: str = None, work_order: str = None, year: int = N
 
     sql = f"""
     WITH latest AS (
-        SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+        SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY CASE WHEN result = 'PASS' THEN 1 ELSE 2 END ASC, start_time DESC) AS rn
         FROM module_test {where}
     ),
     dedup AS (
@@ -312,7 +350,7 @@ def api_pass_fail_split(unit_date: str = None, work_order: str = None, year: int
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
         WITH latest AS (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY CASE WHEN result = 'PASS' THEN 1 ELSE 2 END ASC, start_time DESC) AS rn
             FROM module_test {where}
         )
         SELECT result, COUNT(*) AS count
@@ -387,7 +425,7 @@ def api_monthly_count(work_order: str = None, year: int = None, month: int = Non
             SELECT generate_series(1, 12) AS m
         ),
         latest AS (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY CASE WHEN result = 'PASS' THEN 1 ELSE 2 END ASC, start_time DESC) AS rn
             FROM module_test {where}
         ),
         data AS (
@@ -566,7 +604,7 @@ def api_work_orders(unit_date: str = None, work_order: str = None, year: int = N
         ),
         latest AS (
             SELECT *,
-                   ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY start_time DESC) AS rn
+                   ROW_NUMBER() OVER (PARTITION BY COALESCE(work_order, ''), mac1 ORDER BY CASE WHEN result = 'PASS' THEN 1 ELSE 2 END ASC, start_time DESC) AS rn
             FROM filtered
         ),
         latest_agg AS (
@@ -639,7 +677,7 @@ def api_work_order_summary(unit_date: str = None, work_order: str = None, year: 
         ),
         latest AS (
             SELECT *,
-                   ROW_NUMBER() OVER (PARTITION BY effective_wo, mac1 ORDER BY start_time DESC) AS rn
+                   ROW_NUMBER() OVER (PARTITION BY effective_wo, mac1 ORDER BY CASE WHEN result = 'PASS' THEN 1 ELSE 2 END ASC, start_time DESC) AS rn
             FROM filtered
         ),
         latest_agg AS (

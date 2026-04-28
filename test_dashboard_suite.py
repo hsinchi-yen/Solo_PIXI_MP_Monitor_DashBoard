@@ -14,6 +14,9 @@ import importlib.util
 from html.parser import HTMLParser
 from unittest.mock import MagicMock, patch
 
+if sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 PROJ_ROOT      = os.path.dirname(os.path.abspath(__file__))
 DASHBOARD_PATH = os.path.join(PROJ_ROOT, 'solo-pixi-essential', 'solo_pixi_dashboard.html')
 APP_PATH       = os.path.join(PROJ_ROOT, 'solo-pixi-essential', 'api', 'app.py')
@@ -81,22 +84,14 @@ def _build_js_harness():
     with open(DASHBOARD_PATH, encoding='utf-8') as f:
         raw = f.read()
 
-    fn_names = ['debounce', 'safeNumber', 'alignGetStore', 'alignSetStore',
-                'alignGetTarget', 'alignSetTarget', 'computeAlignedKPIs']
+    fn_names = ['debounce', 'safeNumber', 'alignGetTarget', 'computeAlignedKPIs']
 
     stubs = textwrap.dedent("""\
         // --- Browser stubs ---
-        const _store = {};
-        const localStorage = {
-            getItem:  (k) => _store[k] ?? null,
-            setItem:  (k, v) => { _store[k] = v; },
-            removeItem: (k) => { delete _store[k]; },
-        };
+        let globalAlignStore = {};
         // Suppress store write warnings
         const _origWarn = console.warn;
         console.warn = () => {};
-
-        const ALIGN_STORE_KEY = 'pixi-align-v1';
     """)
 
     bodies = []
@@ -205,14 +200,8 @@ class TestHTMLStructure(unittest.TestCase):
     def test_js_computeAlignedKPIs_present(self):
         self.assertIn('function computeAlignedKPIs(', self.raw)
 
-    def test_js_alignGetStore_present(self):
-        self.assertIn('function alignGetStore(', self.raw)
-
     def test_js_alignGetTarget_present(self):
         self.assertIn('function alignGetTarget(', self.raw)
-
-    def test_js_alignSetTarget_present(self):
-        self.assertIn('function alignSetTarget(', self.raw)
 
     def test_js_loadDataAlign_present(self):
         self.assertIn('function loadDataAlign(', self.raw)
@@ -222,10 +211,6 @@ class TestHTMLStructure(unittest.TestCase):
 
     def test_js_safeNumber_present(self):
         self.assertIn('function safeNumber(', self.raw)
-
-    # ── localStorage key ─────────────────────────────────────────────────────
-    def test_align_store_key(self):
-        self.assertIn("'pixi-align-v1'", self.raw)
 
     # ── pageLoaders wiring ────────────────────────────────────────────────────
     def test_dataalign_in_page_loaders(self):
@@ -245,8 +230,7 @@ class TestHTMLStructure(unittest.TestCase):
 
     # ── JS function bodies extractable ────────────────────────────────────────
     def test_js_functions_extractable(self):
-        for name in ('debounce', 'safeNumber', 'alignGetStore',
-                     'alignGetTarget', 'alignSetTarget', 'computeAlignedKPIs'):
+        for name in ('debounce', 'safeNumber', 'alignGetTarget', 'computeAlignedKPIs'):
             body = _extract_js_fn(self.raw, name)
             self.assertIsNotNone(body, f"Could not extract JS function: {name}")
 
@@ -405,44 +389,14 @@ class TestJavaScriptLogic(unittest.TestCase):
     def test_safeNumber_nan(self):
         self.assertEqual(self._run_js("console.log(safeNumber(NaN));"), '0')
 
-    # ── alignGetTarget / alignSetTarget ───────────────────────────────────────
+    # ── alignGetTarget ───────────────────────────────────────
     def test_alignGetTarget_unset_returns_null(self):
         self.assertEqual(self._run_js("console.log(alignGetTarget('WO-001'));"), 'null')
 
-    def test_alignSetGet_roundtrip(self):
+    def test_alignGetTarget_returns_number(self):
         out = self._run_js(textwrap.dedent("""\
-            alignSetTarget('WO-002', 100);
+            globalAlignStore['WO-002'] = 100;
             console.log(alignGetTarget('WO-002'));
-        """))
-        self.assertEqual(out, '100')
-
-    def test_alignSetTarget_clear_on_null(self):
-        out = self._run_js(textwrap.dedent("""\
-            alignSetTarget('WO-003', 50);
-            alignSetTarget('WO-003', null);
-            console.log(alignGetTarget('WO-003'));
-        """))
-        self.assertEqual(out, 'null')
-
-    def test_alignSetTarget_clear_on_empty_string(self):
-        out = self._run_js(textwrap.dedent("""\
-            alignSetTarget('WO-004', 75);
-            alignSetTarget('WO-004', '');
-            console.log(alignGetTarget('WO-004'));
-        """))
-        self.assertEqual(out, 'null')
-
-    def test_alignSetTarget_null_workorder(self):
-        out = self._run_js(textwrap.dedent("""\
-            alignSetTarget(null, 77);
-            console.log(alignGetTarget(null));
-        """))
-        self.assertEqual(out, '77')
-
-    def test_alignSetTarget_rounds_to_integer(self):
-        out = self._run_js(textwrap.dedent("""\
-            alignSetTarget('WO-005', 99.7);
-            console.log(alignGetTarget('WO-005'));
         """))
         self.assertEqual(out, '100')
 
@@ -460,9 +414,9 @@ class TestJavaScriptLogic(unittest.TestCase):
         """)
         self.assertEqual(self._run_js(script), '1')
 
-    def test_aligned_pass_adds_golden_stops(self):
+    def test_aligned_pass_equals_raw_pass(self):
         script = textwrap.dedent("""\
-            const summary = { pass: 80, fail: 10, stop: 5, total: 95 };
+            const summary = { pass: 82, fail: 10, stop: 5, total: 97 };
             const retries = [
                 { pass_count: 2, stop_count: 1 },
                 { pass_count: 1, stop_count: 1 },
@@ -472,9 +426,9 @@ class TestJavaScriptLogic(unittest.TestCase):
         """)
         self.assertEqual(self._run_js(script), '82')
 
-    def test_aligned_stop_reduced_by_golden_stops(self):
+    def test_aligned_stop_equals_raw_stop(self):
         script = textwrap.dedent("""\
-            const summary = { pass: 80, fail: 10, stop: 5, total: 95 };
+            const summary = { pass: 80, fail: 10, stop: 4, total: 94 };
             const retries = [{ pass_count: 1, stop_count: 1 }];
             const r = computeAlignedKPIs(summary, retries, []);
             console.log(r.alignedStop);
@@ -498,7 +452,7 @@ class TestJavaScriptLogic(unittest.TestCase):
     # ── computeAlignedKPIs — gap / target ─────────────────────────────────────
     def test_gap_adds_to_fail_and_total(self):
         script = textwrap.dedent("""\
-            alignSetTarget('WO-A', 200);
+            globalAlignStore['WO-A'] = 200;
             const summary = { pass: 80, fail: 10, stop: 0, total: 150 };
             const woRows = [{ work_order: 'WO-A', total: 150 }];
             const r = computeAlignedKPIs(summary, [], woRows);
@@ -508,7 +462,7 @@ class TestJavaScriptLogic(unittest.TestCase):
 
     def test_negative_gap_clamped_to_zero(self):
         script = textwrap.dedent("""\
-            alignSetTarget('WO-B', 50);
+            globalAlignStore['WO-B'] = 50;
             const summary = { pass: 60, fail: 5, stop: 0, total: 65 };
             const woRows = [{ work_order: 'WO-B', total: 65 }];
             const r = computeAlignedKPIs(summary, [], woRows);

@@ -37,8 +37,9 @@ body {
 /* ─── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar {
     width: var(--sidebar-w);
-    background: var(--surface);
-    border-right: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -84,9 +85,22 @@ body {
     border-radius: 8px;
     margin: 2px 8px;
     transition: all .15s;
+    position: relative;
+    border: 1px solid transparent;
 }
 .sidebar nav a:hover { background: var(--surface2); color: var(--text); }
-.sidebar nav a.active { background: var(--blue); color: #fff; }
+.sidebar nav a.active {
+    background: color-mix(in oklab, var(--blue) 14%, transparent);
+    color: var(--text);
+    border-color: color-mix(in oklab, var(--blue) 32%, transparent);
+}
+.sidebar nav a.active::before {
+    content: "";
+    position: absolute; left: -9px; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 18px; border-radius: 2px;
+    background: var(--blue);
+    box-shadow: 0 0 8px var(--blue);
+}
 .sidebar nav .section-label {
     padding: 16px 20px 6px;
     font-size: 11px;
@@ -98,17 +112,22 @@ body {
 .sidebar .sidebar-header {
     padding: 14px 20px;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
 }
 .sidebar .clock {
     font-size: 22px;
     font-weight: 300;
     color: var(--text2);
     font-variant-numeric: tabular-nums;
+    letter-spacing: -0.5px;
 }
 .sidebar .clock-date {
     font-size: 11px;
     color: var(--text3);
-    margin-top: 2px;
+    margin-left: auto;
 }
 .sidebar .sidebar-footer {
     padding: 14px 20px;
@@ -141,20 +160,20 @@ body {
 
 /* ─── Theme: Cyber Neon ───────────────────────────────────────────────── */
 [data-theme="cyber"] {
-    --bg: #0a0a14;
-    --surface: #12121f;
-    --surface2: #1a1a2e;
-    --surface3: #25253d;
-    --text: #e0e0ff;
-    --text2: #8888aa;
-    --text3: #555577;
-    --blue: #00d4ff;
-    --green: #00ff88;
-    --red: #ff3366;
-    --orange: #ff8800;
-    --purple: #aa44ff;
-    --teal: #00ffcc;
-    --border: #2a2a44;
+    --bg: #07080a;
+    --surface: #111318;
+    --surface2: #1a1c23;
+    --surface3: #252830;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #475569;
+    --blue: #00e5ff;
+    --green: #10b981;
+    --red: #f43f5e;
+    --orange: #f59e0b;
+    --purple: #8b5cf6;
+    --teal: #06b6d4;
+    --border: #334155;
 }
 
 /* ─── Theme: Deep Space ───────────────────────────────────────────────── */
@@ -179,19 +198,29 @@ body {
 .main {
     margin-left: var(--sidebar-w);
     flex: 1;
-    padding: 28px 32px;
-    height: 100vh;
     display: flex;
     flex-direction: column;
+    height: 100vh;
     overflow: hidden;
 }
-.page { display: none; flex: 1; min-height: 0; }
-.page.active { display: block; overflow: auto; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+.page { display: none; }
+.page.active {
+    display: block;
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px 40px;
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 .page-title {
-    font-size: 28px;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 800;
     letter-spacing: -0.5px;
     margin-bottom: 24px;
+    background: linear-gradient(135deg, #ffffff 0%, #94a3b8 50%, #e2e8f0 100%);
+    -webkit-background-clip: text;
+    color: transparent;
+    text-shadow: 0 2px 10px rgba(255,255,255,0.1);
 }
 
 /* ─── KPI Cards ───────────────────────────────────────────────────────────── */
@@ -202,10 +231,18 @@ body {
     margin-bottom: 28px;
 }
 .kpi-card {
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-radius: var(--radius);
     padding: 20px;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.kpi-card:hover {
+    transform: translateY(-4px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 15px color-mix(in srgb, var(--blue) 20%, transparent);
+    border-color: color-mix(in srgb, var(--blue) 50%, transparent);
 }
 .kpi-card .kpi-label {
     font-size: 12px;
@@ -221,12 +258,19 @@ body {
     letter-spacing: -1px;
     font-variant-numeric: tabular-nums;
 }
-.kpi-card .kpi-value.green { color: var(--green); }
-.kpi-card .kpi-value.red { color: var(--red); }
-.kpi-card .kpi-value.orange { color: var(--orange); }
-.kpi-card .kpi-value.blue { color: var(--blue); }
-.kpi-card .kpi-value.purple { color: var(--purple); }
-.kpi-card .kpi-value.teal { color: var(--teal); }
+.kpi-card .kpi-value {
+    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%); -webkit-background-clip: text; color: transparent;
+}
+.kpi-aligned-card .kpi-value {
+    background: linear-gradient(135deg, #94a3b8 0%, #475569 100%); -webkit-background-clip: text; color: transparent;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.kpi-card .kpi-value.green { background: linear-gradient(135deg, #34d399 0%, #059669 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.red { background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.orange { background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.blue { background: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.purple { background: linear-gradient(135deg, #c084fc 0%, #7e22ce 100%); -webkit-background-clip: text; color: transparent; }
+.kpi-card .kpi-value.teal { background: linear-gradient(135deg, #2dd4bf 0%, #0d9488 100%); -webkit-background-clip: text; color: transparent; }
 
 /* ─── Chart containers ────────────────────────────────────────────────────── */
 .chart-row {
@@ -239,10 +283,12 @@ body {
     grid-template-columns: 1fr 1fr;
 }
 .chart-box {
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-radius: var(--radius);
     padding: 20px;
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 .chart-box h3 {
     font-size: 14px;
@@ -259,9 +305,11 @@ body {
 
 /* ─── Tables ──────────────────────────────────────────────────────────────── */
 .data-table-wrap {
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-radius: var(--radius);
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.2);
     overflow: hidden;
     margin-bottom: 28px;
 }
@@ -354,67 +402,61 @@ tr:hover td { background: var(--surface2); }
     gap: 12px;
     flex-wrap: wrap;
     justify-content: flex-end;
-    margin-bottom: 24px;
+    margin: 20px 32px 0;
     padding: 12px 16px;
-    background: var(--surface);
+    background: color-mix(in srgb, var(--surface) 60%, transparent);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
     border-radius: var(--radius);
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 16px rgba(0, 0, 0, 0.1);
+    flex-shrink: 0;
 }
 
 /* ─── Overview full-screen layout ─────────────────────────────────────────── */
-#page-overview.active {
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px;
-    overflow: hidden;
-}
-#page-overview .kpi-grid { margin-bottom: 0; }
-#page-overview .kpi-card { padding: 14px; }
-#page-overview .kpi-card .kpi-value { font-size: 24px; }
-#page-overview .chart-row { margin-bottom: 0; min-height: 0; }
-#page-overview .chart-box { min-height: 0; padding: 14px; }
-#page-overview .chart-box h3 { margin-bottom: 10px; }
-#page-overview .chart-box canvas { height: calc(100% - 28px) !important; }
+/* ─── Overview: scrollable free-flow layout ──────────────────────────────── */
+#page-overview.active { display: block; }
+
+/* DS widgets at full natural size */
+#page-overview .ds-health     { margin-bottom: 12px; }
+#page-overview .ds-yield-hero { margin-bottom: 12px; }
+
+/* KPI dual rows */
+#page-overview .kpi-dual-wrapper { margin-bottom: 20px; }
+#page-overview .kpi-dual-label   { padding: 0 0 4px; }
+#page-overview .kpi-row-grid .kpi-card,
+#page-overview .kpi-row-grid .kpi-aligned-card { padding: 14px 18px; }
+#page-overview .kpi-row-grid .kpi-card .kpi-value,
+#page-overview .kpi-row-grid .kpi-aligned-card .kpi-value { font-size: 28px; }
+
+/* Chart rows — natural spacing */
+#page-overview .chart-row        { margin-bottom: 20px; }
+#page-overview .chart-box        { padding: 20px; }
+#page-overview .chart-box h3     { margin-bottom: 14px; }
 #page-overview .chart-row.primary-row { grid-template-columns: 1fr 3fr; }
-#page-overview .chart-row.primary-row .donut-compact { grid-column: 1; }
-#page-overview .chart-row.primary-row .yield-wide { grid-column: 2; }
-#page-overview .donut-compact {
-    display: flex;
-    flex-direction: column;
-}
+#page-overview .chart-row.monthly-row { grid-template-columns: 1fr 1fr; }
+
+/* Chart canvas heights — explicit so Chart.js renders correctly */
+#page-overview .chart-box canvas          { height: 280px !important; }
+#page-overview .donut-compact canvas      { height: 260px !important; aspect-ratio: unset; }
+#page-overview .chart-row.monthly-row canvas { height: 240px !important; }
+
+/* Donut layout */
+#page-overview .donut-compact { display: flex; flex-direction: column; }
 #page-overview .status-legend {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
+    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px;
 }
 #page-overview .status-legend .item {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 11px;
-    color: var(--text2);
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text2);
 }
 #page-overview .status-legend .swatch {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    display: inline-block;
+    width: 10px; height: 10px; border-radius: 50%; display: inline-block;
 }
 #page-overview .status-legend .swatch.pass { background: #30d158; }
 #page-overview .status-legend .swatch.fail { background: #ff453a; }
 #page-overview .status-legend .swatch.stop { background: #ff9f0a; }
 #yieldTrendMeta {
-    font-size: 11px;
-    color: var(--text3);
-    font-weight: 500;
-    margin-left: 8px;
-}
-#page-overview .donut-compact canvas {
-    height: auto !important;
-    width: 100% !important;
-    aspect-ratio: 1 / 1;
-    max-height: 240px;
+    font-size: 11px; color: var(--text3); font-weight: 500; margin-left: 8px;
 }
 .filter-group { display: flex; flex-direction: column; gap: 3px; }
 .filter-group label {
@@ -658,22 +700,18 @@ tr:hover td { background: var(--surface2); }
     }
     .sidebar .logo { padding: 18px 12px; }
     .sidebar nav a { justify-content: center; padding: 10px 8px; }
-    .main { padding: 20px 18px; }
+    .main { overflow: hidden; }
+    .page.active { padding: 20px 18px 32px; }
+    .filter-bar { margin: 16px 18px 0; }
     .chart-row,
     .chart-row.monthly-row,
     #page-overview .chart-row.primary-row,
     .grid-2 {
         grid-template-columns: 1fr;
     }
-    #page-overview.active {
-        display: block;
-        overflow: auto;
-    }
-    #page-overview .kpi-grid,
-    #page-overview .chart-row,
-    #page-overview .chart-box {
-        margin-bottom: 14px;
-    }
+    #page-overview .chart-box canvas          { height: 220px !important; }
+    #page-overview .donut-compact canvas      { height: 220px !important; }
+    #page-overview .chart-row.monthly-row canvas { height: 200px !important; }
 }
 
 @media (max-width: 768px) {
@@ -691,9 +729,10 @@ tr:hover td { background: var(--surface2); }
     .main {
         margin-left: 0;
         height: auto;
-        min-height: calc(100vh - 60px);
-        padding: 14px;
+        overflow: visible;
     }
+    .page.active { padding: 14px 14px 28px; }
+    .filter-bar { margin: 10px 14px 0; }
     .filter-bar,
     .list-toolbar,
     .pager-bar {
@@ -740,13 +779,6 @@ tr:hover td { background: var(--surface2); }
     font-size: 28px; font-weight: 700; letter-spacing: -0.8px;
     font-variant-numeric: tabular-nums;
 }
-/* compact aligned KPIs on the overview full-screen page */
-#page-overview .kpi-dual-wrapper  { margin-bottom: 0; }
-#page-overview .kpi-dual-label    { padding: 0 0 3px; }
-#page-overview .kpi-row-grid .kpi-card         { padding: 10px 14px; }
-#page-overview .kpi-row-grid .kpi-card .kpi-value         { font-size: 20px; }
-#page-overview .kpi-row-grid .kpi-aligned-card { padding: 10px 14px; }
-#page-overview .kpi-row-grid .kpi-aligned-card .kpi-value { font-size: 20px; }
 
 /* ─── Data Alignment page ────────────────────────────────────────────────── */
 .align-input {
@@ -769,6 +801,221 @@ tr:hover td { background: var(--surface2); }
 /* ─── Performance hints ──────────────────────────────────────────────────── */
 .chart-box      { contain: layout; }
 .data-table-wrap{ contain: layout; }
+
+/* ═══ Design System v2 ═══════════════════════════════════════════════════════
+   Visual upgrades derived from the claude.ai/design handoff bundle.
+   All new selectors prefixed ds- or brand- to avoid collisions.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Ambient Orbs & Glassmorphism Animation ──────────────────────────────── */
+@keyframes float1 { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(10%, 20%) scale(1.1); } 100% { transform: translate(0, 0) scale(1); } }
+@keyframes float2 { 0% { transform: translate(0, 0) scale(1.1); } 50% { transform: translate(-10%, -20%) scale(1); } 100% { transform: translate(0, 0) scale(1.1); } }
+
+body::before, body::after {
+    content: ""; position: fixed; pointer-events: none; z-index: 0; filter: blur(60px); opacity: 0.4;
+}
+body::before {
+    top: -10%; left: 10%; width: 40vw; height: 40vw; border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in oklab, var(--blue) 40%, transparent), transparent 70%);
+    animation: float1 15s ease-in-out infinite;
+}
+body::after {
+    bottom: -10%; right: 10%; width: 35vw; height: 35vw; border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in oklab, var(--purple) 30%, transparent), transparent 70%);
+    animation: float2 18s ease-in-out infinite;
+}
+[data-theme="default"] body::before { opacity: .3; }
+
+/* ─── Sidebar brand mark ─────────────────────────────────────────────────── */
+.brand-mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.brand-square {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1.5px solid var(--blue);
+    display: grid; place-items: center;
+    background: color-mix(in oklab, var(--blue) 12%, transparent);
+    color: var(--blue);
+    font-weight: 800; font-size: 12px; letter-spacing: -0.5px;
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--blue) 8%, transparent);
+    flex-shrink: 0;
+}
+.brand-sub { font-size: 11px; color: var(--text2); font-weight: 400; }
+
+/* ─── Live pulse dot ─────────────────────────────────────────────────────── */
+.live-pulse {
+    display: inline-block;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: ds-pulse 1.8s ease-in-out infinite;
+    flex-shrink: 0;
+}
+@keyframes ds-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: .35; transform: scale(.65); }
+}
+
+/* ─── Theme chips ────────────────────────────────────────────────────────── */
+.ds-theme-chips {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+.ds-theme-chip {
+    flex: 1;
+    padding: 6px 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px; font-weight: 600;
+    color: var(--text2);
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+    user-select: none;
+}
+.ds-theme-chip:hover { color: var(--text); border-color: var(--text3); }
+.ds-theme-chip.active {
+    border-color: var(--blue);
+    color: var(--text);
+    box-shadow: 0 0 0 2px color-mix(in oklab, var(--blue) 18%, transparent);
+}
+
+/* ─── Health strip ───────────────────────────────────────────────────────── */
+.ds-health {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    animation: ds-fadeUp .3s ease-out both;
+}
+.ds-health-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    background: color-mix(in oklab, var(--green) 14%, transparent);
+    color: var(--green);
+    display: grid; place-items: center;
+    font-size: 16px; font-weight: 700;
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--green) 8%, transparent);
+}
+.ds-health-icon.warn {
+    background: color-mix(in oklab, var(--orange) 14%, transparent);
+    color: var(--orange);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--orange) 8%, transparent);
+}
+.ds-health-icon.bad {
+    background: color-mix(in oklab, var(--red) 14%, transparent);
+    color: var(--red);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--red) 8%, transparent);
+}
+.ds-health-text .top { font-size: 13px; font-weight: 600; color: var(--text); }
+.ds-health-text .sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.ds-health-stats { display: flex; gap: 18px; }
+.ds-stat { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; font-variant-numeric: tabular-nums; }
+.ds-stat .num { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.4px; }
+.ds-stat .num.green { color: var(--green); }
+.ds-stat .num.red   { color: var(--red); }
+.ds-stat .lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+
+/* ─── Yield Hero card ────────────────────────────────────────────────────── */
+.ds-yield-hero {
+    background: radial-gradient(ellipse at 0% 100%,
+        color-mix(in oklab, var(--green) 10%, transparent), transparent 60%),
+        var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+    animation: ds-fadeUp .35s ease-out both;
+}
+.ds-hero-label {
+    font-size: 10px; font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1.4px;
+    margin-bottom: 4px;
+}
+.ds-hero-value {
+    font-size: 42px; font-weight: 700;
+    letter-spacing: -2px; line-height: 1;
+    font-variant-numeric: tabular-nums;
+    display: flex; align-items: baseline; gap: 5px;
+}
+.ds-hero-value.green { color: var(--green); }
+.ds-hero-value.warn  { color: var(--orange); }
+.ds-hero-value.bad   { color: var(--red); }
+.ds-hero-unit {
+    font-size: 16px; color: var(--text3); font-weight: 500; letter-spacing: 0;
+}
+.ds-hero-sub {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 6px;
+    font-size: 11px; font-weight: 500;
+}
+.ds-hero-pill {
+    padding: 2px 7px; border-radius: 999px;
+    background: color-mix(in oklab, var(--teal) 14%, transparent);
+    color: var(--teal); font-weight: 700; font-size: 10px;
+    letter-spacing: .5px; text-transform: uppercase;
+}
+.ds-ring-wrap {
+    position: relative;
+    width: 110px; height: 110px; flex-shrink: 0;
+}
+.ds-ring-center {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    text-align: center; pointer-events: none;
+}
+.ds-ring-pct {
+    font-size: 19px; font-weight: 700;
+    color: var(--green); letter-spacing: -0.8px;
+    font-variant-numeric: tabular-nums; line-height: 1;
+}
+.ds-ring-lbl {
+    font-size: 9px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1.2px;
+    font-weight: 700; margin-top: 3px;
+}
+.ds-ring-arc {
+    transition: stroke-dashoffset 1.2s ease;
+    filter: drop-shadow(0 0 5px color-mix(in oklab, var(--green) 45%, transparent));
+}
+.ds-ring-arc.warn { stroke: var(--orange); filter: drop-shadow(0 0 5px color-mix(in oklab, var(--orange) 45%, transparent)); }
+.ds-ring-arc.bad  { stroke: var(--red);    filter: drop-shadow(0 0 5px color-mix(in oklab, var(--red)    45%, transparent)); }
+
+/* ─── KPI card sparklines ────────────────────────────────────────────────── */
+.kpi-spark-svg {
+    width: 100%; height: 28px;
+    display: block; margin-top: 6px;
+    overflow: visible;
+}
+
+/* ─── Fade-up entry animations ───────────────────────────────────────────── */
+@keyframes ds-fadeUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+}
+.kpi-card        { animation: ds-fadeUp .45s ease-out both; }
+.kpi-aligned-card{ animation: ds-fadeUp .45s ease-out both; }
+.chart-box       { animation: ds-fadeUp .5s ease-out both; }
+#kpiGrid .kpi-card:nth-child(1) { animation-delay: .04s; }
+#kpiGrid .kpi-card:nth-child(2) { animation-delay: .08s; }
+#kpiGrid .kpi-card:nth-child(3) { animation-delay: .12s; }
+#kpiGrid .kpi-card:nth-child(4) { animation-delay: .16s; }
+#kpiGrid .kpi-card:nth-child(5) { animation-delay: .20s; }
+#kpiGrid .kpi-card:nth-child(6) { animation-delay: .24s; }
 </style>
 </head>
 <body>
@@ -776,11 +1023,17 @@ tr:hover td { background: var(--surface2); }
 <!-- ═══ Sidebar ═══════════════════════════════════════════════════════════ -->
 <aside class="sidebar">
     <div class="logo">
-        <span class="org-name">TechNexion - Produxion</span>
-        <h1>Solo PIXI<br>Module Test Analysis</h1>
-        <span>QCA9377 BT + WiFi QC</span>
+        <div class="brand-mark">
+            <div class="brand-square">PX</div>
+            <div>
+                <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;line-height:1.4">TechNexion · Produxion</div>
+                <div style="font-size:14px;font-weight:700;letter-spacing:-.3px;color:var(--text);line-height:1.4">Solo PIXI MP</div>
+            </div>
+        </div>
+        <div class="brand-sub">QCA9377 BT + WiFi QC</div>
     </div>
     <div class="sidebar-header">
+        <span class="live-pulse" title="Live"></span>
         <div class="clock" id="clock">--:--:--</div>
         <div class="clock-date" id="clockDate"></div>
     </div>
@@ -800,7 +1053,12 @@ tr:hover td { background: var(--surface2); }
     </nav>
     <div class="sidebar-footer">
         <div class="theme-label">🎨 Theme</div>
-        <select class="theme-select" id="themeSelect">
+        <div class="ds-theme-chips" id="themeChips">
+            <div class="ds-theme-chip" data-theme-val="default">Blue</div>
+            <div class="ds-theme-chip active" data-theme-val="cyber">Cyber</div>
+            <div class="ds-theme-chip" data-theme-val="space">Space</div>
+        </div>
+        <select class="theme-select" id="themeSelect" style="display:none">
             <option value="default">TechNexion Blue</option>
             <option value="cyber" selected>Cyber Neon</option>
             <option value="space">Deep Space</option>
@@ -838,6 +1096,47 @@ tr:hover td { background: var(--surface2); }
 
 <!-- ─── Overview ──────────────────────────────────────────────────────── -->
 <div class="page active" id="page-overview">
+    <!-- ─ Health Strip ──────────────────────────────────────────── -->
+    <div class="ds-health" id="dsHealth">
+        <div class="ds-health-icon" id="dsHealthIcon">◐</div>
+        <div class="ds-health-text">
+            <div class="top" id="dsHealthStatus">Production Line</div>
+            <div class="sub" id="dsHealthSub">Loading…</div>
+        </div>
+        <div class="ds-health-stats">
+            <div class="ds-stat"><div class="num green" id="dsStatPass">—</div><div class="lbl">PASS</div></div>
+            <div class="ds-stat"><div class="num red"   id="dsStatFail">—</div><div class="lbl">FAIL</div></div>
+            <div class="ds-stat"><div class="num"       id="dsStatStop">—</div><div class="lbl">STOP</div></div>
+            <div class="ds-stat"><div class="num"       id="dsStatTotal">—</div><div class="lbl">TOTAL</div></div>
+        </div>
+    </div>
+    <!-- ─ Yield Hero ───────────────────────────────────────────── -->
+    <div class="ds-yield-hero">
+        <div>
+            <div class="ds-hero-label">▲ Aligned Yield · Today</div>
+            <div class="ds-hero-value green" id="dsHeroValue">—<span class="ds-hero-unit">%</span></div>
+            <div class="ds-hero-sub">
+                <span class="ds-hero-pill">Aligned</span>
+                <span id="dsHeroDelta" style="color:var(--text2)">—</span>
+                <span style="color:var(--text3)">·</span>
+                <span id="dsHeroRaw" style="color:var(--text3)">Raw —%</span>
+            </div>
+        </div>
+        <div class="ds-ring-wrap">
+            <svg viewBox="0 0 110 110" width="110" height="110">
+                <circle cx="55" cy="55" r="45" stroke="var(--surface2)" stroke-width="9" fill="none"/>
+                <circle id="dsRingArc" class="ds-ring-arc" cx="55" cy="55" r="45"
+                    stroke="var(--green)" stroke-width="9" fill="none"
+                    stroke-linecap="round"
+                    stroke-dasharray="282.74" stroke-dashoffset="282.74"
+                    transform="rotate(-90 55 55)"/>
+            </svg>
+            <div class="ds-ring-center">
+                <div class="ds-ring-pct" id="dsRingPct">—</div>
+                <div class="ds-ring-lbl">YIELD</div>
+            </div>
+        </div>
+    </div>
     <div class="kpi-dual-wrapper">
         <div class="kpi-dual-label aligned">▲ Aligned KPI</div>
         <div class="kpi-row-grid" id="alignedKpiGrid">
@@ -1297,8 +1596,8 @@ function setActivePage(page, { reload = true } = {}) {
     return reload ? loadPageData(page) : Promise.resolve();
 }
 
-async function fetchJson(path) {
-    const response = await fetch(path);
+async function fetchJson(path, options) {
+    const response = await fetch(path, options);
     return response.json();
 }
 
@@ -1466,31 +1765,33 @@ function debounce(fn, ms) {
     return function(...args) { clearTimeout(tid); tid = setTimeout(() => fn.apply(this, args), ms); };
 }
 
-/* ═══ Alignment Store (localStorage, no login needed) ═══════════════════ */
-const ALIGN_STORE_KEY = 'pixi-align-v1';
+/* ═══ Alignment Store (Database Backed) ═══════════════════════════════════ */
+let globalAlignStore = {};
 
-function alignGetStore() {
-    try { return JSON.parse(localStorage.getItem(ALIGN_STORE_KEY) || '{}'); }
-    catch { return {}; }
-}
-function alignSetStore(data) {
-    try { localStorage.setItem(ALIGN_STORE_KEY, JSON.stringify(data)); }
-    catch (e) { console.warn('align store write error', e); }
-}
-function alignGetTarget(workOrder) {
-    const store = alignGetStore();
-    const val = store[workOrder || '(unknown)']?.target;
-    return (val != null && Number.isFinite(Number(val))) ? Number(val) : null;
-}
-function alignSetTarget(workOrder, target) {
-    const store = alignGetStore();
-    const key = workOrder || '(unknown)';
-    if (target == null || target === '' || !Number.isFinite(Number(target))) {
-        delete store[key];
-    } else {
-        store[key] = { target: Math.max(0, Math.round(Number(target))) };
+async function loadAlignStore() {
+    try {
+        globalAlignStore = await api('/api/alignment-targets');
+    } catch (e) {
+        console.warn('align store read error', e);
+        globalAlignStore = {};
     }
-    alignSetStore(store);
+}
+
+async function saveAlignTargets(targets) {
+    try {
+        await fetchJson('/api/alignment-targets', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(targets)
+        });
+    } catch (e) {
+        console.error('align store write error', e);
+    }
+}
+
+function alignGetTarget(workOrder) {
+    const val = globalAlignStore[workOrder || '(unknown)'];
+    return (val != null && Number.isFinite(Number(val))) ? Number(val) : null;
 }
 
 /* Compute aligned KPIs from summary + retries API data + WO list */
@@ -1516,8 +1817,8 @@ function computeAlignedKPIs(summary, retries, woRows) {
         }
     });
 
-    const alignedPass  = rawPass + goldenStops;
-    const alignedStop  = Math.max(0, rawStop - goldenStops);
+    const alignedPass  = rawPass;
+    const alignedStop  = rawStop;
     const alignedFail  = rawFail + totalGap;
     const alignedTotal = rawTotal + totalGap;
     const alignedYield = alignedTotal > 0
@@ -2131,11 +2432,87 @@ const donutPercentLabelPlugin = {
     }
 };
 
+/* ═══ Design System v2 — UI helpers ═════════════════════════════════════ */
+
+function drawSparkline(svgEl, values, color) {
+    if (!svgEl || !values || values.length < 2) return;
+    const w = 100, h = 28;
+    const min = Math.min(...values), max = Math.max(...values);
+    const range = (max - min) || 1;
+    const pts = values.map((v, i) => {
+        const x = (i / (values.length - 1)) * w;
+        const y = h - ((v - min) / range) * (h - 4) - 2;
+        return [x.toFixed(2), y.toFixed(2)];
+    });
+    const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ');
+    const area = d + ` L${w} ${h} L0 ${h} Z`;
+    const id = 'sg' + Math.random().toString(36).slice(2, 7);
+    svgEl.innerHTML = `<defs><linearGradient id="${id}" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".4"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+    </linearGradient></defs>
+    <path d="${area}" fill="url(#${id})"/>
+    <path d="${d}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+}
+
+function updateYieldHero(aligned, raw, trendValues) {
+    const pct = parseFloat(aligned.alignedYield);
+    if (isNaN(pct)) return;
+    const C = 282.74;
+    const offset = C * (1 - pct / 100);
+    const colorClass = pct >= 95 ? 'green' : pct >= 80 ? 'warn' : 'bad';
+    const arc = document.getElementById('dsRingArc');
+    const heroVal = document.getElementById('dsHeroValue');
+    if (arc) {
+        arc.style.strokeDashoffset = offset;
+        arc.className = 'ds-ring-arc' + (colorClass !== 'green' ? ' ' + colorClass : '');
+        const strokeColor = colorClass === 'green' ? 'var(--green)' : colorClass === 'warn' ? 'var(--orange)' : 'var(--red)';
+        arc.setAttribute('stroke', strokeColor);
+    }
+    if (heroVal) {
+        heroVal.className = 'ds-hero-value ' + colorClass;
+        heroVal.innerHTML = pct.toFixed(2) + '<span class="ds-hero-unit">%</span>';
+    }
+    const ringPct = document.getElementById('dsRingPct');
+    if (ringPct) ringPct.textContent = pct.toFixed(1) + '%';
+    const rawPct = parseFloat(raw && raw.yield_pct);
+    document.getElementById('dsHeroRaw').textContent = isNaN(rawPct) ? 'Raw —%' : `Raw ${rawPct.toFixed(2)}%`;
+    document.getElementById('dsHeroDelta').textContent = '—';
+}
+
+function updateHealthStrip(summary, aligned) {
+    const total = summary.total || 0;
+    const pass  = summary.pass  || 0;
+    const fail  = summary.fail  || 0;
+    const stop  = summary.stop  || 0;
+    const yield_pct = parseFloat(summary.yield_pct);
+    const icon  = document.getElementById('dsHealthIcon');
+    const status = document.getElementById('dsHealthStatus');
+    const sub   = document.getElementById('dsHealthSub');
+    let state = 'good';
+    if (!isNaN(yield_pct)) {
+        if (yield_pct < 80) state = 'bad';
+        else if (yield_pct < 95) state = 'warn';
+    }
+    if (icon) {
+        icon.className = 'ds-health-icon' + (state !== 'good' ? ' ' + state : '');
+        icon.textContent = state === 'good' ? '◐' : state === 'warn' ? '!' : '✕';
+    }
+    if (status) status.textContent = state === 'good' ? 'Production Line · Healthy' : state === 'warn' ? 'Production Line · Watch' : 'Production Line · Alert';
+    if (sub) sub.textContent = isNaN(yield_pct) ? 'Yield data loading…' : `Yield ${yield_pct.toFixed(2)}% · Aligned ${aligned && aligned.alignedYield !== '—' ? aligned.alignedYield + '%' : '—'}`;
+    const el = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    el('dsStatPass',  pass.toLocaleString());
+    el('dsStatFail',  fail.toLocaleString());
+    el('dsStatStop',  stop.toLocaleString());
+    el('dsStatTotal', total.toLocaleString());
+}
+
 /* ═══ Load overview ══════════════════════════════════════════════════════ */
 async function loadOverview() {
-    const [summary, trend, split, monthly, retries, woRows] = await Promise.all([
+    const [summary, trend, split, monthly, retries, woRows, _align] = await Promise.all([
         api('/api/summary'), api('/api/yield-trend'), api('/api/pass-fail-split'),
-        api('/api/monthly-count'), api('/api/retries'), api('/api/work-order-summary')
+        api('/api/monthly-count'), api('/api/retries'), api('/api/work-order-summary'),
+        loadAlignStore()
     ]);
 
     /* ── Raw KPIs ── */
@@ -2154,6 +2531,10 @@ async function loadOverview() {
     document.getElementById('kpiAlignedFail').textContent   = aligned.alignedFail;
     document.getElementById('kpiAlignedStop').textContent   = aligned.alignedStop;
     document.getElementById('kpiGoldenStops').textContent   = aligned.goldenStops > 0 ? aligned.goldenStops : '—';
+
+    /* ── Design System v2 widgets ── */
+    updateHealthStrip(summary, aligned);
+    updateYieldHero(aligned, summary, trend.map(r => r.yield_pct).filter(v => v != null));
 
     const trendMeta = document.getElementById('yieldTrendMeta');
     const selectedWo = document.getElementById('filterWorkOrder').value || 'All Work Orders';
@@ -2179,16 +2560,23 @@ async function loadOverview() {
             datasets: [{
                 label: 'Yield %',
                 data: trend.map(r => r.yield_pct),
-                borderColor: '#30d158',
-                backgroundColor: 'rgba(48,209,88,.1)',
-                fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#30d158',
+                borderColor: '#10b981',
+                backgroundColor: (context) => {
+                    if (!context.chart.chartArea) return 'rgba(16,185,129,0.1)';
+                    const { ctx, chartArea: { top, bottom } } = context.chart;
+                    const gradient = ctx.createLinearGradient(0, top, 0, bottom);
+                    gradient.addColorStop(0, 'rgba(16,185,129,0.4)');
+                    gradient.addColorStop(1, 'rgba(16,185,129,0.0)');
+                    return gradient;
+                },
+                fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#10b981',
                 order: 2,
             },{
                 type: 'bar',
                 label: 'Units',
                 data: trend.map(r => r.total),
-                borderColor: '#0a84ff',
-                backgroundColor: 'rgba(10,132,255,.72)',
+                borderColor: '#00e5ff',
+                backgroundColor: 'rgba(0,229,255,.72)',
                 borderRadius: 4,
                 borderWidth: 1,
                 yAxisID: 'y1',
@@ -2199,8 +2587,9 @@ async function loadOverview() {
             responsive: true,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                y: { beginAtZero: true, max: 100, title: { display: true, text: 'Yield %' }},
-                y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Units' }},
+                x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                y: { beginAtZero: true, max: 100, title: { display: true, text: 'Yield %' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Units' } },
             }
         }
     });
@@ -2660,9 +3049,10 @@ async function loadAdvanced() {
 
 /* ═══ Load Data Alignment ════════════════════════════════════════════════ */
 async function loadDataAlign() {
-    const [woRows, retries] = await Promise.all([
+    const [woRows, retries, _align] = await Promise.all([
         api('/api/work-order-summary'),
         api('/api/retries'),
+        loadAlignStore()
     ]);
 
     /* Group retries by work_order key for per-WO golden stop computation */
@@ -2673,22 +3063,21 @@ async function loadDataAlign() {
         retryByWO[key].push(r);
     });
 
-    const store = alignGetStore();
     let totalGap = 0, totalGoldenStops = 0;
     let totalAlignedPass = 0, totalAlignedFail = 0, totalAlignedTotal = 0;
 
     const alignRows = (woRows || []).map(row => {
         const key        = row.work_order || '(unknown)';
-        const target     = store[key]?.target ?? null;
+        const target     = alignGetTarget(key);
         const tested     = safeNumber(row.total);
         const gap        = target != null ? Math.max(0, target - tested) : 0;
         const woRetries  = retryByWO[key] || [];
         const goldenStops = woRetries.filter(r =>
             safeNumber(r.stop_count) > 0 && safeNumber(r.pass_count) > 0
         ).length;
-        const alignedPass  = safeNumber(row.passed)  + goldenStops;
+        const alignedPass  = safeNumber(row.passed);
         const alignedFail  = safeNumber(row.failed)  + gap;
-        const alignedStop  = Math.max(0, safeNumber(row.stopped) - goldenStops);
+        const alignedStop  = safeNumber(row.stopped);
         const alignedTotal = tested + gap;
         const alignedYield = alignedTotal > 0
             ? (alignedPass / alignedTotal * 100).toFixed(2) : '—';
@@ -2753,29 +3142,33 @@ async function loadDataAlign() {
 }
 
 function initAlignPage() {
-    document.getElementById('btnAlignSaveAll').addEventListener('click', () => {
+    document.getElementById('btnAlignSaveAll').addEventListener('click', async () => {
         const inputs = document.querySelectorAll('#tbAlignWO .align-input');
+        const updates = {};
         inputs.forEach(inp => {
             const wo  = inp.dataset.wo;
             const val = inp.value.trim();
-            alignSetTarget(wo, val === '' ? null : parseInt(val, 10));
+            updates[wo] = val === '' ? null : parseInt(val, 10);
             inp.classList.remove('dirty');
         });
+        await saveAlignTargets(updates);
         const statusEl = document.getElementById('alignSaveStatus');
-        statusEl.textContent = `✓ Saved ${inputs.length} WO target(s)`;
+        statusEl.textContent = `✓ Saved ${inputs.length} WO target(s) securely`;
         setTimeout(() => { statusEl.textContent = ''; }, 3000);
-        loadDataAlign();
+        await loadDataAlign();
     });
 
     document.getElementById('btnAlignRefresh').addEventListener('click', loadDataAlign);
 
-    document.getElementById('btnAlignClearAll').addEventListener('click', () => {
+    document.getElementById('btnAlignClearAll').addEventListener('click', async () => {
         if (!confirm('Clear ALL alignment targets? This cannot be undone.')) return;
-        alignSetStore({});
+        const updates = {};
+        Object.keys(globalAlignStore).forEach(wo => updates[wo] = null);
+        await saveAlignTargets(updates);
         const statusEl = document.getElementById('alignSaveStatus');
         statusEl.textContent = 'All targets cleared';
         setTimeout(() => { statusEl.textContent = ''; }, 3000);
-        loadDataAlign();
+        await loadDataAlign();
     });
 
     /* Mark inputs dirty when user changes value (not yet saved) */
@@ -3215,25 +3608,28 @@ function refreshAllChartsForTheme() {
 /* ═══ Theme Switcher ══════════════════════════════════════════════════════ */
 (function() {
     const sel = document.getElementById('themeSelect');
-    const saved = localStorage.getItem('pixi-theme') || 'cyber';
-    if (saved !== 'default') {
-        document.documentElement.setAttribute('data-theme', saved);
-        sel.value = saved;
-    }
-    sel.addEventListener('change', function() {
-        const t = this.value;
+    const chips = Array.from(document.querySelectorAll('#themeChips .ds-theme-chip'));
+
+    function applyTheme(t) {
         if (t === 'default') {
             document.documentElement.removeAttribute('data-theme');
         } else {
             document.documentElement.setAttribute('data-theme', t);
         }
+        sel.value = t;
+        chips.forEach(c => c.classList.toggle('active', c.dataset.themeVal === t));
         localStorage.setItem('pixi-theme', t);
-        // Update Chart.js defaults to match new theme
         const cs = getComputedStyle(document.documentElement);
         Chart.defaults.color = cs.getPropertyValue('--text2').trim();
         Chart.defaults.borderColor = cs.getPropertyValue('--border').trim();
         refreshAllChartsForTheme();
-    });
+    }
+
+    const saved = localStorage.getItem('pixi-theme') || 'cyber';
+    applyTheme(saved);
+
+    chips.forEach(c => c.addEventListener('click', () => applyTheme(c.dataset.themeVal)));
+    sel.addEventListener('change', function() { applyTheme(this.value); });
 })();
 
 /* ═══ Init ═══════════════════════════════════════════════════════════════ */
