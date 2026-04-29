@@ -193,6 +193,38 @@ class TestHTMLStructure(unittest.TestCase):
                         f"Duplicate id='{eid}' on line {line_no} (first at line {seen[eid]})")
                 seen[eid] = line_no
 
+    # ── SVG Donut ring elements ───────────────────────────────────────────────
+    def test_donut_arc_pass_id(self):
+        self.assertIn('donutArcPass', self.col.ids)
+
+    def test_donut_arc_fail_id(self):
+        self.assertIn('donutArcFail', self.col.ids)
+
+    def test_donut_arc_stop_id(self):
+        self.assertIn('donutArcStop', self.col.ids)
+
+    def test_donut_ring_pct_id(self):
+        self.assertIn('donutRingPct', self.col.ids)
+
+    def test_donut_ring_counts_id(self):
+        self.assertIn('donutRingCounts', self.col.ids)
+
+    def test_donut_ring_wrap_class(self):
+        self.assertIn('donut-ring-wrap', self.col.classes_seen)
+
+    def test_donut_arc_segment_class(self):
+        self.assertIn('donut-arc-segment', self.col.classes_seen)
+
+    # ── MAC1 Range Analysis elements ──────────────────────────────────────────
+    def test_mac1_range_summary_id(self):
+        self.assertIn('mac1RangeSummary', self.col.ids)
+
+    def test_mac1_range_info_id(self):
+        self.assertIn('mac1RangeInfo', self.col.ids)
+
+    def test_tb_mac1_incidents_id(self):
+        self.assertIn('tbMac1Incidents', self.col.ids)
+
     # ── JS functions present ──────────────────────────────────────────────────
     def test_js_debounce_present(self):
         self.assertIn('function debounce(', self.raw)
@@ -211,6 +243,9 @@ class TestHTMLStructure(unittest.TestCase):
 
     def test_js_safeNumber_present(self):
         self.assertIn('function safeNumber(', self.raw)
+
+    def test_js_updateDonutRing_present(self):
+        self.assertIn('function updateDonutRing(', self.raw)
 
     # ── pageLoaders wiring ────────────────────────────────────────────────────
     def test_dataalign_in_page_loaders(self):
@@ -522,6 +557,67 @@ class TestJavaScriptLogic(unittest.TestCase):
             console.log(r.goldenStops, r.alignedPass, r.alignedStop);
         """))
         self.assertEqual(out, '0 50 2')
+
+    # ── updateDonutRing ───────────────────────────────────────────────────────
+    def test_updateDonutRing_extractable(self):
+        with open(DASHBOARD_PATH, encoding='utf-8') as f:
+            raw = f.read()
+        self.assertIsNotNone(_extract_js_fn(raw, 'updateDonutRing'))
+
+    def test_updateDonutRing_pass_arc_length(self):
+        """PASS arc length = (pass/total) * 282.74."""
+        if not self.NODE_AVAILABLE:
+            self.skipTest("Node.js not available")
+        with open(DASHBOARD_PATH, encoding='utf-8') as f:
+            fn_body = _extract_js_fn(f.read(), 'updateDonutRing') or ''
+        script = textwrap.dedent("""\
+            const _attrs = {};
+            const _styles = {};
+            const document = {
+                getElementById(id) {
+                    return {
+                        setAttribute(k, v) { _attrs[id + '.' + k] = v; },
+                        get style() {
+                            if (!_styles[id]) _styles[id] = {};
+                            return _styles[id];
+                        },
+                        set innerHTML(v) {},
+                    };
+                }
+            };
+        """) + fn_body + textwrap.dedent("""
+            updateDonutRing(80, 10, 10);
+            const passArc = parseFloat(_attrs['donutArcPass.stroke-dasharray'].split(' ')[0]);
+            const expected = (80/100)*282.74;
+            console.log(Math.abs(passArc - expected) < 0.1);
+        """)
+        self.assertEqual(self._run_js(script), 'true')
+
+    def test_updateDonutRing_zero_total_shows_dash(self):
+        if not self.NODE_AVAILABLE:
+            self.skipTest("Node.js not available")
+        with open(DASHBOARD_PATH, encoding='utf-8') as f:
+            fn_body = _extract_js_fn(f.read(), 'updateDonutRing') or ''
+        texts = {}
+        script = textwrap.dedent("""\
+            const _attrs = {};
+            const _texts = {};
+            const document = {
+                getElementById(id) {
+                    return {
+                        setAttribute(k, v) { _attrs[id + '.' + k] = v; },
+                        get style() { return _attrs; },
+                        set textContent(v) { _texts[id] = v; },
+                        get textContent() { return _texts[id]; },
+                        set innerHTML(v) { _texts[id] = v; },
+                    };
+                }
+            };
+        """) + fn_body + textwrap.dedent("""
+            updateDonutRing(0, 0, 0);
+            console.log(_texts['donutRingPct'] === '—');
+        """)
+        self.assertEqual(self._run_js(script), 'true')
 
     # ── debounce ──────────────────────────────────────────────────────────────
     def test_debounce_returns_function(self):

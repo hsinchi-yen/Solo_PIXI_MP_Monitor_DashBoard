@@ -1002,6 +1002,23 @@ body::after {
 .ds-ring-arc.warn { stroke: var(--orange); filter: drop-shadow(0 0 5px color-mix(in oklab, var(--orange) 45%, transparent)); }
 .ds-ring-arc.bad  { stroke: var(--red);    filter: drop-shadow(0 0 5px color-mix(in oklab, var(--red)    45%, transparent)); }
 
+/* ─── SVG Donut Ring — PASS/FAIL/STOP ──────────────────────────────────────── */
+.donut-ring-wrap {
+    position: relative;
+    width: 180px; height: 180px;
+    margin: 10px auto 4px;
+    flex-shrink: 0;
+}
+.donut-ring-wrap svg { width: 100%; height: 100%; }
+.donut-arc-segment {
+    transition: stroke-dasharray 1.1s cubic-bezier(.4,0,.2,1),
+                stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1);
+}
+.donut-ring-counts {
+    text-align: center; font-size: 11px; color: var(--text2);
+    padding: 4px 0 2px; font-variant-numeric: tabular-nums; letter-spacing: .3px;
+}
+
 /* ─── KPI card sparklines ────────────────────────────────────────────────── */
 .kpi-spark-svg {
     width: 100%; height: 28px;
@@ -1118,50 +1135,34 @@ body::after {
         </div>
     </div>
     <!-- ─ Yield Hero ───────────────────────────────────────────── -->
-    <div class="ds-yield-hero">
-        <div>
-            <div class="ds-hero-label">▲ Aligned Yield · Today</div>
-            <div class="ds-hero-value green" id="dsHeroValue">—<span class="ds-hero-unit">%</span></div>
-            <div class="ds-hero-sub">
-                <span class="ds-hero-pill">Aligned</span>
-                <span id="dsHeroDelta" style="color:var(--text2)">—</span>
-                <span style="color:var(--text3)">·</span>
-                <span id="dsHeroRaw" style="color:var(--text3)">Raw —%</span>
-            </div>
-        </div>
-        <div class="ds-ring-wrap">
-            <svg viewBox="0 0 110 110" width="110" height="110">
-                <circle cx="55" cy="55" r="45" stroke="var(--surface2)" stroke-width="9" fill="none"/>
-                <circle id="dsRingArc" class="ds-ring-arc" cx="55" cy="55" r="45"
-                    stroke="var(--green)" stroke-width="9" fill="none"
-                    stroke-linecap="round"
-                    stroke-dasharray="282.74" stroke-dashoffset="282.74"
-                    transform="rotate(-90 55 55)"/>
-            </svg>
-            <div class="ds-ring-center">
-                <div class="ds-ring-pct" id="dsRingPct">—</div>
-                <div class="ds-ring-lbl">YIELD</div>
-            </div>
+    <div class="ds-yield-hero" style="display:block">
+        <div class="ds-hero-label">▲ Aligned Yield · Today</div>
+        <div class="ds-hero-value green" id="dsHeroValue">—<span class="ds-hero-unit">%</span></div>
+        <div class="ds-hero-sub">
+            <span class="ds-hero-pill">Aligned</span>
+            <span id="dsHeroDelta" style="color:var(--text2)">—</span>
+            <span style="color:var(--text3)">·</span>
+            <span id="dsHeroRaw" style="color:var(--text3)">Raw —%</span>
         </div>
     </div>
     <div class="kpi-dual-wrapper">
         <div class="kpi-dual-label aligned">▲ Aligned KPI</div>
         <div class="kpi-row-grid" id="alignedKpiGrid">
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Yield %</div><div class="kpi-value deep-green" id="kpiAlignedYield">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned Total</div><div class="kpi-value deep-teal" id="kpiAlignedTotal">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned PASS</div><div class="kpi-value deep-green" id="kpiAlignedPass">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned FAIL</div><div class="kpi-value deep-red" id="kpiAlignedFail">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Aligned STOP</div><div class="kpi-value deep-orange" id="kpiAlignedStop">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">STOP→PASS</div><div class="kpi-value deep-purple" id="kpiGoldenStops">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Aligned Yield %</div><div class="kpi-value green" id="kpiAlignedYield">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Aligned Total</div><div class="kpi-value teal" id="kpiAlignedTotal">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Aligned PASS</div><div class="kpi-value green" id="kpiAlignedPass">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Aligned FAIL</div><div class="kpi-value red" id="kpiAlignedFail">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">Aligned STOP</div><div class="kpi-value orange" id="kpiAlignedStop">—</div></div>
+            <div class="kpi-card"><div class="kpi-label">STOP→PASS</div><div class="kpi-value purple" id="kpiGoldenStops">—</div></div>
         </div>
         <div class="kpi-dual-label original">▼ Raw KPI</div>
         <div class="kpi-row-grid" id="kpiGrid">
-            <div class="kpi-card"><div class="kpi-label">Yield %</div><div class="kpi-value green" id="kpiYield">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Total Tested</div><div class="kpi-value teal" id="kpiTotal">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">PASS</div><div class="kpi-value green" id="kpiPass">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">FAIL</div><div class="kpi-value red" id="kpiFail">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">STOP</div><div class="kpi-value orange" id="kpiStop">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Retry Rate %</div><div class="kpi-value purple" id="kpiRetry">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Yield %</div><div class="kpi-value deep-green" id="kpiYield">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Total Tested</div><div class="kpi-value deep-teal" id="kpiTotal">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">PASS</div><div class="kpi-value deep-green" id="kpiPass">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">FAIL</div><div class="kpi-value deep-red" id="kpiFail">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">STOP</div><div class="kpi-value deep-orange" id="kpiStop">—</div></div>
+            <div class="kpi-aligned-card"><div class="kpi-label">Retry Rate %</div><div class="kpi-value deep-purple" id="kpiRetry">—</div></div>
         </div>
     </div>
     <div class="chart-row primary-row">
@@ -1171,7 +1172,31 @@ body::after {
                 <span class="item"><span class="swatch fail"></span>FAIL</span>
                 <span class="item"><span class="swatch stop"></span>STOP</span>
             </div>
-            <canvas id="chartDonut"></canvas>
+            <div class="donut-ring-wrap">
+                <svg viewBox="0 0 110 110" width="100%" height="100%">
+                    <circle cx="55" cy="55" r="45" stroke="var(--surface2)" stroke-width="9" fill="none"/>
+                    <circle id="donutArcPass" class="donut-arc-segment" cx="55" cy="55" r="45"
+                        stroke="#30d158" stroke-width="9" fill="none" stroke-linecap="butt"
+                        stroke-dasharray="0 282.74" stroke-dashoffset="0"
+                        transform="rotate(-90 55 55)"
+                        style="filter:drop-shadow(0 0 4px rgba(48,209,88,.55))"/>
+                    <circle id="donutArcFail" class="donut-arc-segment" cx="55" cy="55" r="45"
+                        stroke="#ff453a" stroke-width="9" fill="none" stroke-linecap="butt"
+                        stroke-dasharray="0 282.74" stroke-dashoffset="0"
+                        transform="rotate(-90 55 55)"
+                        style="filter:drop-shadow(0 0 4px rgba(255,69,58,.55))"/>
+                    <circle id="donutArcStop" class="donut-arc-segment" cx="55" cy="55" r="45"
+                        stroke="#ff9f0a" stroke-width="9" fill="none" stroke-linecap="butt"
+                        stroke-dasharray="0 282.74" stroke-dashoffset="0"
+                        transform="rotate(-90 55 55)"
+                        style="filter:drop-shadow(0 0 4px rgba(255,159,10,.55))"/>
+                </svg>
+                <div class="ds-ring-center">
+                    <div class="ds-ring-pct" id="donutRingPct">—</div>
+                    <div class="ds-ring-lbl">YIELD</div>
+                </div>
+            </div>
+            <div id="donutRingCounts" class="donut-ring-counts">—</div>
         </div>
         <div class="chart-box yield-wide"><h3>Hourly Yield Trend <span id="yieldTrendMeta">Latest: —</span></h3><canvas id="chartYield"></canvas></div>
     </div>
@@ -1349,6 +1374,22 @@ body::after {
                 <table><thead><tr>
                     <th>Work Order</th><th>MAC1</th><th>Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Risk</th><th>Last Attempt</th>
                 </tr></thead><tbody id="tbRetry"></tbody></table>
+            </div>
+        </div>
+    </div>
+    <!-- MAC1 Range Analysis -->
+    <div class="grid-2" style="margin-top:20px">
+        <div class="chart-box">
+            <h3>MAC1 Range Analysis</h3>
+            <div class="summary-grid" id="mac1RangeSummary"></div>
+            <div id="mac1RangeInfo" style="font-size:12px;color:var(--text2);padding:2px 0 0">—</div>
+        </div>
+        <div class="data-table-wrap" style="margin-bottom:0">
+            <h3>True FAIL / STOP — Never Passed</h3>
+            <div class="table-scroll">
+                <table><thead><tr>
+                    <th>MAC1</th><th>Work Order</th><th>FAIL</th><th>STOP</th><th>Final</th><th>Last Attempt</th>
+                </tr></thead><tbody id="tbMac1Incidents"></tbody></table>
             </div>
         </div>
     </div>
@@ -1749,6 +1790,7 @@ const dashboardState = {
         calibration: [],
         wifi: null,
         bt: null,
+        macRange: null,
         filterKey: '',
     },
 };
@@ -2412,32 +2454,32 @@ function initDashboardInteractions() {
     });
 }
 
-const donutPercentLabelPlugin = {
-    id: 'donutPercentLabelPlugin',
-    afterDatasetsDraw(chart) {
-        const dataset = chart.data.datasets[0];
-        if (!dataset || !dataset.data || !dataset.data.length) return;
-        const total = dataset.data.reduce((s, n) => s + Number(n || 0), 0);
-        if (!total) return;
-
-        const meta = chart.getDatasetMeta(0);
-        const ctx = chart.ctx;
-        ctx.save();
-        ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-
-        meta.data.forEach((arc, i) => {
-            const value = Number(dataset.data[i] || 0);
-            if (!value) return;
-            const p = (value / total) * 100;
-            const pos = arc.tooltipPosition();
-            ctx.fillText(`${p.toFixed(1)}%`, pos.x, pos.y);
-        });
-        ctx.restore();
+function updateDonutRing(pass, fail, stop) {
+    const total = pass + fail + stop;
+    const C = 282.74;
+    const arcPass  = document.getElementById('donutArcPass');
+    const arcFail  = document.getElementById('donutArcFail');
+    const arcStop  = document.getElementById('donutArcStop');
+    const ringPct  = document.getElementById('donutRingPct');
+    const ringCts  = document.getElementById('donutRingCounts');
+    if (!total) {
+        [arcPass, arcFail, arcStop].forEach(el => el && el.setAttribute('stroke-dasharray', `0 ${C}`));
+        if (ringPct) ringPct.textContent = '—';
+        if (ringCts) ringCts.textContent = '—';
+        return;
     }
-};
+    const passLen = (pass / total) * C;
+    const failLen = (fail / total) * C;
+    const stopLen = (stop / total) * C;
+    if (arcPass) { arcPass.setAttribute('stroke-dasharray', `${passLen.toFixed(2)} ${C}`); arcPass.style.strokeDashoffset = 0; }
+    if (arcFail) { arcFail.setAttribute('stroke-dasharray', `${failLen.toFixed(2)} ${C}`); arcFail.style.strokeDashoffset = -passLen; }
+    if (arcStop) { arcStop.setAttribute('stroke-dasharray', `${stopLen.toFixed(2)} ${C}`); arcStop.style.strokeDashoffset = -(passLen + failLen); }
+    if (ringPct) ringPct.textContent = (pass / total * 100).toFixed(1) + '%';
+    if (ringCts) ringCts.innerHTML =
+        `<span style="color:#30d158">${pass.toLocaleString()}</span> · ` +
+        `<span style="color:#ff453a">${fail.toLocaleString()}</span> · ` +
+        `<span style="color:#ff9f0a">${stop.toLocaleString()}</span>`;
+}
 
 /* ═══ Design System v2 — UI helpers ═════════════════════════════════════ */
 
@@ -2465,23 +2507,12 @@ function drawSparkline(svgEl, values, color) {
 function updateYieldHero(aligned, raw, trendValues) {
     const pct = parseFloat(aligned.alignedYield);
     if (isNaN(pct)) return;
-    const C = 282.74;
-    const offset = C * (1 - pct / 100);
     const colorClass = pct >= 95 ? 'green' : pct >= 80 ? 'warn' : 'bad';
-    const arc = document.getElementById('dsRingArc');
     const heroVal = document.getElementById('dsHeroValue');
-    if (arc) {
-        arc.style.strokeDashoffset = offset;
-        arc.className = 'ds-ring-arc' + (colorClass !== 'green' ? ' ' + colorClass : '');
-        const strokeColor = colorClass === 'green' ? 'var(--green)' : colorClass === 'warn' ? 'var(--orange)' : 'var(--red)';
-        arc.setAttribute('stroke', strokeColor);
-    }
     if (heroVal) {
         heroVal.className = 'ds-hero-value ' + colorClass;
         heroVal.innerHTML = pct.toFixed(2) + '<span class="ds-hero-unit">%</span>';
     }
-    const ringPct = document.getElementById('dsRingPct');
-    if (ringPct) ringPct.textContent = pct.toFixed(1) + '%';
     const rawPct = parseFloat(raw && raw.yield_pct);
     document.getElementById('dsHeroRaw').textContent = isNaN(rawPct) ? 'Raw —%' : `Raw ${rawPct.toFixed(2)}%`;
     document.getElementById('dsHeroDelta').textContent = '—';
@@ -2601,43 +2632,9 @@ async function loadOverview() {
         }
     });
 
-    destroyChart('chartDonut');
     const splitMap = {};
     split.forEach(r => splitMap[r.result] = r.count);
-    chartInstances['chartDonut'] = new Chart(document.getElementById('chartDonut'), {
-        type: 'doughnut',
-        data: {
-            labels: ['PASS', 'FAIL', 'STOP'],
-            datasets: [{
-                data: [splitMap['PASS']||0, splitMap['FAIL']||0, splitMap['STOP']||0],
-                backgroundColor: ['#30d158', '#ff453a', '#ff9f0a'],
-                borderWidth: 0,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            aspectRatio: 1,
-            cutout: '65%',
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        title: () => '',
-                        label: (ctx) => {
-                            const total = (ctx.dataset.data || []).reduce((s, n) => s + Number(n || 0), 0);
-                            const pct = total ? (ctx.parsed * 100 / total).toFixed(1) : '0.0';
-                            return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
-                        }
-                    }
-                }
-            }
-        }
-        ,
-        plugins: [donutPercentLabelPlugin]
-    });
+    updateDonutRing(splitMap['PASS']||0, splitMap['FAIL']||0, splitMap['STOP']||0);
 
     // Monthly Test Units chart
     destroyChart('chartMonthlyUnits');
@@ -3033,15 +3030,49 @@ function renderAdvanced() {
         </tr>`;
         }).join('');
     }
+
+    /* ── MAC1 Range Analysis ── */
+    const macRange = dashboardState.advanced.macRange || {};
+    const trueFail = safeNumber(macRange.true_fail_mac1);
+    const trueStop = safeNumber(macRange.true_stop_mac1);
+    const passMac  = safeNumber(macRange.pass_mac1);
+    renderSummaryCards('mac1RangeSummary', [
+        { label: 'Unique MAC1',  value: macRange.unique_mac1 ?? '—', color: 'teal' },
+        { label: 'PASS MAC1',    value: passMac  || '—', color: 'green' },
+        { label: 'True FAIL',    value: trueFail || '—', color: trueFail ? 'red'    : 'green' },
+        { label: 'True STOP',    value: trueStop || '—', color: trueStop ? 'orange' : 'green' },
+        { label: 'Range Start',  value: macRange.mac1_min ?? '—', color: 'blue' },
+        { label: 'Range End',    value: macRange.mac1_max ?? '—', color: 'purple' },
+    ]);
+    const rangeEl = document.getElementById('mac1RangeInfo');
+    if (rangeEl) {
+        rangeEl.textContent = macRange.mac1_min
+            ? `Sequence: ${macRange.mac1_min} → ${macRange.mac1_max}  |  ${macRange.unique_mac1} unique units`
+            : 'No MAC1 data under current filter';
+    }
+    const incidents = macRange.true_incidents || [];
+    if (!incidents.length) {
+        renderTableEmptyState('tbMac1Incidents', 6, 'All MAC1 units have a PASS record — no true FAIL/STOP.');
+    } else {
+        document.getElementById('tbMac1Incidents').innerHTML = incidents.map(row => `<tr>
+            <td><code>${safeText(row.mac1, '')}</code></td>
+            <td>${safeText(row.work_order, '—')}</td>
+            <td><span style="color:var(--red)">${row.fail_count || 0}</span></td>
+            <td><span style="color:var(--orange)">${row.stop_count || 0}</span></td>
+            <td><span class="badge ${(row.true_status || '').toLowerCase()}">${row.true_status ?? '—'}</span></td>
+            <td style="color:var(--text2)">${fmtTime(row.last_attempt)}</td>
+        </tr>`).join('');
+    }
 }
 
 async function loadAdvanced() {
-    const [retries, durations, calibration, wifi, bt] = await Promise.all([
+    const [retries, durations, calibration, wifi, bt, macRange] = await Promise.all([
         api('/api/retries'),
         api('/api/test-duration'),
         api('/api/calibration'),
         api('/api/wifi-metrics'),
         api('/api/bt-metrics'),
+        api('/api/mac-range').catch(() => null),
     ]);
 
     dashboardState.advanced.retries = retries || [];
@@ -3049,6 +3080,7 @@ async function loadAdvanced() {
     dashboardState.advanced.calibration = calibration || [];
     dashboardState.advanced.wifi = wifi || null;
     dashboardState.advanced.bt = bt || null;
+    dashboardState.advanced.macRange = macRange || null;
     dashboardState.advanced.filterKey = getFilter();
 
     renderAdvanced();

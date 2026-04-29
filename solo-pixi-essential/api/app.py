@@ -823,6 +823,56 @@ def api_retries(unit_date: str = None, work_order: str = None, year: int = None,
     return rows
 
 
+# ─── MAC1 Range Analysis ──────────────────────────────────────────────────────
+@app.get("/api/mac-range")
+def api_mac_range(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
+    where, params = _build_where(unit_date, work_order, year, month, week, day)
+    conn = get_conn()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(f"""
+        WITH mac_summary AS (
+            SELECT
+                mac1,
+                COUNT(*) FILTER (WHERE result = 'PASS') AS pass_count,
+                COUNT(*) FILTER (WHERE result = 'FAIL') AS fail_count,
+                COUNT(*) FILTER (WHERE result = 'STOP') AS stop_count
+            FROM module_test {where}
+            GROUP BY mac1
+        )
+        SELECT
+            MIN(mac1)                                                          AS mac1_min,
+            MAX(mac1)                                                          AS mac1_max,
+            COUNT(*)                                                           AS unique_mac1,
+            COUNT(*) FILTER (WHERE pass_count > 0)                            AS pass_mac1,
+            COUNT(*) FILTER (WHERE pass_count = 0 AND fail_count > 0)         AS true_fail_mac1,
+            COUNT(*) FILTER (WHERE pass_count = 0 AND stop_count > 0)         AS true_stop_mac1
+        FROM mac_summary
+    """, params)
+    summary = dict(cur.fetchone())
+    cur.execute(f"""
+        WITH mac_summary AS (
+            SELECT
+                mac1,
+                MAX(COALESCE(work_order, ''))                      AS work_order,
+                COUNT(*) FILTER (WHERE result = 'PASS')            AS pass_count,
+                COUNT(*) FILTER (WHERE result = 'FAIL')            AS fail_count,
+                COUNT(*) FILTER (WHERE result = 'STOP')            AS stop_count,
+                MAX(start_time)                                    AS last_attempt
+            FROM module_test {where}
+            GROUP BY mac1
+        )
+        SELECT mac1, work_order, fail_count, stop_count, last_attempt,
+               CASE WHEN fail_count > 0 THEN 'FAIL' ELSE 'STOP' END AS true_status
+        FROM mac_summary
+        WHERE pass_count = 0 AND (fail_count > 0 OR stop_count > 0)
+        ORDER BY mac1
+    """, params)
+    incidents = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return {**summary, "true_incidents": incidents}
+
+
 # ─── Test duration distribution ──────────────────────────────────────────────
 @app.get("/api/test-duration")
 def api_test_duration(unit_date: str = None, work_order: str = None, year: int = None, month: int = None, week: int = None, day: str = None):
