@@ -1723,20 +1723,20 @@ updateClock();
 /* ═══ Filter State ═══════════════════════════════════════════════════════ */
 const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const TOP_FILTER_IDS = ['filterYear', 'filterMonth', 'filterWeek', 'filterDay', 'filterWorkOrder'];
-const IDLE_ROTATION_DELAY_MS = 3 * 60 * 1000;
+const IDLE_ROTATION_DELAY_MS = 5 * 60 * 1000;
 const AUTO_REFRESH_CHECK_MS = 30 * 1000;
 const LATEST_DAY_CACHE_MS = 5 * 60 * 1000;
 const AUTO_REFRESH_START_HOUR = 9;
 const AUTO_REFRESH_END_HOUR = 18;
 const AUTO_ROTATION_STEPS = [
-    { page: 'overview', filterMode: 'all', durationMs: 30000 },
-    { page: 'workorders', filterMode: 'all', durationMs: 30000 },
-    { page: 'bt', filterMode: 'all', durationMs: 20000 },
-    { page: 'wifi', filterMode: 'all', durationMs: 20000 },
-    { page: 'overview', filterMode: 'latest_day', durationMs: 30000 },
-    { page: 'workorders', filterMode: 'latest_day', durationMs: 30000 },
-    { page: 'bt', filterMode: 'latest_day', durationMs: 20000 },
-    { page: 'wifi', filterMode: 'latest_day', durationMs: 20000 },
+    { page: 'overview',   filterMode: 'all',        durationMs: 30000 },
+    { page: 'workorders', filterMode: 'all',        durationMs: 30000 },
+    { page: 'bt',         filterMode: 'all',        durationMs: 30000 },
+    { page: 'wifi',       filterMode: 'all',        durationMs: 30000 },
+    { page: 'overview',   filterMode: 'latest_day', durationMs: 30000 },
+    { page: 'workorders', filterMode: 'latest_wo',  durationMs: 30000 },
+    { page: 'bt',         filterMode: 'latest_wo',  durationMs: 30000 },
+    { page: 'wifi',       filterMode: 'latest_wo',  durationMs: 30000 },
 ];
 
 const automationState = {
@@ -1749,6 +1749,8 @@ const automationState = {
     rotationActive: false,
     latestDayValue: '',
     latestDayFetchedAt: 0,
+    latestWoValue: '',
+    latestWoFetchedAt: 0,
     lastRefreshHourKey: '',
 };
 
@@ -1922,6 +1924,8 @@ function clearDashboardCaches() {
     failRowsCache.rows = null;
     automationState.latestDayFetchedAt = 0;
     automationState.latestDayValue = '';
+    automationState.latestWoFetchedAt = 0;
+    automationState.latestWoValue = '';
     dashboardState.advanced.filterKey = '';
 }
 
@@ -2028,6 +2032,18 @@ async function resolveLatestDayValue() {
     return automationState.latestDayValue;
 }
 
+async function resolveLatestWoValue() {
+    const now = Date.now();
+    if (automationState.latestWoValue && (now - automationState.latestWoFetchedAt) < LATEST_DAY_CACHE_MS) {
+        return automationState.latestWoValue;
+    }
+    const woRows = await fetchJson('/api/work-order-summary');
+    const latest = [...(woRows || [])].sort((a, b) => new Date(b.last_test) - new Date(a.last_test))[0];
+    automationState.latestWoValue = latest?.work_order || '';
+    automationState.latestWoFetchedAt = now;
+    return automationState.latestWoValue;
+}
+
 async function applyRotationFilterMode(mode) {
     if (mode === 'all') {
         setTopFilterValues({
@@ -2038,6 +2054,20 @@ async function applyRotationFilterMode(mode) {
             filterWorkOrder: '',
         });
         await loadFilterOptions();
+        return;
+    }
+
+    if (mode === 'latest_wo') {
+        const latestWo = await resolveLatestWoValue();
+        setTopFilterValues({
+            filterYear: '',
+            filterMonth: '',
+            filterWeek: '',
+            filterDay: '',
+            filterWorkOrder: latestWo,
+        });
+        await loadFilterOptions();
+        document.getElementById('filterWorkOrder').value = latestWo;
         return;
     }
 
@@ -4265,8 +4295,10 @@ initDashboard();
     let _lastSchedTriggerMinute = -1;
 
     function isScheduledHour() {
-      const h = new Date().getHours();
-      return h >= 8 && h < 20;
+      const d = new Date();
+      const h = d.getHours();
+      const dow = d.getDay(); // 0=Sun, 6=Sat
+      return h >= 8 && h < 19 && dow >= 1 && dow <= 5;
     }
 
     function startScheduledCarousel() {
