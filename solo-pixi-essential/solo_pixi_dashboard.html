@@ -1610,7 +1610,7 @@ body::before {
         <strong>⚖️ 運作原理</strong><br>
         <strong>Target Total：</strong>輸入每個工單的計畫生產數量。未被測試的數量 (Gap = Target − Tested) 自動計算為 FAIL，失效原因標記為「can't test」。<br>
         <strong>STOP → PASS：</strong>曾有 PASS 記錄後被重驗機台 (golden sample re-validation) 而記為 STOP 的機台，在 Aligned KPI 中重新計入 PASS。<br>
-        設定值僅儲存於瀏覽器 localStorage，不寫入資料庫，無需登入。
+        設定值<strong>同步寫入資料庫</strong>，多台 Host 開啟時共享相同校準數據。本機 localStorage 同步保留作為快取（DB 優先）。
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -3256,10 +3256,22 @@ async function loadAdvanced() {
 
 /* ═══ Load Data Alignment ════════════════════════════════════════════════ */
 async function loadDataAlign() {
-    const [woRows, retries] = await Promise.all([
+    const [woRows, retries, dbTargets] = await Promise.all([
         api('/api/work-order-summary'),
         api('/api/retries'),
+        fetchJson('/api/alignment-targets').catch(() => ({})),
     ]);
+
+    /* Merge DB targets into localStorage — DB wins so all hosts share the same values */
+    if (dbTargets && typeof dbTargets === 'object' && Object.keys(dbTargets).length > 0) {
+        const store = alignGetStore();
+        for (const [wo, val] of Object.entries(dbTargets)) {
+            const num = Number(val);
+            if (Number.isFinite(num) && num > 0) store[wo] = { target: Math.round(num) };
+            else delete store[wo];
+        }
+        alignSetStore(store);
+    }
 
     /* Group retries by work_order key for per-WO golden stop computation */
     const retryByWO = {};
@@ -3355,27 +3367,56 @@ async function loadDataAlign() {
 }
 
 function initAlignPage() {
-    document.getElementById('btnAlignSaveAll').addEventListener('click', () => {
+    document.getElementById('btnAlignSaveAll').addEventListener('click', async () => {
         const inputs = document.querySelectorAll('#tbAlignWO .align-input');
+        const payload = {};
         inputs.forEach(inp => {
             const wo  = inp.dataset.wo;
             const val = inp.value.trim();
-            alignSetTarget(wo, val === '' ? null : parseInt(val, 10));
+            const num = val === '' ? null : parseInt(val, 10);
+            alignSetTarget(wo, num);
             inp.classList.remove('dirty');
+            payload[wo] = num;
         });
         const statusEl = document.getElementById('alignSaveStatus');
-        statusEl.textContent = `✓ Saved ${inputs.length} WO target(s)`;
-        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        statusEl.textContent = '💾 Saving…';
+        try {
+            await fetch(`${API_BASE}/api/alignment-targets`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+            statusEl.textContent = `✓ Saved to DB — ${inputs.length} WO(s)`;
+        } catch (e) {
+            statusEl.textContent = '⚠️ DB save failed — stored locally only';
+        }
+        setTimeout(() => { statusEl.textContent = ''; }, 3500);
         loadDataAlign();
     });
 
     document.getElementById('btnAlignRefresh').addEventListener('click', loadDataAlign);
 
-    document.getElementById('btnAlignClearAll').addEventListener('click', () => {
+    document.getElementById('btnAlignClearAll').addEventListener('click', async () => {
         if (!confirm('Clear ALL alignment targets? This cannot be undone.')) return;
+        /* Build payload: all stored WOs → null so backend DELETEs each row */
+        const store = alignGetStore();
+        const payload = {};
+        for (const wo of Object.keys(store)) payload[wo] = null;
         alignSetStore({});
         const statusEl = document.getElementById('alignSaveStatus');
-        statusEl.textContent = 'All targets cleared';
+        statusEl.textContent = '⊗ Clearing…';
+        try {
+            if (Object.keys(payload).length > 0) {
+                await fetch(`${API_BASE}/api/alignment-targets`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+            }
+            statusEl.textContent = 'All targets cleared (DB + local)';
+        } catch (e) {
+            statusEl.textContent = 'Cleared locally (DB clear failed)';
+        }
         setTimeout(() => { statusEl.textContent = ''; }, 3000);
         loadDataAlign();
     });
