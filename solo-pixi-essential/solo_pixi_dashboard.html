@@ -3969,11 +3969,21 @@ initDashboard();
       carouselAiFetching = true;
       carouselAiCache = null;
       try {
-        const url = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=en&mode=carousel`;
-        const res  = await fetchWithTimeout(url);
-        const data = await res.json();
-        if (res.ok && data.summary) {
-          carouselAiCache = { summary: data.summary, wo: latest.work_order, yieldPct: parseFloat(latest.yield_pct) || 0 };
+        const urlEn = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=en&mode=carousel`;
+        const urlZh = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=zh&mode=carousel`;
+        const [resEn, resZh] = await Promise.all([
+          fetchWithTimeout(urlEn),
+          fetchWithTimeout(urlZh)
+        ]);
+        const dataEn = await resEn.json();
+        const dataZh = await resZh.json();
+        if (resEn.ok && dataEn.summary && resZh.ok && dataZh.summary) {
+          carouselAiCache = { 
+            summaryEn: dataEn.summary, 
+            summaryZh: dataZh.summary,
+            wo: latest.work_order, 
+            yieldPct: parseFloat(latest.yield_pct) || 0 
+          };
         }
       } catch(e) {
         console.warn('AI carousel prefetch failed:', e.name === 'AbortError' ? 'timeout (180s)' : e.message);
@@ -4060,7 +4070,7 @@ initDashboard();
       }
       document.getElementById('terminal-modal').classList.remove('show');
       const cb = _termOnDone; _termOnDone = null;
-      if (cb) cb();
+      if (cb) cb(skipped);
     }
 
     function openTerminalWithLoading(wo, model, yieldPct) {
@@ -4231,18 +4241,43 @@ initDashboard();
         }
         
         if (carouselAiCache && carouselAiCache.wo === latest.work_order) {
-          startTerminalContent(carouselAiCache.summary, null);
+          openTerminalReport(latest.work_order, latest.yield_pct || 0, carouselAiCache.summaryEn, (skippedEn) => {
+            if (skippedEn) return;
+            setTimeout(() => {
+              openTerminalReport(latest.work_order, latest.yield_pct || 0, carouselAiCache.summaryZh, null);
+            }, 500);
+          });
           return;
         }
 
-        const url = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=en&mode=carousel`;
-        const res  = await fetchWithTimeout(url, 180000);
-        const data = await res.json();
-        if (!res.ok || !data.summary) {
-          startTerminalContent(`AI report request failed.\nReason: ${data.detail || data.error || 'Unknown error'}\n\nPlease retry when LLM is ready.`, null);
+        const urlEn = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=en&mode=carousel`;
+        const urlZh = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=zh&mode=carousel`;
+        const [resEn, resZh]  = await Promise.all([
+          fetchWithTimeout(urlEn, 180000),
+          fetchWithTimeout(urlZh, 180000)
+        ]);
+        const dataEn = await resEn.json();
+        const dataZh = await resZh.json();
+
+        if (!resEn.ok || !dataEn.summary) {
+          startTerminalContent(`AI report request failed.\nReason: ${dataEn.detail || dataEn.error || 'Unknown error'}\n\nPlease retry when LLM is ready.`, null);
           return;
         }
-        startTerminalContent(data.summary, null);
+
+        // Cache it for later
+        carouselAiCache = {
+          summaryEn: dataEn.summary,
+          summaryZh: dataZh.summary,
+          wo: latest.work_order,
+          yieldPct: parseFloat(latest.yield_pct) || 0
+        };
+
+        openTerminalReport(latest.work_order, latest.yield_pct || 0, dataEn.summary, (skippedEn) => {
+          if (skippedEn) return;
+          setTimeout(() => {
+            openTerminalReport(latest.work_order, latest.yield_pct || 0, dataZh.summary, null);
+          }, 500);
+        });
       } catch(e) {
         const reason = e.name === 'AbortError' ? 'LLM did not respond within 180 seconds (timeout).' : e.message;
         startTerminalContent(`AI report unavailable.\n${reason}\n\nPlease check LLM connection and retry.`, null);
@@ -4270,8 +4305,18 @@ initDashboard();
         waited += 500;
       }
       if (!window.llmConnected || !carouselAiCache) { if (onDone) onDone(); return; }
-      const { summary, wo, yieldPct } = carouselAiCache;
-      openTerminalReport(wo, yieldPct, summary, onDone);
+      const { summaryEn, summaryZh, wo, yieldPct } = carouselAiCache;
+      openTerminalReport(wo, yieldPct, summaryEn, (skippedEn) => {
+        if (skippedEn) {
+          if (onDone) onDone();
+          return;
+        }
+        setTimeout(() => {
+          openTerminalReport(wo, yieldPct, summaryZh, (skippedZh) => {
+             if (onDone) onDone();
+          });
+        }, 500);
+      });
     }
 
     // ── AI Summary Modal (Markdown, ZH / EN) ─────────────────────────────────
