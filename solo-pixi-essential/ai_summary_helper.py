@@ -42,50 +42,81 @@ def build_summary_messages(
     retest_zh, retest_en, retest_tag = _retest_alert_labels(retry_rate)
 
     if mode == "carousel":
-        # Structured English report for terminal typewriter display.
-        # Must follow the exact section-header format so parseTerminalSegments()
-        # can classify lines into report-title / section-header / content.
-        fails_display = fails_text if fails_text else "No specific failures (all passed)"
-        system_msg = (
-            "You are a professional manufacturing test engineer. "
-            "Respond in English only. Do NOT use markdown symbols (no **, no #, no -). "
-            "Use plain text with the exact numbered-section structure shown in the template. "
-            "注意：请完全使用英文回复，不要使用中文字符，不要使用markdown符号。"
-        )
-        prompt = (
-            f"[IMPORTANT] 注意：请完全用英文回复，不使用markdown符号，严格按照模板格式输出。\n\n"
-            f"Generate a PIXI Module test quality report for work order {wo}.\n"
-            f"You MUST follow this EXACT template structure (plain text, no markdown):\n\n"
-            f"PIXI Module Test Summary Report\n\n"
-            f"1. General Information\n"
-            f"Work Order: {wo}\n"
-            f"Report Status: Completed\n"
-            f"Test Type: Module Test & Calibration\n\n"
-            f"2. Test Statistics\n"
-            f"Total Units Tested: <num>{stats['total']}</num>\n"
-            f"Total Passed: <ok>{stats['passed']}</ok>\n"
-            f"Total Failed: <err>{stats['failed']}</err>\n"
-            f"Yield Rate: <num>{yield_pct}%</num>\n"
-            f"Yield Alert: <{alert_tag}>{alert_en}</{alert_tag}> (Threshold: >=99.2% Normal, 98.5-99.19% Warning, <98.5% Alarm)\n"
-            f"Retry Rate: <{retest_tag}>{retry_rate}%</{retest_tag}> [{retest_en}]\n"
-            f"Retry Rate Thresholds: <=3% Normal, 3-5% Warning, 5-8% Alarm, >8% Critical(STOP LINE)\n\n"
-            f"3. Yield Analysis\n"
-            f"[Write 2 sentences: assess yield vs alert threshold, production status.]\n\n"
-            f"4. Failure Analysis & Recommendations\n"
-            f"Failure Root Cause: <err>{fails_display}</err>\n"
-            f"Retest Rate Assessment: <{retest_tag}>{retest_en}</{retest_tag}> — "
-            f"[Write 1-2 sentences on retest rate status. If WARNING: recommend probe cleaning and fixture check. "
-            f"If ALARM: recommend immediate PE investigation, suspend station, perform RCA. "
-            f"If CRITICAL: recommend line stop, initiate 8D/CAPA. "
-            f"If NORMAL: confirm retest rate is within acceptable range.]\n"
-            f"[Write 1-2 additional sentences of follow-up recommendations based on the failure data. "
-            f"Enclose any specific numbers, percentages, or units in <num>...</num> tags, "
-            f"any positive statuses in <ok>...</ok> tags, "
-            f"and any negative statuses or warnings in <err>...</err> tags.]\n\n"
-            f"Fill in the bracketed placeholders with your analysis. "
-            f"Keep section headers exactly as shown (e.g. '1. General Information'). "
-            f"ENGLISH ONLY. No markdown. 请用纯英文。 Use the xml-like tags (<num>, <ok>, <err>, <warn>) strictly for highlighting."
-        )
+        # Structured report for terminal typewriter display.
+        if lang == "en":
+            fails_display = fails_text if fails_text else "No specific failures (all passed)"
+            system_msg = (
+                "You are a professional manufacturing test engineer. "
+                "Respond in English only. Do NOT use markdown symbols (no **, no #, no -). "
+                "Use plain text with the exact numbered-section structure shown in the template. "
+                "注意：请完全使用英文回复，不要使用中文或任何markdown符号。"
+            )
+            prompt = (
+                f"[IMPORTANT] 注意：请完全用英文回复，不使用markdown符号，严格照着模板格式输出。\n\n"
+                f"Generate a PIXI Module test quality report for work order {wo}.\n"
+                f"You MUST follow this EXACT template structure (plain text, no markdown):\n\n"
+                f"PIXI Module Test Summary Report\n\n"
+                f"1. General Information\n"
+                f"Work Order: {wo}\n"
+                f"Report Status: Completed\n"
+                f"Test Type: Module Test & Calibration\n\n"
+                f"2. Test Statistics\n"
+                f"Total Units Tested: <num>{stats['total']}</num>\n"
+                f"Total Passed: <ok>{stats['passed']}</ok>\n"
+                f"Total Failed: <err>{stats['failed']}</err>\n"
+                f"Yield Rate: <num>{yield_pct}%</num>\n"
+                f"Yield Alert: <{alert_tag}>{alert_en}</{alert_tag}> (Threshold: >=99.2% Normal, 98.5-99.19% Warning, <98.5% Alarm)\n"
+                f"Retry Rate: <{retest_tag}>{retry_rate}%</{retest_tag}> [{retest_en}]\n"
+                f"Retry Rate Thresholds: <=3% Normal, 3-5% Warning, 5-8% Alarm, >8% Critical(STOP LINE)\n\n"
+                f"3. Yield Analysis\n"
+                f"[Write 2 sentences: assess yield vs alert threshold, production status.]\n\n"
+                f"4. Failure Analysis & Recommendations\n"
+                f"Failure Root Cause: <err>{fails_display}</err>\n"
+                f"Retest Rate Assessment: <{retest_tag}>{retest_en}</{retest_tag}> — "
+                f"[Write 1-2 sentences on retest rate status. If WARNING: recommend probe cleaning and fixture check. "
+                f"If ALARM: recommend immediate PE investigation, suspend station, perform RCA. "
+                f"If CRITICAL: recommend line stop, initiate 8D/CAPA. "
+                f"If NORMAL: confirm retest rate is within acceptable range.]\n"
+                f"[Write 1-2 additional sentences of follow-up recommendations based on the failure data. "
+                f"Enclose any specific numbers, percentages, or units in <num>...</num> tags, "
+                f"any positive statuses in <ok>...</ok> tags, "
+                f"and any negative statuses or warnings in <err>...</err> tags.]\n\n"
+                f"Fill in the bracketed placeholders with your analysis. "
+                f"Keep section headers exactly as shown (e.g. '1. General Information'). "
+                f"ENGLISH ONLY. No markdown. 请用纯英文。Use the xml-like tags (<num>, <ok>, <err>, <warn>) strictly for highlighting."
+            )
+        else:
+            fails_display = fails_text if fails_text else "無特定異常(或全數Pass)"
+            system_msg = (
+                "你是一位專業的製造測試工程師。請以繁體中文回覆。不要使用 markdown 符號 (不要使用 **, #, -)。"
+                "請嚴格依照所提供的純文字編號區塊格式輸出。"
+            )
+            prompt = (
+                f"[重要] 注意：請完全使用繁體中文回覆，不要使用 markdown 符號，並嚴格依照模板格式輸出。\n\n"
+                f"請為工單 {wo} 產生一份 PIXI 模組測試品質報告。\n"
+                f"你必須嚴格遵守以下模板結構 (純文字，無 markdown)：\n\n"
+                f"PIXI 模組測試摘要報告\n\n"
+                f"1. 基本資訊\n"
+                f"工單號碼: {wo}\n"
+                f"報告狀態: 已完成\n"
+                f"測試類型: 模組測試與校準\n\n"
+                f"2. 測試數據\n"
+                f"總測試數量: <num>{stats['total']}</num>\n"
+                f"通過數量: <ok>{stats['passed']}</ok>\n"
+                f"失敗數量: <err>{stats['failed']}</err>\n"
+                f"良率: <num>{yield_pct}%</num>\n"
+                f"良率狀態: <{alert_tag}>{alert_zh}</{alert_tag}> (門檻: >=99.2% 正常, 98.5-99.19% 警告, <98.5% 告警)\n"
+                f"重測率: <{retest_tag}>{retry_rate}%</{retest_tag}> [{retest_zh}]\n"
+                f"重測率門檻: <=3% 正常, 3-5% 警告, 5-8% 告警, >8% 嚴重(需停線)\n\n"
+                f"3. 良率分析\n"
+                f"[請寫 2 句話：評估良率是否達標與生產狀態]\n\n"
+                f"4. 失效分析與建議\n"
+                f"主要失效原因: <err>{fails_display}</err>\n"
+                f"重測率評估: <{retest_tag}>{retest_zh}</{retest_tag}> — "
+                f"[請寫 1-2 句話說明重測率狀態。若為警告: 建議清潔探針與檢查治具。若為告警: 建議暫停機台由PE進行RCA。若為嚴重: 建議立即停線開立8D。若為正常: 確認重測率在合理範圍。]\n"
+                f"[請再寫 1-2 句話，根據失效數據提供後續改善建議。請將具體數字或單位用 <num>...</num> 包起來，正面狀態用 <ok>...</ok>，負面或警告用 <err>...</err>。]\n\n"
+                f"請將括號內的提示替換為你的分析內容。請務必保留編號標題原樣 (例如 '1. 基本資訊')。僅使用純文字，不要用 markdown，並嚴格使用類似 xml 的標籤 (<num>, <ok>, <err>, <warn>) 標示重點。"
+            )
         return [
             {"role": "system", "content": system_msg},
             {"role": "user",   "content": prompt},

@@ -4013,7 +4013,7 @@ initDashboard();
           .trim();
 
         let baseType = 'content';
-        if (!isList && /^PIXI\s+Module\s+Test\s+Summary\s+Report/i.test(clean)) {
+        if (!isList && /^PIXI\s+(Module\s+Test\s+Summary\s+Report|模組測試摘要報告)/i.test(clean)) {
           baseType = 'report-title';
         } else if (!isList && /^\d+\.\s+\S/.test(clean)) {
           baseType = 'section-header';
@@ -4157,11 +4157,11 @@ initDashboard();
         cursorEl.className   = 'term-cursor done';
         statusEl.textContent = '✔ REPORT COMPLETE';
         let remaining = 30;
-        countEl.textContent = `Auto-close in ${remaining}s  (click or any key to close now)`;
+        countEl.textContent = `Auto-close in ${remaining}s  (click or press any key to skip)`;
         _termCountdown = setInterval(() => {
           remaining--;
           if (remaining > 0) {
-            countEl.textContent = `Auto-close in ${remaining}s  (click or any key to close now)`;
+            countEl.textContent = `Auto-close in ${remaining}s  (click or press any key to skip)`;
           } else {
             countEl.textContent = '';
             clearInterval(_termCountdown); _termCountdown = null;
@@ -4242,7 +4242,6 @@ initDashboard();
         
         if (carouselAiCache && carouselAiCache.wo === latest.work_order) {
           openTerminalReport(latest.work_order, latest.yield_pct || 0, carouselAiCache.summaryEn, (skippedEn) => {
-            if (skippedEn) return;
             setTimeout(() => {
               openTerminalReport(latest.work_order, latest.yield_pct || 0, carouselAiCache.summaryZh, null);
             }, 500);
@@ -4273,7 +4272,6 @@ initDashboard();
         };
 
         openTerminalReport(latest.work_order, latest.yield_pct || 0, dataEn.summary, (skippedEn) => {
-          if (skippedEn) return;
           setTimeout(() => {
             openTerminalReport(latest.work_order, latest.yield_pct || 0, dataZh.summary, null);
           }, 500);
@@ -4307,10 +4305,6 @@ initDashboard();
       if (!window.llmConnected || !carouselAiCache) { if (onDone) onDone(); return; }
       const { summaryEn, summaryZh, wo, yieldPct } = carouselAiCache;
       openTerminalReport(wo, yieldPct, summaryEn, (skippedEn) => {
-        if (skippedEn) {
-          if (onDone) onDone();
-          return;
-        }
         setTimeout(() => {
           openTerminalReport(wo, yieldPct, summaryZh, (skippedZh) => {
              if (onDone) onDone();
