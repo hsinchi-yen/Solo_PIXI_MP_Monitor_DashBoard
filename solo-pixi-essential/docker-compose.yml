@@ -58,6 +58,7 @@ services:
     volumes:
       - ./api/app.py:/app/app.py
       - ./module_log_parser.py:/app/module_log_parser.py
+      - ./ai_summary_helper.py:/app/ai_summary_helper.py
       - ./solo_pixi_dashboard.html:/app/solo_pixi_dashboard.html
     expose:
       - "8000"

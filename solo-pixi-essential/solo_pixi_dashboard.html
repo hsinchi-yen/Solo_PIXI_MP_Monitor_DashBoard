@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TechNexion - Produxion | Solo PIXI Module Test Analysis</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.1/marked.min.js"></script>
 <style>
 /* ─── Apple Dark Mode CSS ─────────────────────────────────────────────────── */
 :root {
@@ -24,6 +25,9 @@
     --border: #38383a;
     --sidebar-w: 220px;
     --radius: 12px;
+    --muted: #636366;
+    --blue-bg: rgba(10,132,255,0.12);
+    --green-bg: rgba(48,209,88,0.12);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -37,9 +41,8 @@ body {
 /* ─── Sidebar ─────────────────────────────────────────────────────────────── */
 .sidebar {
     width: var(--sidebar-w);
-    background: color-mix(in srgb, var(--surface) 60%, transparent);
-    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-    border-right: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     position: fixed;
@@ -160,20 +163,20 @@ body {
 
 /* ─── Theme: Cyber Neon ───────────────────────────────────────────────── */
 [data-theme="cyber"] {
-    --bg: #07080a;
-    --surface: #111318;
-    --surface2: #1a1c23;
-    --surface3: #252830;
-    --text: #e2e8f0;
-    --text2: #94a3b8;
-    --text3: #475569;
-    --blue: #00e5ff;
-    --green: #10b981;
-    --red: #f43f5e;
-    --orange: #f59e0b;
-    --purple: #8b5cf6;
-    --teal: #06b6d4;
-    --border: #334155;
+    --bg: #0a0a14;
+    --surface: #12121f;
+    --surface2: #1a1a2e;
+    --surface3: #25253d;
+    --text: #e0e0ff;
+    --text2: #8888aa;
+    --text3: #555577;
+    --blue: #00d4ff;
+    --green: #00ff88;
+    --red: #ff3366;
+    --orange: #ff8800;
+    --purple: #aa44ff;
+    --teal: #00ffcc;
+    --border: #2a2a44;
 }
 
 /* ─── Theme: Deep Space ───────────────────────────────────────────────── */
@@ -203,24 +206,18 @@ body {
     height: 100vh;
     overflow: hidden;
 }
-@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
 .page { display: none; }
 .page.active {
     display: block;
     flex: 1;
     overflow-y: auto;
     padding: 24px 32px 40px;
-    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .page-title {
-    font-size: 32px;
-    font-weight: 800;
+    font-size: 28px;
+    font-weight: 700;
     letter-spacing: -0.5px;
     margin-bottom: 24px;
-    background: linear-gradient(135deg, #ffffff 0%, #94a3b8 50%, #e2e8f0 100%);
-    -webkit-background-clip: text;
-    color: transparent;
-    text-shadow: 0 2px 10px rgba(255,255,255,0.1);
 }
 
 /* ─── KPI Cards ───────────────────────────────────────────────────────────── */
@@ -231,18 +228,10 @@ body {
     margin-bottom: 28px;
 }
 .kpi-card {
-    background: color-mix(in srgb, var(--surface) 60%, transparent);
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    background: var(--surface);
     border-radius: var(--radius);
     padding: 20px;
-    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 20px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-.kpi-card:hover {
-    transform: translateY(-4px);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 15px color-mix(in srgb, var(--blue) 20%, transparent);
-    border-color: color-mix(in srgb, var(--blue) 50%, transparent);
+    border: 1px solid var(--border);
 }
 .kpi-card .kpi-label {
     font-size: 12px;
@@ -258,26 +247,12 @@ body {
     letter-spacing: -1px;
     font-variant-numeric: tabular-nums;
 }
-.kpi-card .kpi-value {
-    background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%); -webkit-background-clip: text; color: transparent;
-}
-.kpi-aligned-card .kpi-value {
-    background: linear-gradient(135deg, #94a3b8 0%, #475569 100%); -webkit-background-clip: text; color: transparent;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-}
-.kpi-card .kpi-value.green { background: linear-gradient(135deg, #34d399 0%, #10b981 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.red { background: linear-gradient(135deg, #fb7185 0%, #f43f5e 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.orange { background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.blue { background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.purple { background: linear-gradient(135deg, #c084fc 0%, #a855f7 100%); -webkit-background-clip: text; color: transparent; }
-.kpi-card .kpi-value.teal { background: linear-gradient(135deg, #2dd4bf 0%, #14b8a6 100%); -webkit-background-clip: text; color: transparent; }
-
-.kpi-aligned-card .kpi-value.deep-green { background: linear-gradient(135deg, #10b981 0%, #047857 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-.kpi-aligned-card .kpi-value.deep-red { background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-.kpi-aligned-card .kpi-value.deep-orange { background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-.kpi-aligned-card .kpi-value.deep-blue { background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-.kpi-aligned-card .kpi-value.deep-purple { background: linear-gradient(135deg, #a855f7 0%, #7e22ce 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
-.kpi-aligned-card .kpi-value.deep-teal { background: linear-gradient(135deg, #14b8a6 0%, #0f766e 100%); -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+.kpi-card .kpi-value.green { color: var(--green); }
+.kpi-card .kpi-value.red { color: var(--red); }
+.kpi-card .kpi-value.orange { color: var(--orange); }
+.kpi-card .kpi-value.blue { color: var(--blue); }
+.kpi-card .kpi-value.purple { color: var(--purple); }
+.kpi-card .kpi-value.teal { color: var(--teal); }
 
 /* ─── Chart containers ────────────────────────────────────────────────────── */
 .chart-row {
@@ -290,12 +265,10 @@ body {
     grid-template-columns: 1fr 1fr;
 }
 .chart-box {
-    background: color-mix(in srgb, var(--surface) 60%, transparent);
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    background: var(--surface);
     border-radius: var(--radius);
     padding: 20px;
-    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
 }
 .chart-box h3 {
     font-size: 14px;
@@ -312,11 +285,9 @@ body {
 
 /* ─── Tables ──────────────────────────────────────────────────────────────── */
 .data-table-wrap {
-    background: color-mix(in srgb, var(--surface) 60%, transparent);
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    background: var(--surface);
     border-radius: var(--radius);
-    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 32px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
     overflow: hidden;
     margin-bottom: 28px;
 }
@@ -411,11 +382,9 @@ tr:hover td { background: var(--surface2); }
     justify-content: flex-end;
     margin: 20px 32px 0;
     padding: 12px 16px;
-    background: color-mix(in srgb, var(--surface) 60%, transparent);
-    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    background: var(--surface);
     border-radius: var(--radius);
-    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 4px 16px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border);
     flex-shrink: 0;
 }
 
@@ -757,6 +726,17 @@ tr:hover td { background: var(--surface2); }
     }
 }
 
+/* ─── Metallic KPI palette ───────────────────────────────────────────────── */
+:root {
+    --m-yield:  #4ade80;   /* bright lime-green  — Aligned Yield / Raw dimmed  */
+    --m-pass:   #34d399;   /* bright emerald      — Aligned PASS               */
+    --m-fail:   #f87171;   /* bright rose-red     — Aligned FAIL               */
+    --m-stop:   #fbbf24;   /* bright amber        — Aligned STOP               */
+    --m-total:  #38bdf8;   /* bright sky-blue     — Aligned Total              */
+    --m-golden: #22d3ee;   /* bright cyan         — STOP→PASS                 */
+    --m-retry:  #c084fc;   /* light violet        — Retry Rate                */
+}
+
 /* ─── Aligned KPI dual-row ────────────────────────────────────────────────── */
 .kpi-dual-wrapper { margin-bottom: 20px; }
 .kpi-dual-label {
@@ -764,28 +744,88 @@ tr:hover td { background: var(--surface2); }
     text-transform: uppercase; padding: 2px 0 5px;
     display: flex; align-items: center; gap: 6px;
 }
-.kpi-dual-label.aligned { color: var(--teal); }
+.kpi-dual-label.aligned {
+    background: linear-gradient(90deg, var(--m-total) 0%, var(--m-golden) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
 .kpi-dual-label.original { color: var(--text3); margin-top: 8px; }
 .kpi-row-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
     gap: 12px;
 }
+
+/* Aligned card base — metallic shimmer + floating border */
 .kpi-aligned-card {
     background: var(--surface);
     border-radius: var(--radius);
     padding: 14px 18px;
-    border: 1px solid rgba(100,210,255,.2);
-    border-top: 2px solid var(--teal);
+    border: 1px solid rgba(255,255,255,.07);
+    border-top: 2px solid var(--m-total);   /* overridden per-metric */
+    position: relative; overflow: hidden;
 }
+.kpi-aligned-card::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: linear-gradient(150deg, rgba(255,255,255,.045) 0%, rgba(255,255,255,.01) 40%, transparent 70%);
+    pointer-events: none; border-radius: inherit;
+}
+
+/* Per-metric aligned card — border-top accent + subtle bg glow */
+.kpi-aligned-card.metric-yield  { border-top-color: var(--m-yield);
+    background: radial-gradient(ellipse at 50% -20%, rgba(74,222,128,.1) 0%, transparent 65%), var(--surface); }
+.kpi-aligned-card.metric-pass   { border-top-color: var(--m-pass);
+    background: radial-gradient(ellipse at 50% -20%, rgba(52,211,153,.1) 0%, transparent 65%), var(--surface); }
+.kpi-aligned-card.metric-fail   { border-top-color: var(--m-fail);
+    background: radial-gradient(ellipse at 50% -20%, rgba(248,113,113,.1) 0%, transparent 65%), var(--surface); }
+.kpi-aligned-card.metric-stop   { border-top-color: var(--m-stop);
+    background: radial-gradient(ellipse at 50% -20%, rgba(251,191,36,.1) 0%, transparent 65%), var(--surface); }
+.kpi-aligned-card.metric-total  { border-top-color: var(--m-total);
+    background: radial-gradient(ellipse at 50% -20%, rgba(56,189,248,.1) 0%, transparent 65%), var(--surface); }
+.kpi-aligned-card.metric-golden { border-top-color: var(--m-golden);
+    background: radial-gradient(ellipse at 50% -20%, rgba(34,211,238,.1) 0%, transparent 65%), var(--surface); }
+
+/* Aligned card label — metric-specific tint */
 .kpi-aligned-card .kpi-label {
-    font-size: 11px; color: var(--teal); font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; opacity: .85;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 6px; opacity: .9;
 }
+.kpi-aligned-card.metric-yield  .kpi-label { color: var(--m-yield);  }
+.kpi-aligned-card.metric-pass   .kpi-label { color: var(--m-pass);   }
+.kpi-aligned-card.metric-fail   .kpi-label { color: var(--m-fail);   }
+.kpi-aligned-card.metric-stop   .kpi-label { color: var(--m-stop);   }
+.kpi-aligned-card.metric-total  .kpi-label { color: var(--m-total);  }
+.kpi-aligned-card.metric-golden .kpi-label { color: var(--m-golden); }
+
 .kpi-aligned-card .kpi-value {
     font-size: 28px; font-weight: 700; letter-spacing: -0.8px;
     font-variant-numeric: tabular-nums;
 }
+
+/* Aligned values — bright metallic with glow */
+.kpi-value.align-yield  { color: var(--m-yield);  text-shadow: 0 0 22px rgba(74,222,128,.55);  }
+.kpi-value.align-pass   { color: var(--m-pass);   text-shadow: 0 0 22px rgba(52,211,153,.55);  }
+.kpi-value.align-fail   { color: var(--m-fail);   text-shadow: 0 0 22px rgba(248,113,113,.55); }
+.kpi-value.align-stop   { color: var(--m-stop);   text-shadow: 0 0 22px rgba(251,191,36,.55);  }
+.kpi-value.align-total  { color: var(--m-total);  text-shadow: 0 0 22px rgba(56,189,248,.55);  }
+.kpi-value.align-golden { color: var(--m-golden); text-shadow: 0 0 22px rgba(34,211,238,.55);  }
+
+/* Raw card — subtle colored border-top (same hue, dimmed) */
+.kpi-card.metric-yield  { border-top: 1.5px solid rgba(74,222,128,.25); }
+.kpi-card.metric-pass   { border-top: 1.5px solid rgba(52,211,153,.25); }
+.kpi-card.metric-fail   { border-top: 1.5px solid rgba(248,113,113,.25); }
+.kpi-card.metric-stop   { border-top: 1.5px solid rgba(251,191,36,.25); }
+.kpi-card.metric-total  { border-top: 1.5px solid rgba(56,189,248,.25); }
+.kpi-card.metric-retry  { border-top: 1.5px solid rgba(192,132,252,.25); }
+
+/* Raw values — same hue family, one stop dimmer (no glow) */
+.kpi-value.raw-yield  { color: #22c55e; }   /* green-500  */
+.kpi-value.raw-pass   { color: #10b981; }   /* emerald-500 */
+.kpi-value.raw-fail   { color: #ef4444; }   /* red-500    */
+.kpi-value.raw-stop   { color: #f59e0b; }   /* amber-500  */
+.kpi-value.raw-total  { color: #0ea5e9; }   /* sky-500    */
+.kpi-value.raw-retry  { color: #a855f7; }   /* purple-500 */
 
 /* ─── Data Alignment page ────────────────────────────────────────────────── */
 .align-input {
@@ -814,22 +854,18 @@ tr:hover td { background: var(--surface2); }
    All new selectors prefixed ds- or brand- to avoid collisions.
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ─── Ambient Orbs & Glassmorphism Animation ──────────────────────────────── */
-@keyframes float1 { 0% { transform: translate(0, 0) scale(1); } 50% { transform: translate(10%, 20%) scale(1.1); } 100% { transform: translate(0, 0) scale(1); } }
-@keyframes float2 { 0% { transform: translate(0, 0) scale(1.1); } 50% { transform: translate(-10%, -20%) scale(1); } 100% { transform: translate(0, 0) scale(1.1); } }
-
-body::before, body::after {
-    content: ""; position: fixed; pointer-events: none; z-index: 0; filter: blur(60px); opacity: 0.4;
-}
+/* ─── Radial glow at top of page ─────────────────────────────────────────── */
 body::before {
-    top: -10%; left: 10%; width: 40vw; height: 40vw; border-radius: 50%;
-    background: radial-gradient(circle, color-mix(in oklab, var(--blue) 40%, transparent), transparent 70%);
-    animation: float1 15s ease-in-out infinite;
-}
-body::after {
-    bottom: -10%; right: 10%; width: 35vw; height: 35vw; border-radius: 50%;
-    background: radial-gradient(circle, color-mix(in oklab, var(--purple) 30%, transparent), transparent 70%);
-    animation: float2 18s ease-in-out infinite;
+    content: "";
+    position: fixed;
+    inset: -160px var(--sidebar-w) auto var(--sidebar-w);
+    height: 480px;
+    background: radial-gradient(ellipse at 50% 0%,
+        color-mix(in oklab, var(--blue) 16%, transparent) 0%,
+        transparent 55%);
+    pointer-events: none;
+    z-index: 0;
+    opacity: .5;
 }
 [data-theme="default"] body::before { opacity: .3; }
 
@@ -1002,23 +1038,6 @@ body::after {
 .ds-ring-arc.warn { stroke: var(--orange); filter: drop-shadow(0 0 5px color-mix(in oklab, var(--orange) 45%, transparent)); }
 .ds-ring-arc.bad  { stroke: var(--red);    filter: drop-shadow(0 0 5px color-mix(in oklab, var(--red)    45%, transparent)); }
 
-/* ─── SVG Donut Ring — PASS/FAIL/STOP ──────────────────────────────────────── */
-.donut-ring-wrap {
-    position: relative;
-    width: 180px; height: 180px;
-    margin: 10px auto 4px;
-    flex-shrink: 0;
-}
-.donut-ring-wrap svg { width: 100%; height: 100%; }
-.donut-arc-segment {
-    transition: stroke-dasharray 1.1s cubic-bezier(.4,0,.2,1),
-                stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1);
-}
-.donut-ring-counts {
-    text-align: center; font-size: 11px; color: var(--text2);
-    padding: 4px 0 2px; font-variant-numeric: tabular-nums; letter-spacing: .3px;
-}
-
 /* ─── KPI card sparklines ────────────────────────────────────────────────── */
 .kpi-spark-svg {
     width: 100%; height: 28px;
@@ -1040,6 +1059,72 @@ body::after {
 #kpiGrid .kpi-card:nth-child(4) { animation-delay: .16s; }
 #kpiGrid .kpi-card:nth-child(5) { animation-delay: .20s; }
 #kpiGrid .kpi-card:nth-child(6) { animation-delay: .24s; }
+
+    /* --- AI Modal --- */
+    .ai-modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+      z-index: 9999; display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .ai-modal-overlay.show { opacity: 1; pointer-events: auto; }
+    .ai-modal-content {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4); transform: translateY(20px); transition: transform 0.3s;
+    }
+    .ai-modal-overlay.show .ai-modal-content { transform: translateY(0); }
+    .ai-modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .ai-modal-title { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .ai-modal-close { background: transparent; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+    .ai-modal-close:hover { color: var(--text); }
+    .ai-modal-body { padding: 20px; overflow-y: auto; line-height: 1.6; }
+    .ai-btn { padding: 3px 7px; border-radius: 4px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue); cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s; }
+    .ai-btn:hover { background: var(--blue); color: #000; }
+    .ai-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .ai-btn-en { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+    .ai-btn-en:hover { background: var(--green); color: #000; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .markdown-body { color: var(--text); font-size: 14px; line-height: 1.7; }
+    .markdown-body h1, .markdown-body h2, .markdown-body h3 { color: var(--blue); margin: 16px 0 8px; }
+    .markdown-body ul, .markdown-body ol { padding-left: 20px; margin: 8px 0; }
+    .markdown-body li { margin: 4px 0; }
+    .markdown-body strong { color: var(--text); }
+    .markdown-body code { background: var(--surface2); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+
+    /* ─── Terminal AI Report Modal ─────────────────────────────────────────── */
+    .terminal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.88); display: flex; align-items: center; justify-content: center;
+      z-index: 10000; opacity: 0; pointer-events: none; transition: opacity 0.4s;
+    }
+    .terminal-overlay.show { opacity: 1; pointer-events: auto; }
+    .terminal-window {
+      width: min(1440px, 95vw); height: min(810px, 90vh);
+      background: #050510; border: 1px solid #00e5ff; border-radius: 6px; display: flex; flex-direction: column;
+      box-shadow: 0 0 80px rgba(0,229,255,0.1), 0 0 10px rgba(0,229,255,0.3); overflow: hidden;
+    }
+    .terminal-titlebar { background: #02020a; border-bottom: 1px solid #00e5ff; padding: 8px 18px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; font-family: 'Courier New', Courier, monospace; font-size: 12px; color: #00ffff; }
+    .terminal-titlebar .term-title { font-weight: 700; letter-spacing: 1px; text-shadow: 0 0 5px rgba(0,255,255,0.5); }
+    .terminal-titlebar .term-sep { color: #0088aa; }
+    .terminal-titlebar .term-hint { margin-left: auto; font-size: 11px; color: #0088aa; }
+    .term-alert-normal  { color: #00ff00; text-shadow: 0 0 5px rgba(0,255,0,0.5); }
+    .term-alert-warning { color: #ff9900; text-shadow: 0 0 5px rgba(255,153,0,0.5); }
+    .term-alert-alarm   { color: #ff3333; animation: term-blink-alarm 1s step-end infinite; text-shadow: 0 0 5px rgba(255,51,51,0.5); }
+    @keyframes term-blink-alarm { 0%,100%{opacity:1} 50%{opacity:0.4} }
+    .terminal-body { flex: 1; overflow-y: auto; padding: 28px 36px; font-family: 'Courier New', Courier, monospace; font-size: 15px; line-height: 1.85; color: #add8e6; scroll-behavior: smooth; }
+    .term-report-title { display: block; color: #00e5ff; font-weight: 700; text-shadow: 0 0 8px rgba(0, 229, 255, 0.6); font-size: 22px; letter-spacing: 1px; margin-bottom: 6px; }
+    .term-section-header { display: block; color: #ff00ff; font-weight: 700; text-shadow: 0 0 5px rgba(255, 0, 255, 0.4); font-size: 17px; margin-top: 14px; margin-bottom: 2px; }
+    .term-content { display: inline; color: #add8e6; font-size: 15px; white-space: pre-wrap; word-break: break-word; }
+    .term-hl-num { color: #00ffff; font-weight: 700; }
+    .term-hl-ok { color: #00ff00; font-weight: 700; text-shadow: 0 0 5px rgba(0, 255, 0, 0.4); }
+    .term-hl-err { color: #ff3333; font-weight: 700; text-shadow: 0 0 5px rgba(255, 51, 51, 0.4); }
+    .term-hl-warn { color: #ff9900; font-weight: 700; text-shadow: 0 0 5px rgba(255, 153, 0, 0.4); }
+    .term-cursor { display: inline-block; width: 10px; height: 1.1em; background: #00ffff; vertical-align: text-bottom; animation: term-blink 1s step-end infinite; box-shadow: 0 0 5px #00ffff; }
+    .term-cursor.done { animation: none; opacity: 0; }
+    @keyframes term-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+    .terminal-footer { background: #02020a; border-top: 1px solid #00e5ff; padding: 6px 18px; font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #0088aa; display: flex; justify-content: space-between; flex-shrink: 0; }
+
 </style>
 </head>
 <body>
@@ -1067,13 +1152,15 @@ body::after {
         <a href="#" data-page="workorders">📋 Work Orders</a>
         <a href="#" data-page="fails">⚠️ Fail List</a>
         <div class="section-label">Analysis</div>
+        <a href="javascript:void(0);" id="nav-ai-report" onclick="openLatestWoTerminalReport()">⬛ AI Report — Latest WO</a>
         <a href="#" data-page="bt">📡 BT Analysis</a>
         <a href="#" data-page="wifi">📶 WiFi Analysis</a>
         <a href="#" data-page="advanced">📈 Advanced Analytics</a>
-        <a href="#" data-page="failanalysis">🔍 Fail Analysis</a>
+                <a href="#" data-page="failanalysis">🔍 Fail Analysis</a>
         <div class="section-label">Management</div>
         <a href="#" data-page="dbtweak">🔧 DB Tweak</a>
         <a href="#" data-page="dataalign">⚖️ Data Alignment</a>
+
     </nav>
     <div class="sidebar-footer">
         <div class="theme-label">🎨 Theme</div>
@@ -1082,11 +1169,16 @@ body::after {
             <div class="ds-theme-chip active" data-theme-val="cyber">Cyber</div>
             <div class="ds-theme-chip" data-theme-val="space">Space</div>
         </div>
-        <select class="theme-select" id="themeSelect" style="display:none">
+                <select class="theme-select" id="themeSelect" style="display:none">
             <option value="default">TechNexion Blue</option>
             <option value="cyber" selected>Cyber Neon</option>
             <option value="space">Deep Space</option>
         </select>
+        <div style="margin-top: 10px;">
+            <span class="badge badge-orange" id="api-status" style="width:100%; justify-content:center;">API: checking...</span>
+            <span class="badge badge-orange" id="llm-status" style="margin-top:4px; width:100%; justify-content:center; cursor:help;" title="Local LLM Status">LLM: checking...</span>
+        </div>
+        <div class="last-refresh-text" id="last-refresh" style="font-size:10px; color:var(--text3); margin-top:8px; text-align:center;">—</div>
     </div>
 </aside>
 
@@ -1135,34 +1227,50 @@ body::after {
         </div>
     </div>
     <!-- ─ Yield Hero ───────────────────────────────────────────── -->
-    <div class="ds-yield-hero" style="display:block">
-        <div class="ds-hero-label">▲ Aligned Yield · Today</div>
-        <div class="ds-hero-value green" id="dsHeroValue">—<span class="ds-hero-unit">%</span></div>
-        <div class="ds-hero-sub">
-            <span class="ds-hero-pill">Aligned</span>
-            <span id="dsHeroDelta" style="color:var(--text2)">—</span>
-            <span style="color:var(--text3)">·</span>
-            <span id="dsHeroRaw" style="color:var(--text3)">Raw —%</span>
+    <div class="ds-yield-hero">
+        <div>
+            <div class="ds-hero-label">▲ Aligned Yield · Today</div>
+            <div class="ds-hero-value green" id="dsHeroValue">—<span class="ds-hero-unit">%</span></div>
+            <div class="ds-hero-sub">
+                <span class="ds-hero-pill">Aligned</span>
+                <span id="dsHeroDelta" style="color:var(--text2)">—</span>
+                <span style="color:var(--text3)">·</span>
+                <span id="dsHeroRaw" style="color:var(--text3)">Raw —%</span>
+            </div>
+        </div>
+        <div class="ds-ring-wrap">
+            <svg viewBox="0 0 110 110" width="110" height="110">
+                <circle cx="55" cy="55" r="45" stroke="var(--surface2)" stroke-width="9" fill="none"/>
+                <circle id="dsRingArc" class="ds-ring-arc" cx="55" cy="55" r="45"
+                    stroke="var(--green)" stroke-width="9" fill="none"
+                    stroke-linecap="round"
+                    stroke-dasharray="282.74" stroke-dashoffset="282.74"
+                    transform="rotate(-90 55 55)"/>
+            </svg>
+            <div class="ds-ring-center">
+                <div class="ds-ring-pct" id="dsRingPct">—</div>
+                <div class="ds-ring-lbl">YIELD</div>
+            </div>
         </div>
     </div>
     <div class="kpi-dual-wrapper">
         <div class="kpi-dual-label aligned">▲ Aligned KPI</div>
         <div class="kpi-row-grid" id="alignedKpiGrid">
-            <div class="kpi-card"><div class="kpi-label">Aligned Yield %</div><div class="kpi-value green" id="kpiAlignedYield">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Aligned Total</div><div class="kpi-value teal" id="kpiAlignedTotal">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Aligned PASS</div><div class="kpi-value green" id="kpiAlignedPass">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Aligned FAIL</div><div class="kpi-value red" id="kpiAlignedFail">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">Aligned STOP</div><div class="kpi-value orange" id="kpiAlignedStop">—</div></div>
-            <div class="kpi-card"><div class="kpi-label">STOP→PASS</div><div class="kpi-value purple" id="kpiGoldenStops">—</div></div>
+            <div class="kpi-aligned-card metric-yield"><div class="kpi-label">Aligned Yield %</div><div class="kpi-value align-yield" id="kpiAlignedYield">—</div></div>
+            <div class="kpi-aligned-card metric-total"><div class="kpi-label">Aligned Total</div><div class="kpi-value align-total" id="kpiAlignedTotal">—</div></div>
+            <div class="kpi-aligned-card metric-pass"><div class="kpi-label">Aligned PASS</div><div class="kpi-value align-pass" id="kpiAlignedPass">—</div></div>
+            <div class="kpi-aligned-card metric-fail"><div class="kpi-label">Aligned FAIL</div><div class="kpi-value align-fail" id="kpiAlignedFail">—</div></div>
+            <div class="kpi-aligned-card metric-stop"><div class="kpi-label">Aligned STOP</div><div class="kpi-value align-stop" id="kpiAlignedStop">—</div></div>
+            <div class="kpi-aligned-card metric-golden"><div class="kpi-label">STOP→PASS</div><div class="kpi-value align-golden" id="kpiGoldenStops">—</div></div>
         </div>
         <div class="kpi-dual-label original">▼ Raw KPI</div>
         <div class="kpi-row-grid" id="kpiGrid">
-            <div class="kpi-aligned-card"><div class="kpi-label">Yield %</div><div class="kpi-value deep-green" id="kpiYield">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Total Tested</div><div class="kpi-value deep-teal" id="kpiTotal">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">PASS</div><div class="kpi-value deep-green" id="kpiPass">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">FAIL</div><div class="kpi-value deep-red" id="kpiFail">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">STOP</div><div class="kpi-value deep-orange" id="kpiStop">—</div></div>
-            <div class="kpi-aligned-card"><div class="kpi-label">Retry Rate %</div><div class="kpi-value deep-purple" id="kpiRetry">—</div></div>
+            <div class="kpi-card metric-yield"><div class="kpi-label">Yield %</div><div class="kpi-value raw-yield" id="kpiYield">—</div></div>
+            <div class="kpi-card metric-total"><div class="kpi-label">Total Tested</div><div class="kpi-value raw-total" id="kpiTotal">—</div></div>
+            <div class="kpi-card metric-pass"><div class="kpi-label">PASS</div><div class="kpi-value raw-pass" id="kpiPass">—</div></div>
+            <div class="kpi-card metric-fail"><div class="kpi-label">FAIL</div><div class="kpi-value raw-fail" id="kpiFail">—</div></div>
+            <div class="kpi-card metric-stop"><div class="kpi-label">STOP</div><div class="kpi-value raw-stop" id="kpiStop">—</div></div>
+            <div class="kpi-card metric-retry"><div class="kpi-label">Retry Rate %</div><div class="kpi-value raw-retry" id="kpiRetry">—</div></div>
         </div>
     </div>
     <div class="chart-row primary-row">
@@ -1172,31 +1280,7 @@ body::after {
                 <span class="item"><span class="swatch fail"></span>FAIL</span>
                 <span class="item"><span class="swatch stop"></span>STOP</span>
             </div>
-            <div class="donut-ring-wrap">
-                <svg viewBox="0 0 110 110" width="100%" height="100%">
-                    <circle cx="55" cy="55" r="45" stroke="var(--surface2)" stroke-width="9" fill="none"/>
-                    <circle id="donutArcPass" class="donut-arc-segment" cx="55" cy="55" r="45"
-                        stroke="#30d158" stroke-width="9" fill="none" stroke-linecap="butt"
-                        stroke-dasharray="0 282.74" stroke-dashoffset="0"
-                        transform="rotate(-90 55 55)"
-                        style="filter:drop-shadow(0 0 4px rgba(48,209,88,.55))"/>
-                    <circle id="donutArcFail" class="donut-arc-segment" cx="55" cy="55" r="45"
-                        stroke="#ff453a" stroke-width="9" fill="none" stroke-linecap="butt"
-                        stroke-dasharray="0 282.74" stroke-dashoffset="0"
-                        transform="rotate(-90 55 55)"
-                        style="filter:drop-shadow(0 0 4px rgba(255,69,58,.55))"/>
-                    <circle id="donutArcStop" class="donut-arc-segment" cx="55" cy="55" r="45"
-                        stroke="#ff9f0a" stroke-width="9" fill="none" stroke-linecap="butt"
-                        stroke-dasharray="0 282.74" stroke-dashoffset="0"
-                        transform="rotate(-90 55 55)"
-                        style="filter:drop-shadow(0 0 4px rgba(255,159,10,.55))"/>
-                </svg>
-                <div class="ds-ring-center">
-                    <div class="ds-ring-pct" id="donutRingPct">—</div>
-                    <div class="ds-ring-lbl">YIELD</div>
-                </div>
-            </div>
-            <div id="donutRingCounts" class="donut-ring-counts">—</div>
+            <canvas id="chartDonut"></canvas>
         </div>
         <div class="chart-box yield-wide"><h3>Hourly Yield Trend <span id="yieldTrendMeta">Latest: —</span></h3><canvas id="chartYield"></canvas></div>
     </div>
@@ -1253,7 +1337,7 @@ body::after {
     <div class="data-table-wrap">
         <div class="table-scroll">
             <table><thead><tr>
-                <th>Work Order</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th><th>Duration</th>
+                <th>Work Order</th><th>Latest Total</th><th>Test Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Yield</th><th>Retry Rate</th><th>First Test</th><th>Last Test</th><th>Duration</th><th>AI Report</th>
             </tr></thead><tbody id="tbWO"></tbody></table>
         </div>
     </div>
@@ -1374,22 +1458,6 @@ body::after {
                 <table><thead><tr>
                     <th>Work Order</th><th>MAC1</th><th>Attempts</th><th>PASS</th><th>FAIL</th><th>STOP</th><th>Risk</th><th>Last Attempt</th>
                 </tr></thead><tbody id="tbRetry"></tbody></table>
-            </div>
-        </div>
-    </div>
-    <!-- MAC1 Range Analysis -->
-    <div class="grid-2" style="margin-top:20px">
-        <div class="chart-box">
-            <h3>MAC1 Range Analysis</h3>
-            <div class="summary-grid" id="mac1RangeSummary"></div>
-            <div id="mac1RangeInfo" style="font-size:12px;color:var(--text2);padding:2px 0 0">—</div>
-        </div>
-        <div class="data-table-wrap" style="margin-bottom:0">
-            <h3>True FAIL / STOP — Never Passed</h3>
-            <div class="table-scroll">
-                <table><thead><tr>
-                    <th>MAC1</th><th>Work Order</th><th>FAIL</th><th>STOP</th><th>Final</th><th>Last Attempt</th>
-                </tr></thead><tbody id="tbMac1Incidents"></tbody></table>
             </div>
         </div>
     </div>
@@ -1540,9 +1608,9 @@ body::after {
     <h2 class="page-title">Data Alignment</h2>
     <div class="align-info-box">
         <strong>⚖️ 運作原理</strong><br>
-        <strong>Target Total：</strong>輸入每個工單的計畫生產數量。未被測試的數量 (Gap = Target − Tested) 會自動被計算為潛在的不良品（Aligned FAIL = Raw FAIL + Gap）。<br>
-        <strong>PASS 優先認列 (Raw KPI)：</strong>系統會在產生 Raw KPI 時自動處理，同一 (Work Order, MAC1) 只要曾有 PASS 記錄，不論時間先後皆優先計為 PASS。<br>
-        <strong>雲端同步儲存：</strong>設定的 Target Total 直接寫入後端 PostgreSQL 資料庫，支援跨裝置即時同步，無需登入。
+        <strong>Target Total：</strong>輸入每個工單的計畫生產數量。未被測試的數量 (Gap = Target − Tested) 自動計算為 FAIL，失效原因標記為「can't test」。<br>
+        <strong>STOP → PASS：</strong>曾有 PASS 記錄後被重驗機台 (golden sample re-validation) 而記為 STOP 的機台，在 Aligned KPI 中重新計入 PASS。<br>
+        設定值僅儲存於瀏覽器 localStorage，不寫入資料庫，無需登入。
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -1576,14 +1644,64 @@ body::after {
         </div>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6">
-        * STOP→PASS：僅為輔助參考資訊，顯示有多少台設備受惠於「PASS 優先認列」而被挽回為 PASS（如 Golden Sample 複驗），此數值已內含於 Raw PASS 之中，不再重複相加。<br>
-        * 設定的 Target Total 儲存於伺服器資料庫，點擊 Save All 後跨裝置即可同步，即使更換電腦資料也不會遺失。
+        * STOP→PASS：統計同一 (Work Order, MAC1) 同時有 PASS 與 STOP 記錄的機台數量（golden sample 複驗場景）。<br>
+        * 設定的 Target Total 儲存於瀏覽器，刷新頁面不遺失。切換頂部篩選條件後，請重新整理以更新數據。
     </div>
 </div>
 
 </main>
 
+<!-- Terminal AI Report Modal (carousel mode) -->
+<div class="terminal-overlay" id="terminal-modal">
+  <div class="terminal-window">
+    <div class="terminal-titlebar">
+      <span class="term-title">⬛ AI QUALITY REPORT</span>
+      <span class="term-sep">│</span>
+      <span id="term-wo-label">WO: —</span>
+      <span class="term-sep">│</span>
+      <span id="term-product-label">PRODUCT: —</span>
+      <span class="term-sep">│</span>
+      <span id="term-alert-label" class="term-alert-normal">NORMAL</span>
+      <span class="term-hint">[ Click or press any key to skip ]</span>
+    </div>
+    <div class="terminal-body" id="term-body">
+      <div id="term-content"></div>
+      <span class="term-cursor" id="term-cursor"></span>
+    </div>
+    <div class="terminal-footer">
+      <span id="term-status">● GENERATING...</span>
+      <span id="term-countdown"></span>
+    </div>
+  </div>
+</div>
+
+<!-- AI Report Modal (Markdown ZH/EN) -->
+<div class="ai-modal-overlay" id="ai-modal">
+  <div class="ai-modal-content">
+    <div class="ai-modal-header">
+      <div class="ai-modal-title">
+        ✨ AI Report
+        <span id="ai-modal-wo" style="color:var(--blue); font-size:13px; font-weight:normal; font-family:monospace; margin-left:8px;"></span>
+        <span id="ai-modal-product" style="color:var(--text3); font-size:12px; font-weight:normal; margin-left:4px;"></span>
+        <span id="ai-modal-alert" class="badge badge-green" style="margin-left:8px; font-size:11px;"></span>
+        <span id="ai-modal-lang" style="margin-left:6px; font-size:11px; color:var(--text3); background:var(--surface2); padding:2px 7px; border-radius:3px; border:1px solid var(--border);"></span>
+      </div>
+      <button class="ai-modal-close" onclick="closeAiModal()">×</button>
+    </div>
+    <div class="ai-modal-body" id="ai-modal-body">
+      <div id="ai-loading" style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 0; gap:12px;">
+        <div style="width:30px; height:30px; border:3px solid var(--border); border-top-color:var(--blue); border-radius:50%; animation:spin 1s linear infinite;"></div>
+        <div id="ai-loading-text" style="color:var(--text3); font-size:13px;">AI 正在努力分析中，請稍候...</div>
+      </div>
+      <div id="ai-result" style="display:none;" class="markdown-body"></div>
+    </div>
+  </div>
+</div>
+
 <script>
+/* ═══ API Base ══════════════════════════════════════════════════════════ */
+const API_BASE = '';  // same-origin — FastAPI serves this HTML
+
 /* ═══ Navigation ═════════════════════════════════════════════════════════ */
 const navLinks = document.querySelectorAll('.sidebar nav a');
 navLinks.forEach(link => {
@@ -1644,8 +1762,8 @@ function setActivePage(page, { reload = true } = {}) {
     return reload ? loadPageData(page) : Promise.resolve();
 }
 
-async function fetchJson(path, options) {
-    const response = await fetch(path, options);
+async function fetchJson(path) {
+    const response = await fetch(path);
     return response.json();
 }
 
@@ -1790,7 +1908,6 @@ const dashboardState = {
         calibration: [],
         wifi: null,
         bt: null,
-        macRange: null,
         filterKey: '',
     },
 };
@@ -1814,33 +1931,31 @@ function debounce(fn, ms) {
     return function(...args) { clearTimeout(tid); tid = setTimeout(() => fn.apply(this, args), ms); };
 }
 
-/* ═══ Alignment Store (Database Backed) ═══════════════════════════════════ */
-let globalAlignStore = {};
+/* ═══ Alignment Store (localStorage, no login needed) ═══════════════════ */
+const ALIGN_STORE_KEY = 'pixi-align-v1';
 
-async function loadAlignStore() {
-    try {
-        globalAlignStore = await api('/api/alignment-targets');
-    } catch (e) {
-        console.warn('align store read error', e);
-        globalAlignStore = {};
-    }
+function alignGetStore() {
+    try { return JSON.parse(localStorage.getItem(ALIGN_STORE_KEY) || '{}'); }
+    catch { return {}; }
 }
-
-async function saveAlignTargets(targets) {
-    try {
-        await fetchJson('/api/alignment-targets', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(targets)
-        });
-    } catch (e) {
-        console.error('align store write error', e);
-    }
+function alignSetStore(data) {
+    try { localStorage.setItem(ALIGN_STORE_KEY, JSON.stringify(data)); }
+    catch (e) { console.warn('align store write error', e); }
 }
-
 function alignGetTarget(workOrder) {
-    const val = globalAlignStore[workOrder || '(unknown)'];
+    const store = alignGetStore();
+    const val = store[workOrder || '(unknown)']?.target;
     return (val != null && Number.isFinite(Number(val))) ? Number(val) : null;
+}
+function alignSetTarget(workOrder, target) {
+    const store = alignGetStore();
+    const key = workOrder || '(unknown)';
+    if (target == null || target === '' || !Number.isFinite(Number(target))) {
+        delete store[key];
+    } else {
+        store[key] = { target: Math.max(0, Math.round(Number(target))) };
+    }
+    alignSetStore(store);
 }
 
 /* Compute aligned KPIs from summary + retries API data + WO list */
@@ -1850,11 +1965,15 @@ function computeAlignedKPIs(summary, retries, woRows) {
     const rawStop = safeNumber(summary.stop);
     const rawTotal = safeNumber(summary.total);
 
-    /* Golden stops: units with both PASS and STOP records (golden sample re-validation).
-       We count retry entries where pass_count > 0 AND stop_count > 0.
-       These are units whose latest result is STOP but had a prior PASS. */
-    const goldenStops = (retries || []).filter(r =>
-        safeNumber(r.stop_count) > 0 && safeNumber(r.pass_count) > 0
+    /* STOP→PASS: MAC1 units that have both STOP and PASS history (no FAIL).
+       rawPass from LATEST_CTE already uses PASS-priority dedup — these units
+       are already counted as PASS. This counter is informational only. */
+    const retryEntries = (retries || []).filter(r =>
+        safeNumber(r.pass_count) > 0 &&
+        (safeNumber(r.fail_count) > 0 || safeNumber(r.stop_count) > 0)
+    );
+    const goldenStops = retryEntries.filter(r =>
+        safeNumber(r.stop_count) > 0 && safeNumber(r.fail_count) === 0
     ).length;
 
     /* Gap from user-set target totals per WO */
@@ -1866,15 +1985,19 @@ function computeAlignedKPIs(summary, retries, woRows) {
         }
     });
 
+    /* rawPass / rawFail / rawStop are already MAC1-deduped (PASS-priority CTE):
+       - rawPass: units that ever passed  → correct ALIGNED PASS
+       - rawFail: units that never passed, final result FAIL
+       - rawStop: units that never passed, final result STOP */
     const alignedPass  = rawPass;
-    const alignedStop  = rawStop;
     const alignedFail  = rawFail + totalGap;
+    const alignedStop  = rawStop;
     const alignedTotal = rawTotal + totalGap;
     const alignedYield = alignedTotal > 0
         ? (alignedPass / alignedTotal * 100).toFixed(2)
         : '—';
 
-    return { alignedPass, alignedStop, alignedFail, alignedTotal, alignedYield, goldenStops, totalGap };
+    return { alignedPass, alignedFail, alignedStop, alignedTotal, alignedYield, goldenStops, totalGap };
 }
 
 function setTopFilterValues(values) {
@@ -2219,13 +2342,15 @@ function renderWorkOrders() {
 
     const tbody = document.getElementById('tbWO');
     if (!pageRows.length) {
-        renderTableEmptyState('tbWO', 11, 'No work orders match the current search or quick filter.');
+        renderTableEmptyState('tbWO', 12, 'No work orders match the current search or quick filter.');
         return;
     }
 
     tbody.innerHTML = pageRows.map(r => {
         const y = parseFloat(r.yield_pct) || 0;
         const color = y >= 95 ? 'var(--green)' : y >= 80 ? 'var(--orange)' : 'var(--red)';
+        const llmOk = window.llmConnected;
+        const wo = r.work_order || '';
         return `<tr>
             <td><strong>${safeText(r.work_order)}</strong></td>
             <td>${r.total}</td>
@@ -2238,6 +2363,18 @@ function renderWorkOrders() {
             <td>${fmtTime(r.first_test)}</td>
             <td>${fmtTime(r.last_test)}</td>
             <td>${formatElapsedSpan(r.first_test, r.last_test)}</td>
+            <td>
+              <div style="display:flex;gap:4px">
+                <button class="ai-btn ai-btn-zh"
+                  onclick="openAiSummary('${jsStringEscape(wo)}','zh',${y})"
+                  ${llmOk ? '' : 'disabled'}
+                  title="${llmOk ? '產出繁體中文報告' : 'LLM 伺服器未連線'}">ZH</button>
+                <button class="ai-btn ai-btn-en"
+                  onclick="openAiSummary('${jsStringEscape(wo)}','en',${y})"
+                  ${llmOk ? '' : 'disabled'}
+                  title="${llmOk ? 'Generate English report' : 'LLM server not connected'}">EN</button>
+              </div>
+            </td>
         </tr>`;
     }).join('');
 }
@@ -2454,32 +2591,32 @@ function initDashboardInteractions() {
     });
 }
 
-function updateDonutRing(pass, fail, stop) {
-    const total = pass + fail + stop;
-    const C = 282.74;
-    const arcPass  = document.getElementById('donutArcPass');
-    const arcFail  = document.getElementById('donutArcFail');
-    const arcStop  = document.getElementById('donutArcStop');
-    const ringPct  = document.getElementById('donutRingPct');
-    const ringCts  = document.getElementById('donutRingCounts');
-    if (!total) {
-        [arcPass, arcFail, arcStop].forEach(el => el && el.setAttribute('stroke-dasharray', `0 ${C}`));
-        if (ringPct) ringPct.textContent = '—';
-        if (ringCts) ringCts.textContent = '—';
-        return;
+const donutPercentLabelPlugin = {
+    id: 'donutPercentLabelPlugin',
+    afterDatasetsDraw(chart) {
+        const dataset = chart.data.datasets[0];
+        if (!dataset || !dataset.data || !dataset.data.length) return;
+        const total = dataset.data.reduce((s, n) => s + Number(n || 0), 0);
+        if (!total) return;
+
+        const meta = chart.getDatasetMeta(0);
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        meta.data.forEach((arc, i) => {
+            const value = Number(dataset.data[i] || 0);
+            if (!value) return;
+            const p = (value / total) * 100;
+            const pos = arc.tooltipPosition();
+            ctx.fillText(`${p.toFixed(1)}%`, pos.x, pos.y);
+        });
+        ctx.restore();
     }
-    const passLen = (pass / total) * C;
-    const failLen = (fail / total) * C;
-    const stopLen = (stop / total) * C;
-    if (arcPass) { arcPass.setAttribute('stroke-dasharray', `${passLen.toFixed(2)} ${C}`); arcPass.style.strokeDashoffset = 0; }
-    if (arcFail) { arcFail.setAttribute('stroke-dasharray', `${failLen.toFixed(2)} ${C}`); arcFail.style.strokeDashoffset = -passLen; }
-    if (arcStop) { arcStop.setAttribute('stroke-dasharray', `${stopLen.toFixed(2)} ${C}`); arcStop.style.strokeDashoffset = -(passLen + failLen); }
-    if (ringPct) ringPct.textContent = (pass / total * 100).toFixed(1) + '%';
-    if (ringCts) ringCts.innerHTML =
-        `<span style="color:#30d158">${pass.toLocaleString()}</span> · ` +
-        `<span style="color:#ff453a">${fail.toLocaleString()}</span> · ` +
-        `<span style="color:#ff9f0a">${stop.toLocaleString()}</span>`;
-}
+};
 
 /* ═══ Design System v2 — UI helpers ═════════════════════════════════════ */
 
@@ -2507,12 +2644,23 @@ function drawSparkline(svgEl, values, color) {
 function updateYieldHero(aligned, raw, trendValues) {
     const pct = parseFloat(aligned.alignedYield);
     if (isNaN(pct)) return;
+    const C = 282.74;
+    const offset = C * (1 - pct / 100);
     const colorClass = pct >= 95 ? 'green' : pct >= 80 ? 'warn' : 'bad';
+    const arc = document.getElementById('dsRingArc');
     const heroVal = document.getElementById('dsHeroValue');
+    if (arc) {
+        arc.style.strokeDashoffset = offset;
+        arc.className = 'ds-ring-arc' + (colorClass !== 'green' ? ' ' + colorClass : '');
+        const strokeColor = colorClass === 'green' ? 'var(--green)' : colorClass === 'warn' ? 'var(--orange)' : 'var(--red)';
+        arc.setAttribute('stroke', strokeColor);
+    }
     if (heroVal) {
         heroVal.className = 'ds-hero-value ' + colorClass;
         heroVal.innerHTML = pct.toFixed(2) + '<span class="ds-hero-unit">%</span>';
     }
+    const ringPct = document.getElementById('dsRingPct');
+    if (ringPct) ringPct.textContent = pct.toFixed(1) + '%';
     const rawPct = parseFloat(raw && raw.yield_pct);
     document.getElementById('dsHeroRaw').textContent = isNaN(rawPct) ? 'Raw —%' : `Raw ${rawPct.toFixed(2)}%`;
     document.getElementById('dsHeroDelta').textContent = '—';
@@ -2547,10 +2695,9 @@ function updateHealthStrip(summary, aligned) {
 
 /* ═══ Load overview ══════════════════════════════════════════════════════ */
 async function loadOverview() {
-    const [summary, trend, split, monthly, retries, woRows, _align] = await Promise.all([
+    const [summary, trend, split, monthly, retries, woRows] = await Promise.all([
         api('/api/summary'), api('/api/yield-trend'), api('/api/pass-fail-split'),
-        api('/api/monthly-count'), api('/api/retries'), api('/api/work-order-summary'),
-        loadAlignStore()
+        api('/api/monthly-count'), api('/api/retries'), api('/api/work-order-summary')
     ]);
 
     /* ── Raw KPIs ── */
@@ -2598,23 +2745,16 @@ async function loadOverview() {
             datasets: [{
                 label: 'Yield %',
                 data: trend.map(r => r.yield_pct),
-                borderColor: '#10b981',
-                backgroundColor: (context) => {
-                    if (!context.chart.chartArea) return 'rgba(16,185,129,0.1)';
-                    const { ctx, chartArea: { top, bottom } } = context.chart;
-                    const gradient = ctx.createLinearGradient(0, top, 0, bottom);
-                    gradient.addColorStop(0, 'rgba(16,185,129,0.4)');
-                    gradient.addColorStop(1, 'rgba(16,185,129,0.0)');
-                    return gradient;
-                },
-                fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#10b981',
+                borderColor: '#30d158',
+                backgroundColor: 'rgba(48,209,88,.1)',
+                fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#30d158',
                 order: 2,
             },{
                 type: 'bar',
                 label: 'Units',
                 data: trend.map(r => r.total),
-                borderColor: '#00e5ff',
-                backgroundColor: 'rgba(0,229,255,.72)',
+                borderColor: '#0a84ff',
+                backgroundColor: 'rgba(10,132,255,.72)',
                 borderRadius: 4,
                 borderWidth: 1,
                 yAxisID: 'y1',
@@ -2625,16 +2765,49 @@ async function loadOverview() {
             responsive: true,
             interaction: { mode: 'index', intersect: false },
             scales: {
-                x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                y: { beginAtZero: true, max: 100, title: { display: true, text: 'Yield %' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Units' } },
+                y: { beginAtZero: true, max: 100, title: { display: true, text: 'Yield %' }},
+                y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Units' }},
             }
         }
     });
 
+    destroyChart('chartDonut');
     const splitMap = {};
     split.forEach(r => splitMap[r.result] = r.count);
-    updateDonutRing(splitMap['PASS']||0, splitMap['FAIL']||0, splitMap['STOP']||0);
+    chartInstances['chartDonut'] = new Chart(document.getElementById('chartDonut'), {
+        type: 'doughnut',
+        data: {
+            labels: ['PASS', 'FAIL', 'STOP'],
+            datasets: [{
+                data: [splitMap['PASS']||0, splitMap['FAIL']||0, splitMap['STOP']||0],
+                backgroundColor: ['#30d158', '#ff453a', '#ff9f0a'],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            aspectRatio: 1,
+            cutout: '65%',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        title: () => '',
+                        label: (ctx) => {
+                            const total = (ctx.dataset.data || []).reduce((s, n) => s + Number(n || 0), 0);
+                            const pct = total ? (ctx.parsed * 100 / total).toFixed(1) : '0.0';
+                            return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+                        }
+                    }
+                }
+            }
+        }
+        ,
+        plugins: [donutPercentLabelPlugin]
+    });
 
     // Monthly Test Units chart
     destroyChart('chartMonthlyUnits');
@@ -3030,49 +3203,15 @@ function renderAdvanced() {
         </tr>`;
         }).join('');
     }
-
-    /* ── MAC1 Range Analysis ── */
-    const macRange = dashboardState.advanced.macRange || {};
-    const trueFail = safeNumber(macRange.true_fail_mac1);
-    const trueStop = safeNumber(macRange.true_stop_mac1);
-    const passMac  = safeNumber(macRange.pass_mac1);
-    renderSummaryCards('mac1RangeSummary', [
-        { label: 'Unique MAC1',  value: macRange.unique_mac1 ?? '—', color: 'teal' },
-        { label: 'PASS MAC1',    value: passMac  || '—', color: 'green' },
-        { label: 'True FAIL',    value: trueFail || '—', color: trueFail ? 'red'    : 'green' },
-        { label: 'True STOP',    value: trueStop || '—', color: trueStop ? 'orange' : 'green' },
-        { label: 'Range Start',  value: macRange.mac1_min ?? '—', color: 'blue' },
-        { label: 'Range End',    value: macRange.mac1_max ?? '—', color: 'purple' },
-    ]);
-    const rangeEl = document.getElementById('mac1RangeInfo');
-    if (rangeEl) {
-        rangeEl.textContent = macRange.mac1_min
-            ? `Sequence: ${macRange.mac1_min} → ${macRange.mac1_max}  |  ${macRange.unique_mac1} unique units`
-            : 'No MAC1 data under current filter';
-    }
-    const incidents = macRange.true_incidents || [];
-    if (!incidents.length) {
-        renderTableEmptyState('tbMac1Incidents', 6, 'All MAC1 units have a PASS record — no true FAIL/STOP.');
-    } else {
-        document.getElementById('tbMac1Incidents').innerHTML = incidents.map(row => `<tr>
-            <td><code>${safeText(row.mac1, '')}</code></td>
-            <td>${safeText(row.work_order, '—')}</td>
-            <td><span style="color:var(--red)">${row.fail_count || 0}</span></td>
-            <td><span style="color:var(--orange)">${row.stop_count || 0}</span></td>
-            <td><span class="badge ${(row.true_status || '').toLowerCase()}">${row.true_status ?? '—'}</span></td>
-            <td style="color:var(--text2)">${fmtTime(row.last_attempt)}</td>
-        </tr>`).join('');
-    }
 }
 
 async function loadAdvanced() {
-    const [retries, durations, calibration, wifi, bt, macRange] = await Promise.all([
+    const [retries, durations, calibration, wifi, bt] = await Promise.all([
         api('/api/retries'),
         api('/api/test-duration'),
         api('/api/calibration'),
         api('/api/wifi-metrics'),
         api('/api/bt-metrics'),
-        api('/api/mac-range').catch(() => null),
     ]);
 
     dashboardState.advanced.retries = retries || [];
@@ -3080,7 +3219,6 @@ async function loadAdvanced() {
     dashboardState.advanced.calibration = calibration || [];
     dashboardState.advanced.wifi = wifi || null;
     dashboardState.advanced.bt = bt || null;
-    dashboardState.advanced.macRange = macRange || null;
     dashboardState.advanced.filterKey = getFilter();
 
     renderAdvanced();
@@ -3088,10 +3226,9 @@ async function loadAdvanced() {
 
 /* ═══ Load Data Alignment ════════════════════════════════════════════════ */
 async function loadDataAlign() {
-    const [woRows, retries, _align] = await Promise.all([
+    const [woRows, retries] = await Promise.all([
         api('/api/work-order-summary'),
         api('/api/retries'),
-        loadAlignStore()
     ]);
 
     /* Group retries by work_order key for per-WO golden stop computation */
@@ -3102,17 +3239,24 @@ async function loadDataAlign() {
         retryByWO[key].push(r);
     });
 
+    const store = alignGetStore();
     let totalGap = 0, totalGoldenStops = 0;
     let totalAlignedPass = 0, totalAlignedFail = 0, totalAlignedTotal = 0;
 
     const alignRows = (woRows || []).map(row => {
         const key        = row.work_order || '(unknown)';
-        const target     = alignGetTarget(key);
+        const target     = store[key]?.target ?? null;
         const tested     = safeNumber(row.total);
         const gap        = target != null ? Math.max(0, target - tested) : 0;
         const woRetries  = retryByWO[key] || [];
-        const goldenStops = woRetries.filter(r =>
-            safeNumber(r.stop_count) > 0 && safeNumber(r.pass_count) > 0
+        const retryEntries = woRetries.filter(r =>
+            safeNumber(r.pass_count) > 0 &&
+            (safeNumber(r.fail_count) > 0 || safeNumber(r.stop_count) > 0)
+        );
+        /* STOP→PASS: units with STOP + PASS history (no FAIL) — informational counter.
+           row.passed is already PASS-priority deduped so these are counted in PASS. */
+        const goldenStops  = retryEntries.filter(r =>
+            safeNumber(r.stop_count) > 0 && safeNumber(r.fail_count) === 0
         ).length;
         const alignedPass  = safeNumber(row.passed);
         const alignedFail  = safeNumber(row.failed)  + gap;
@@ -3181,33 +3325,29 @@ async function loadDataAlign() {
 }
 
 function initAlignPage() {
-    document.getElementById('btnAlignSaveAll').addEventListener('click', async () => {
+    document.getElementById('btnAlignSaveAll').addEventListener('click', () => {
         const inputs = document.querySelectorAll('#tbAlignWO .align-input');
-        const updates = {};
         inputs.forEach(inp => {
             const wo  = inp.dataset.wo;
             const val = inp.value.trim();
-            updates[wo] = val === '' ? null : parseInt(val, 10);
+            alignSetTarget(wo, val === '' ? null : parseInt(val, 10));
             inp.classList.remove('dirty');
         });
-        await saveAlignTargets(updates);
         const statusEl = document.getElementById('alignSaveStatus');
-        statusEl.textContent = `✓ Saved ${inputs.length} WO target(s) securely`;
+        statusEl.textContent = `✓ Saved ${inputs.length} WO target(s)`;
         setTimeout(() => { statusEl.textContent = ''; }, 3000);
-        await loadDataAlign();
+        loadDataAlign();
     });
 
     document.getElementById('btnAlignRefresh').addEventListener('click', loadDataAlign);
 
-    document.getElementById('btnAlignClearAll').addEventListener('click', async () => {
+    document.getElementById('btnAlignClearAll').addEventListener('click', () => {
         if (!confirm('Clear ALL alignment targets? This cannot be undone.')) return;
-        const updates = {};
-        Object.keys(globalAlignStore).forEach(wo => updates[wo] = null);
-        await saveAlignTargets(updates);
+        alignSetStore({});
         const statusEl = document.getElementById('alignSaveStatus');
         statusEl.textContent = 'All targets cleared';
         setTimeout(() => { statusEl.textContent = ''; }, 3000);
-        await loadDataAlign();
+        loadDataAlign();
     });
 
     /* Mark inputs dirty when user changes value (not yet saved) */
@@ -3688,6 +3828,484 @@ async function initDashboard() {
 }
 
 initDashboard();
+
+    // --- AI Modal & LLM Status ---
+    window.llmConnected = false;
+    
+    async function checkLlmStatus() {
+      const el = document.getElementById('llm-status');
+      const wasConnected = window.llmConnected;
+      try {
+        const res = await fetch(`${API_BASE}/api/llm-status`);
+        const data = await res.json();
+        if (data && data.connected) {
+          window.llmConnected = true;
+          if (el) {
+             el.className = 'badge badge-green';
+             el.style.backgroundColor = 'rgba(48,209,88,.15)';
+             el.style.color = 'var(--green)';
+             el.textContent = 'LLM: ready';
+          }
+        } else {
+          window.llmConnected = false;
+          if (el) {
+             el.className = 'badge badge-red';
+             el.style.backgroundColor = 'rgba(255,69,58,.15)';
+             el.style.color = 'var(--red)';
+             el.textContent = 'LLM: disconnected';
+          }
+        }
+      } catch(e) {
+        window.llmConnected = false;
+        if (el) {
+           el.className = 'badge badge-red';
+           el.style.backgroundColor = 'rgba(255,69,58,.15)';
+           el.style.color = 'var(--red)';
+           el.textContent = 'LLM: disconnected';
+        }
+      }
+      // Re-render workorder buttons when LLM connection state changes
+      if (wasConnected !== window.llmConnected) renderWorkOrders();
+      // Kick off background prefetch when LLM first becomes available
+      if (!wasConnected && window.llmConnected) prefetchCarouselAiReport();
+    }
+
+    // AI Carousel
+    let carouselAiCache = null;    // { summary, wo, yieldPct }
+    let carouselAiFetching = false;
+
+    async function fetchWithTimeout(url, timeoutMs = 180000) {
+      const ctrl  = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+      try {
+        return await fetch(url, { signal: ctrl.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function prefetchCarouselAiReport() {
+      if (!window.llmConnected) return;
+      const rows = dashboardState.workorders.rows;
+      const latest = Array.isArray(rows) && rows.length > 0
+        ? rows.slice().sort((a, b) => {
+            const ts = s => s ? new Date(s).getTime() : 0;
+            return ts(b.last_test) - ts(a.last_test);
+          })[0]
+        : null;
+      if (!latest) return;
+      if (carouselAiFetching) return;
+      carouselAiFetching = true;
+      carouselAiCache = null;
+      try {
+        const url = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=en&mode=carousel`;
+        const res  = await fetchWithTimeout(url);
+        const data = await res.json();
+        if (res.ok && data.summary) {
+          carouselAiCache = { summary: data.summary, wo: latest.work_order, yieldPct: parseFloat(latest.yield_pct) || 0 };
+        }
+      } catch(e) {
+        console.warn('AI carousel prefetch failed:', e.name === 'AbortError' ? 'timeout (180s)' : e.message);
+      } finally {
+        carouselAiFetching = false;
+      }
+    }
+
+    function parseTerminalSegments(text) {
+      const segments = [];
+      const lines = text.split('\n');
+      
+      for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const line = raw.trimEnd();
+        if (!line.trim()) {
+          segments.push({ type: 'blank', text: '' });
+          continue;
+        }
+
+        const isList = /^\s*[-*]\s+/.test(line);
+        let clean = line
+          .replace(/^#+\s*/, '')
+          .replace(/\*{1,3}([^*\n]+)\*{1,3}/g, '$1')
+          .replace(/_{1,2}([^_\n]+)_{1,2}/g, '$1')
+          .replace(/^\s*[-*]\s+/, '')
+          .trim();
+
+        let baseType = 'content';
+        if (!isList && /^PIXI\s+Module\s+Test\s+Summary\s+Report/i.test(clean)) {
+          baseType = 'report-title';
+        } else if (!isList && /^\d+\.\s+\S/.test(clean)) {
+          baseType = 'section-header';
+        }
+
+        if (baseType === 'content') {
+           const tagRegex = /<(num|ok|err|warn)>([\s\S]*?)<\/\1>/g;
+           let lastIndex = 0;
+           let match;
+           const textToParse = clean || line;
+
+           while ((match = tagRegex.exec(textToParse)) !== null) {
+              if (match.index > lastIndex) {
+                 segments.push({ type: 'content', text: textToParse.substring(lastIndex, match.index) });
+              }
+              const tagType = match[1];
+              const innerText = match[2];
+              segments.push({ type: `content-${tagType}`, text: innerText });
+              lastIndex = tagRegex.lastIndex;
+           }
+           if (lastIndex < textToParse.length) {
+              segments.push({ type: 'content', text: textToParse.substring(lastIndex) });
+           }
+           segments.push({ type: 'newline', text: '' });
+        } else {
+           clean = clean.replace(/<\/?(num|ok|err|warn)>/g, '');
+           segments.push({ type: baseType, text: clean });
+        }
+      }
+      return segments;
+    }
+
+    function _setupTerminalTitlebar(wo, model, yieldPct) {
+      document.getElementById('term-wo-label').textContent      = `WO: ${wo}`;
+      document.getElementById('term-product-label').textContent = `PRODUCT: ${model || '—'}`;
+      const alertEl = document.getElementById('term-alert-label');
+      const alertLv = yieldPct >= 99.2 ? 'NORMAL' : yieldPct >= 98.5 ? 'WARNING' : 'ALARM';
+      alertEl.textContent = alertLv;
+      alertEl.className   = alertLv === 'NORMAL' ? 'term-alert-normal'
+                          : alertLv === 'WARNING' ? 'term-alert-warning' : 'term-alert-alarm';
+    }
+
+    let _termLoadingInterval = null, _termTimer = null, _termCountdown = null, _termPause = null, _termOnDone = null, _termSkipBound = null;
+
+    function closeTerminalReport(skipped) {
+      if (_termTimer)           { clearInterval(_termTimer);           _termTimer           = null; }
+      if (_termPause)           { clearTimeout(_termPause);            _termPause           = null; }
+      if (_termCountdown)       { clearInterval(_termCountdown);       _termCountdown       = null; }
+      if (_termLoadingInterval) { clearInterval(_termLoadingInterval); _termLoadingInterval = null; }
+      if (_termSkipBound) {
+        document.getElementById('terminal-modal').removeEventListener('click', _termSkipBound);
+        document.removeEventListener('keydown', _termSkipBound);
+        _termSkipBound = null;
+      }
+      document.getElementById('terminal-modal').classList.remove('show');
+      const cb = _termOnDone; _termOnDone = null;
+      if (cb) cb();
+    }
+
+    function openTerminalWithLoading(wo, model, yieldPct) {
+      closeTerminalReport(true);
+      _setupTerminalTitlebar(wo, model, yieldPct);
+
+      const contentEl = document.getElementById('term-content');
+      const statusEl  = document.getElementById('term-status');
+      const countEl   = document.getElementById('term-countdown');
+      const cursorEl  = document.getElementById('term-cursor');
+
+      contentEl.innerHTML  = '';
+      cursorEl.className   = 'term-cursor';
+      statusEl.textContent = '⏳ AI PROCESSING...';
+      countEl.textContent  = '';
+
+      const loadDiv = document.createElement('div');
+      loadDiv.id    = 'term-loading-ui';
+      loadDiv.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:460px;text-align:center;padding:40px 0;';
+      const bar = '━'.repeat(46);
+      loadDiv.innerHTML = `
+        <div style="color:#0088aa;font-size:13px;letter-spacing:1px;">${bar}</div>
+        <div style="color:#00e5ff;font-weight:700;font-size:22px;letter-spacing:4px;margin:32px 0 6px;text-shadow:0 0 8px rgba(0,229,255,0.6);">AI PROCESSING</div>
+        <div id="term-loading-dots" style="color:#ff00ff;font-size:22px;letter-spacing:6px;min-width:80px;text-align:center;margin-bottom:36px;text-shadow:0 0 5px rgba(255,0,255,0.5);">.</div>
+        <div style="font-size:13px;line-height:2.5;color:#00aadd;">
+          Work Order : <span style="color:#00ffff;text-shadow:0 0 5px rgba(0,255,255,0.4);">${wo}</span><br>
+          ${model && model !== 'ALL' ? `Product    : <span style="color:#00ffff;text-shadow:0 0 5px rgba(0,255,255,0.4);">${model}</span><br>` : ''}
+          Status     : <span style="color:#0088aa;">Querying local LLM &mdash; please wait&hellip;</span>
+        </div>
+        <div style="color:#0088aa;font-size:13px;letter-spacing:1px;margin-top:36px;">${bar}</div>
+      `;
+      contentEl.appendChild(loadDiv);
+
+      document.getElementById('terminal-modal').classList.add('show');
+      document.getElementById('term-body').scrollTop = 0;
+
+      let dc = 1;
+      _termLoadingInterval = setInterval(() => {
+        const el = document.getElementById('term-loading-dots');
+        if (el) { dc = dc % 3 + 1; el.textContent = '. '.repeat(dc).trimEnd(); }
+      }, 500);
+
+      _termOnDone    = null;
+      _termSkipBound = () => closeTerminalReport(true);
+      document.getElementById('terminal-modal').addEventListener('click', _termSkipBound, { once: true });
+      document.addEventListener('keydown', _termSkipBound, { once: true });
+    }
+
+    function startTerminalContent(summary, onDone) {
+      if (!document.getElementById('terminal-modal').classList.contains('show')) return;
+
+      if (_termLoadingInterval) { clearInterval(_termLoadingInterval); _termLoadingInterval = null; }
+      const loadUI = document.getElementById('term-loading-ui');
+      if (loadUI) loadUI.remove();
+
+      if (_termSkipBound) {
+        document.getElementById('terminal-modal').removeEventListener('click', _termSkipBound);
+        document.removeEventListener('keydown', _termSkipBound);
+        _termSkipBound = null;
+      }
+
+      const contentEl = document.getElementById('term-content');
+      const cursorEl  = document.getElementById('term-cursor');
+      const statusEl  = document.getElementById('term-status');
+      const countEl   = document.getElementById('term-countdown');
+      const body      = document.getElementById('term-body');
+
+      contentEl.innerHTML  = '';
+      cursorEl.className   = 'term-cursor';
+      statusEl.textContent = '● TYPING...';
+      countEl.textContent  = '';
+      body.scrollTop       = 0;
+
+      _termOnDone    = onDone;
+      _termSkipBound = () => closeTerminalReport(true);
+      document.getElementById('terminal-modal').addEventListener('click', _termSkipBound, { once: true });
+      document.addEventListener('keydown', _termSkipBound, { once: true });
+
+      const segments = parseTerminalSegments(summary);
+      let segIdx = 0, charIdx = 0, currentSpan = null;
+
+      function typewriterDone() {
+        clearInterval(_termTimer); _termTimer = null;
+        cursorEl.className   = 'term-cursor done';
+        statusEl.textContent = '✔ REPORT COMPLETE';
+        let remaining = 30;
+        countEl.textContent = `Auto-close in ${remaining}s  (click or any key to close now)`;
+        _termCountdown = setInterval(() => {
+          remaining--;
+          if (remaining > 0) {
+            countEl.textContent = `Auto-close in ${remaining}s  (click or any key to close now)`;
+          } else {
+            countEl.textContent = '';
+            clearInterval(_termCountdown); _termCountdown = null;
+          }
+        }, 1000);
+        _termPause = setTimeout(() => closeTerminalReport(false), 30000);
+      }
+
+      if (_termTimer) { clearInterval(_termTimer); _termTimer = null; }
+      _termTimer = setInterval(() => {
+        while (segIdx < segments.length) {
+          const seg = segments[segIdx];
+          if (seg.type === 'blank') {
+            const bl = document.createElement('div');
+            bl.style.cssText = 'display:block;height:1.85em;';
+            contentEl.appendChild(bl);
+            segIdx++; charIdx = 0; currentSpan = null;
+            body.scrollTop = 99999;
+            return;
+          }
+          if (seg.type === 'newline') {
+            contentEl.appendChild(document.createElement('br'));
+            segIdx++; charIdx = 0; currentSpan = null;
+            body.scrollTop = 99999;
+            return;
+          }
+          if (charIdx === 0) {
+            currentSpan = document.createElement('span');
+            currentSpan.className =
+              seg.type === 'report-title'   ? 'term-report-title' :
+              seg.type === 'section-header' ? 'term-section-header' : 
+              seg.type.startsWith('content-') ? 'term-hl-' + seg.type.split('-')[1] : 'term-content';
+            contentEl.appendChild(currentSpan);
+          }
+          if (charIdx < seg.text.length) {
+            currentSpan.textContent += seg.text[charIdx++];
+            body.scrollTop = 99999;
+            return;
+          }
+          segIdx++; charIdx = 0; currentSpan = null;
+        }
+        typewriterDone();
+      }, 20);
+    }
+
+    async function openLatestWoTerminalReport() {
+      if (!window.llmConnected) return;
+
+      let woRows = Array.isArray(dashboardState.workorders.rows) && dashboardState.workorders.rows.length > 0
+        ? dashboardState.workorders.rows
+        : null;
+      if (!woRows) {
+        try { woRows = await api('/api/work-order-summary'); } catch(e) { woRows = []; }
+        if (Array.isArray(woRows) && woRows.length > 0) dashboardState.workorders.rows = woRows;
+      }
+
+      const latest = Array.isArray(woRows) && woRows.length > 0
+        ? woRows.slice().sort((a, b) => {
+            const ts = s => s ? new Date(s).getTime() : 0;
+            return ts(b.last_test) - ts(a.last_test);
+          })[0]
+        : null;
+      if (!latest) { alert('No work order data available.'); return; }
+
+      openTerminalWithLoading(latest.work_order, 'ALL', latest.yield_pct || 0);
+
+      const navItem = document.getElementById('nav-ai-report');
+      if (navItem) navItem.style.opacity = '0.5';
+
+      try {
+        if (carouselAiFetching) {
+          let waited = 0;
+          while (carouselAiFetching && waited < 180000) {
+            await new Promise(r => setTimeout(r, 500));
+            waited += 500;
+          }
+        }
+        
+        if (carouselAiCache && carouselAiCache.wo === latest.work_order) {
+          startTerminalContent(carouselAiCache.summary, null);
+          return;
+        }
+
+        const url = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=en&mode=carousel`;
+        const res  = await fetchWithTimeout(url, 180000);
+        const data = await res.json();
+        if (!res.ok || !data.summary) {
+          startTerminalContent(`AI report request failed.\nReason: ${data.detail || data.error || 'Unknown error'}\n\nPlease retry when LLM is ready.`, null);
+          return;
+        }
+        startTerminalContent(data.summary, null);
+      } catch(e) {
+        const reason = e.name === 'AbortError' ? 'LLM did not respond within 180 seconds (timeout).' : e.message;
+        startTerminalContent(`AI report unavailable.\n${reason}\n\nPlease check LLM connection and retry.`, null);
+      } finally {
+        if (navItem) navItem.style.opacity = '';
+      }
+    }
+
+    // ── Carousel shortcut: data already available, skip loading phase ─────────
+    function openTerminalReport(wo, yieldPct, summary, onDone) {
+      closeTerminalReport(true);
+      _setupTerminalTitlebar(wo, '—', yieldPct);
+      document.getElementById('terminal-modal').classList.add('show');
+      document.getElementById('term-body').scrollTop = 0;
+      startTerminalContent(summary, onDone);
+    }
+
+    async function showCarouselAiReport(onDone) {
+      if (!window.llmConnected || (!carouselAiCache && !carouselAiFetching)) {
+        if (onDone) onDone(); return;
+      }
+      let waited = 0;
+      while (carouselAiFetching && waited < 130000) {
+        await new Promise(r => setTimeout(r, 500));
+        waited += 500;
+      }
+      if (!window.llmConnected || !carouselAiCache) { if (onDone) onDone(); return; }
+      const { summary, wo, yieldPct } = carouselAiCache;
+      openTerminalReport(wo, yieldPct, summary, onDone);
+    }
+
+    // ── AI Summary Modal (Markdown, ZH / EN) ─────────────────────────────────
+    async function openAiSummary(wo, lang, yieldPct) {
+      if (!window.llmConnected) return;
+
+      const alertLevel = yieldPct >= 99.2 ? 'normal' : yieldPct >= 98.5 ? 'warning' : 'alarm';
+      const alertCls   = alertLevel === 'normal' ? 'badge-green' : alertLevel === 'warning' ? 'badge-amber' : 'badge-red';
+      const alertLabel = lang === 'zh'
+        ? (alertLevel === 'normal' ? '正常' : alertLevel === 'warning' ? '警告' : '告警')
+        : (alertLevel === 'normal' ? 'Normal' : alertLevel === 'warning' ? 'Warning' : 'ALARM');
+
+      const modal       = document.getElementById('ai-modal');
+      const titleEl     = document.getElementById('ai-modal-wo');
+      const alertBadge  = document.getElementById('ai-modal-alert');
+      const langBadge   = document.getElementById('ai-modal-lang');
+      const loading     = document.getElementById('ai-loading');
+      const loadingText = document.getElementById('ai-loading-text');
+      const result      = document.getElementById('ai-result');
+
+      titleEl.textContent  = wo;
+      alertBadge.className = `badge ${alertCls}`;
+      alertBadge.textContent = alertLabel;
+      langBadge.textContent  = lang === 'zh' ? '中文' : 'English';
+
+      loading.style.display = 'flex';
+      result.style.display  = 'none';
+      result.innerHTML = '';
+      if (loadingText) loadingText.textContent = lang === 'zh' ? 'AI 正在努力分析中，請稍候...' : 'AI is analyzing, please wait...';
+      modal.classList.add('show');
+
+      try {
+        const res  = await fetchWithTimeout(`${API_BASE}/api/workorders/${encodeURIComponent(wo)}/ai-summary?lang=${lang}`);
+        const data = await res.json();
+        if (res.ok && data.summary) {
+          result.innerHTML = typeof marked !== 'undefined' ? marked.parse(data.summary) : data.summary.replace(/\n/g,'<br>');
+        } else {
+          result.innerHTML = `<span style="color:var(--red);">Error: ${data.detail || data.error || 'Analysis failed'}</span>`;
+        }
+      } catch(e) {
+        if (e.name === 'AbortError') {
+          result.innerHTML = `<span style="color:var(--red);">LLM did not respond within 180 seconds (timeout).</span>`;
+        } else {
+          result.innerHTML = `<span style="color:var(--red);">Request failed: ${e.message}</span>`;
+        }
+      } finally {
+        loading.style.display = 'none';
+        result.style.display  = 'block';
+      }
+    }
+
+    function closeAiModal() {
+      document.getElementById('ai-modal').classList.remove('show');
+    }
+
+    // ── Scheduled carousel (08:00–20:00, every 10 min) ───────────────────────
+    const SCHEDULED_CAROUSEL_PAGES = ['overview', 'workorders', 'bt', 'wifi'];
+    const SCHEDULED_CAROUSEL_PAGE_MS = 20000;
+    let _schedCarouselInterval  = null;
+    let _schedCarouselIdx       = 0;
+    let _schedCheckerInterval   = null;
+    let _lastSchedTriggerMinute = -1;
+
+    function isScheduledHour() {
+      const h = new Date().getHours();
+      return h >= 8 && h < 20;
+    }
+
+    function startScheduledCarousel() {
+      if (_schedCarouselInterval) return;
+      carouselAiCache    = null;
+      carouselAiFetching = false;
+      prefetchCarouselAiReport();
+
+      _schedCarouselIdx = 0;
+      setActivePage(SCHEDULED_CAROUSEL_PAGES[0], { reload: false });
+
+      _schedCarouselInterval = setInterval(() => {
+        _schedCarouselIdx++;
+        if (_schedCarouselIdx < SCHEDULED_CAROUSEL_PAGES.length) {
+          setActivePage(SCHEDULED_CAROUSEL_PAGES[_schedCarouselIdx], { reload: false });
+        } else {
+          clearInterval(_schedCarouselInterval); _schedCarouselInterval = null;
+          showCarouselAiReport(() => { _schedCarouselIdx = 0; });
+        }
+      }, SCHEDULED_CAROUSEL_PAGE_MS);
+    }
+
+    function startCarouselScheduler() {
+      if (_schedCheckerInterval) clearInterval(_schedCheckerInterval);
+      _lastSchedTriggerMinute = -1;
+      _schedCheckerInterval = setInterval(() => {
+        if (!isScheduledHour()) return;
+        const m = new Date().getMinutes();
+        if (m % 10 !== 0) return;
+        if (m === _lastSchedTriggerMinute) return;
+        _lastSchedTriggerMinute = m;
+        // Add random jitter (0-60 seconds) to prevent thundering herd when multiple dashboards exist
+        setTimeout(() => startScheduledCarousel(), Math.random() * 60000);
+      }, 30000);
+    }
+
+  setTimeout(checkLlmStatus, 500);
+  setInterval(checkLlmStatus, 30000);
+  startCarouselScheduler();
 </script>
 </body>
 </html>

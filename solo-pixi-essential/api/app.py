@@ -9,6 +9,14 @@ import psycopg2.extras
 from fastapi import FastAPI, Query, Header, Body
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 
+import json
+import urllib.request
+import urllib.error
+import asyncio
+import time
+import threading
+from ai_summary_helper import build_summary_messages
+
 app = FastAPI(title="Solo PIXI Module Test Analysis")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://pixi:pixipass@localhost:5433/pixi_test")
@@ -17,6 +25,31 @@ DASHBOARD_PATH = os.path.join(os.path.dirname(__file__), "solo_pixi_dashboard.ht
 # DB Tweak credentials (override via env)
 TWEAK_USER = os.environ.get("TWEAK_USER", "pixi")
 TWEAK_PASS = os.environ.get("TWEAK_PASS", "pixipass")
+
+# LLM AI Summary configurations
+LLM_API_BASE = os.environ.get("LLM_API_BASE", "http://10.20.30.23:8000/v1")
+LLM_API_KEY = os.environ.get("LLM_API_KEY", "tn8227")
+LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen3.6-35B-A3B-Q6_K")
+
+
+LLM_STATUS_CACHE = {"status": "error", "connected": False}
+
+async def update_llm_status_loop():
+    while True:
+        try:
+            req = urllib.request.Request(f"{LLM_API_BASE}/models", headers={"Authorization": f"Bearer {LLM_API_KEY}"})
+            response = await asyncio.to_thread(urllib.request.urlopen, req, timeout=3)
+            if response.status == 200:
+                LLM_STATUS_CACHE.update({"status": "ok", "connected": True})
+            else:
+                LLM_STATUS_CACHE.update({"status": "error", "connected": False})
+        except Exception:
+            LLM_STATUS_CACHE.update({"status": "error", "connected": False})
+        await asyncio.sleep(30)
+
+@app.on_event("startup")
+async def start_llm_status_loop():
+    asyncio.create_task(update_llm_status_loop())
 
 
 def get_conn():
@@ -1189,6 +1222,120 @@ def api_reparse(x_tweak_token: str = Header(None)):
     return {"updated": updated, "total": len(rows)}
 
 
+@app.get("/api/llm-status")
+def llm_status():
+    return LLM_STATUS_CACHE
+
+
+
+AI_SUMMARY_CACHE = {}
+AI_SUMMARY_LOCKS = {}
+_cache_lock = threading.Lock()
+
+@app.get("/api/workorders/{wo}/ai-summary")
+def ai_summary(wo: str, product_model: str = None, lang: str = "zh", mode: str = "normal"):
+    cache_key = f"{wo}_{lang}_{mode}"
+    
+    with _cache_lock:
+        if cache_key in AI_SUMMARY_CACHE:
+            entry = AI_SUMMARY_CACHE[cache_key]
+            if time.time() - entry['timestamp'] < 600:  # 10 minute cache TTL
+                return {"summary": entry['summary']}
+        
+        if cache_key not in AI_SUMMARY_LOCKS:
+            AI_SUMMARY_LOCKS[cache_key] = threading.Lock()
+        wo_lock = AI_SUMMARY_LOCKS[cache_key]
+        
+    with wo_lock:
+        # Double-check inside the lock
+        if cache_key in AI_SUMMARY_CACHE:
+            entry = AI_SUMMARY_CACHE[cache_key]
+            if time.time() - entry['timestamp'] < 600:
+                return {"summary": entry['summary']}
+
+        where, params = _build_where(work_order=wo)
+
+        conn = get_conn()
+        try:
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            
+            # 1. Get stats
+            sql_stats = f"""
+            {LATEST_CTE.format(where=where)}
+            SELECT
+                COUNT(*)                                           AS total,
+                COUNT(*) FILTER (WHERE result = 'PASS')            AS passed,
+                COUNT(*) FILTER (WHERE result = 'FAIL')            AS failed,
+                COUNT(*) FILTER (WHERE result = 'STOP')            AS stopped,
+                ROUND(COUNT(*) FILTER (WHERE result = 'PASS') * 100.0 / NULLIF(COUNT(*), 0), 2) AS yield_pct
+            FROM latest WHERE rn = 1
+            """
+            cur.execute(sql_stats, params)
+            stats_row = cur.fetchone()
+            if not stats_row or stats_row['total'] == 0:
+                return JSONResponse({"error": "Work order not found or has no data"}, status_code=404)
+                
+            stats = dict(stats_row)
+            
+            # Calculate retry rate
+            cur.execute(f"""
+                WITH filtered AS (SELECT * FROM module_test {where}),
+                grouped_pairs AS (SELECT COALESCE(work_order, '') AS work_order_key, mac1, COUNT(*) AS attempts FROM filtered GROUP BY COALESCE(work_order, ''), mac1)
+                SELECT COUNT(*) FILTER (WHERE attempts > 1) AS retry_macs, COUNT(*) AS total_macs FROM grouped_pairs
+            """, params)
+            rr = cur.fetchone()
+            stats["retry_rate"] = round((rr['retry_macs'] or 0) * 100.0 / max(rr['total_macs'] or 0, 1), 2)
+            
+            # 2. Get top fails
+            cur.execute(f"""
+            {LATEST_CTE.format(where=where)}
+            SELECT
+                fail_step_name AS fail_reason,
+                COUNT(*) as count
+            FROM latest
+            WHERE rn = 1 AND result IN ('FAIL','STOP') AND fail_step_name IS NOT NULL
+            GROUP BY fail_step_name
+            ORDER BY count DESC
+            LIMIT 3
+            """, params)
+            rows_fails = cur.fetchall()
+            
+        finally:
+            if 'cur' in locals(): cur.close()
+            conn.close()
+
+        if lang == "en":
+            fails_text = ", ".join([f"{r['fail_reason']}({r['count']} units)" for r in rows_fails]) if rows_fails else "No specific failures (all passed)"
+        else:
+            fails_text = ", ".join([f"{r['fail_reason']}({r['count']} units)" for r in rows_fails]) if rows_fails else "無特定異常(或全數Pass)"
+
+        messages = build_summary_messages(stats, fails_text, wo, lang, mode)
+        data = {
+            "model": LLM_MODEL,
+            "messages": messages,
+        }
+
+        try:
+            req = urllib.request.Request(
+                f"{LLM_API_BASE}/chat/completions",
+                data=json.dumps(data).encode("utf-8"),
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {LLM_API_KEY}"}
+            )
+            with urllib.request.urlopen(req, timeout=180) as response:
+                res_data = json.loads(response.read().decode("utf-8"))
+                llm_content = res_data["choices"][0]["message"]["content"]
+                
+                # Save to cache
+                with _cache_lock:
+                    AI_SUMMARY_CACHE[cache_key] = {
+                        'summary': llm_content,
+                        'timestamp': time.time()
+                    }
+                
+                return {"summary": llm_content}
+        except Exception as e:
+            print(f"LLM summary failed: {e}")
+            return JSONResponse({"error": f"LLM request failed: {e}"}, status_code=500)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
