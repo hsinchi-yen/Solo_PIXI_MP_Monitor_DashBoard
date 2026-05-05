@@ -4226,7 +4226,7 @@ initDashboard();
         : null;
       if (!latest) { alert('No work order data available.'); return; }
 
-      openTerminalWithLoading(latest.work_order, 'ALL', latest.yield_pct || 0);
+      openTerminalWithLoading(latest.work_order, 'PIXI-9377-S', latest.yield_pct || 0);
 
       const navItem = document.getElementById('nav-ai-report');
       if (navItem) navItem.style.opacity = '0.5';
@@ -4287,7 +4287,7 @@ initDashboard();
     // ── Carousel shortcut: data already available, skip loading phase ─────────
     function openTerminalReport(wo, yieldPct, summary, onDone) {
       closeTerminalReport(true);
-      _setupTerminalTitlebar(wo, '—', yieldPct);
+      _setupTerminalTitlebar(wo, 'PIXI-9377-S', yieldPct);
       document.getElementById('terminal-modal').classList.add('show');
       document.getElementById('term-body').scrollTop = 0;
       startTerminalContent(summary, onDone);
