@@ -43,11 +43,11 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLineEdit, QLabel,
                              QFileDialog, QTextEdit, QGroupBox, QGridLayout,
                              QMessageBox, QProgressBar, QListWidget,
-                             QAbstractItemView, QFrame, QSizePolicy, QCheckBox)
+                             QAbstractItemView, QFrame, QSizePolicy, QCheckBox, QDialog)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSettings
 from PyQt5.QtGui import QIcon, QPixmap
 
-APP_VERSION = "1.3.0"
+APP_VERSION = "2.0.0"
 DB_CONNECT_TIMEOUT = 3
 DB_HEARTBEAT_INTERVAL_MS = 15_000  # 15 seconds
 DEFAULT_DB_HOST = "10.20.31.111"
@@ -90,108 +90,97 @@ def load_default_db_host():
     return DEFAULT_DB_HOST
 
 # ========================================================
-# Windows 11 Minimalist stylesheet
+# Windows 11 Ultra-Minimalist stylesheet
 # ========================================================
 WIN11_STYLESHEET = """
-QMainWindow, QMessageBox {
-    background-color: #F3F3F3;
+QMainWindow, QDialog, QMessageBox {
+    background-color: #F8F9FA;
 }
 QWidget {
     font-family: "Segoe UI Variable", "Segoe UI", "Noto Sans", sans-serif;
-    color: #1A1A1A;
+    color: #2D3748;
     font-size: 13px;
     line-height: 1.2;
 }
 
 QGroupBox {
-    background-color: #FFFFFF;
-    border: 1px solid #E5E5E5;
-    border-radius: 8px;
+    background-color: transparent;
+    border: none;
     margin-top: 16px;
-    padding: 16px;
-    font-weight: 600;
+    padding-top: 12px;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    padding: 0px 8px;
-    color: #1A1A1A;
+    padding: 0px;
+    color: #005FB8;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
 }
 
 QLineEdit {
-    border: 1px solid #D1D1D1;
-    border-radius: 4px;
-    padding: 6px 10px;
     background-color: #FFFFFF;
-    selection-background-color: #005FB8;
-    color: #1A1A1A;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: #2D3748;
     min-height: 24px;
 }
 QLineEdit:focus {
     border: 2px solid #005FB8;
-    padding: 5px 9px;
 }
 QLineEdit[readOnly="true"] {
-    background-color: #F9F9F9;
-    color: #6B6B6B;
+    background-color: #F1F5F9;
+    color: #718096;
 }
 
 QPushButton {
     background-color: #005FB8;
     color: white;
-    border: 1px solid transparent;
-    border-radius: 4px;
+    border: none;
+    border-radius: 6px;
     padding: 6px 16px;
     font-weight: 600;
     min-height: 24px;
 }
 QPushButton:hover {
-    background-color: #005A9E;
+    background-color: #004C99;
 }
 QPushButton:pressed {
-    background-color: #00528C;
+    background-color: #003B77;
 }
 QPushButton:disabled {
-    background-color: #CCCCCC;
-    color: #888888;
+    background-color: #E2E8F0;
+    color: #A0AEC0;
 }
 
 QPushButton#secondary {
-    background-color: #FDFDFD;
-    color: #1A1A1A;
-    border: 1px solid #D1D1D1;
+    background-color: #EDF2F7;
+    color: #2D3748;
 }
 QPushButton#secondary:hover {
-    background-color: #F6F6F6;
+    background-color: #E2E8F0;
 }
 QPushButton#secondary:pressed {
-    background-color: #EAEAEA;
+    background-color: #CBD5E0;
 }
 
 QPushButton#danger {
-    background-color: #C42B1C;
+    background-color: #E53E3E;
     color: white;
 }
 QPushButton#danger:hover {
-    background-color: #B02719;
-}
-QPushButton#danger:pressed {
-    background-color: #9E2216;
+    background-color: #C53030;
 }
 QPushButton#danger:disabled {
-    background-color: #E7C0C3;
-    color: #8A8886;
+    background-color: #FEB2B2;
 }
 
-QTextEdit, QListWidget {
-    border: 1px solid #D1D1D1;
-    border-radius: 4px;
+QListWidget {
     background-color: #FFFFFF;
-    color: #1A1A1A;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
     padding: 4px;
-    font-size: 12px;
     font-family: Consolas, monospace;
     outline: none;
 }
@@ -204,13 +193,13 @@ QListWidget::item:selected {
     color: white;
 }
 QListWidget::item:hover {
-    background-color: #F3F3F3;
+    background-color: #EDF2F7;
 }
 
 QProgressBar {
-    border: 1px solid #D1D1D1;
-    border-radius: 4px;
-    background-color: #E6E6E6;
+    border: none;
+    border-radius: 3px;
+    background-color: #E2E8F0;
     text-align: center;
     color: transparent;
     max-height: 6px;
@@ -223,12 +212,11 @@ QProgressBar::chunk {
 
 QLabel {
     font-size: 13px;
-    color: #1A1A1A;
     background: transparent;
 }
 
 QFrame#separator {
-    background-color: #E5E5E5;
+    background-color: #E2E8F0;
     max-height: 1px;
 }
 """
@@ -333,6 +321,77 @@ class UploadWorkerThread(QThread):
         self.finished_signal.emit(summary)
 
 
+class DBConfigDialog(QDialog):
+    def __init__(self, parent=None, settings=None):
+        super().__init__(parent)
+        self.settings = settings
+        self.setWindowTitle("Database Configuration")
+        self.setFixedSize(400, 320)
+        
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(16)
+
+        grid = QGridLayout()
+        grid.setSpacing(12)
+        grid.setColumnStretch(1, 1)
+
+        self.inp_host = QLineEdit(self.settings.value("db_host", load_default_db_host()))
+        self.inp_port = QLineEdit(self.settings.value("db_port", "5433"))
+        self.inp_db   = QLineEdit(self.settings.value("db_name", "pixi_test"))
+        self.inp_user = QLineEdit(self.settings.value("db_user", "pixi"))
+        self.inp_pass = QLineEdit(self.settings.value("db_pass", "pixipass"))
+        self.inp_pass.setEchoMode(QLineEdit.Password)
+
+        labels = ["Host:", "Port:", "Database:", "User:", "Password:"]
+        inputs = [self.inp_host, self.inp_port, self.inp_db, self.inp_user, self.inp_pass]
+
+        for i, (lbl_text, inp) in enumerate(zip(labels, inputs)):
+            lbl = QLabel(lbl_text)
+            lbl.setStyleSheet("color: #4A5568; font-weight: 600;")
+            grid.addWidget(lbl, i, 0, Qt.AlignRight | Qt.AlignVCenter)
+            grid.addWidget(inp, i, 1)
+
+        layout.addLayout(grid)
+
+        btn_layout = QHBoxLayout()
+        self.btn_test = QPushButton("Test Connection")
+        self.btn_test.setObjectName("secondary")
+        self.btn_test.clicked.connect(self._test_conn)
+        
+        self.btn_save = QPushButton("Save && Close")
+        self.btn_save.clicked.connect(self.accept)
+        
+        btn_layout.addWidget(self.btn_test)
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.btn_save)
+        
+        layout.addLayout(btn_layout)
+
+    def _test_conn(self):
+        try:
+            import psycopg2
+            dsn = (
+                f"postgresql://{self.inp_user.text()}:{self.inp_pass.text()}"
+                f"@{self.inp_host.text()}:{self.inp_port.text()}/{self.inp_db.text()}"
+            )
+            conn = psycopg2.connect(dsn, connect_timeout=DB_CONNECT_TIMEOUT)
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            cur.fetchone()
+            cur.close()
+            conn.close()
+            QMessageBox.information(self, "Success", "Connection successful!")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Connection failed:\n{e}")
+
+    def save_settings(self):
+        self.settings.setValue("db_host", self.inp_host.text())
+        self.settings.setValue("db_port", self.inp_port.text())
+        self.settings.setValue("db_name", self.inp_db.text())
+        self.settings.setValue("db_user", self.inp_user.text())
+        self.settings.setValue("db_pass", self.inp_pass.text())
+
 # ========================================================
 # Main Window
 # ========================================================
@@ -386,17 +445,23 @@ class LogUploaderApp(QMainWindow):
         title_row.addLayout(title_col)
         title_row.addStretch()
 
-        # ── Database Online / Offline badge ───────────────────────
+        # ── Database Online / Offline badge & Config Button ───────────────────────
         self.db_status_dot = QLabel("●")
-        self.db_status_dot.setStyleSheet("color: #8a8886; font-size: 18px;")
+        self.db_status_dot.setStyleSheet("color: #A0AEC0; font-size: 18px;")
         self.db_status_label = QLabel("Database Offline")
         self.db_status_label.setStyleSheet(
-            "color: #8a8886; font-size: 14px; font-weight: 700;"
+            "color: #718096; font-size: 14px; font-weight: 700;"
         )
+        self.btn_config = QPushButton("⚙️ Settings")
+        self.btn_config.setObjectName("secondary")
+        self.btn_config.clicked.connect(self.open_config_dialog)
+
         badge_row = QHBoxLayout()
         badge_row.setSpacing(8)
         badge_row.addWidget(self.db_status_dot)
         badge_row.addWidget(self.db_status_label)
+        badge_row.addSpacing(16)
+        badge_row.addWidget(self.btn_config)
         title_row.addLayout(badge_row)
 
         layout.addLayout(title_row)
@@ -410,89 +475,20 @@ class LogUploaderApp(QMainWindow):
 
         info_banner = QFrame()
         info_banner.setStyleSheet(
-            "QFrame { background-color: #fff3ed; border: 1px solid #f1c7b8; border-radius: 12px; }"
+            "QFrame { background-color: #EBF8FF; border: 1px solid #BEE3F8; border-radius: 8px; }"
         )
         info_layout = QHBoxLayout(info_banner)
-        info_layout.setContentsMargins(16, 10, 16, 10)
-        info_layout.setSpacing(6)
+        info_layout.setContentsMargins(16, 12, 16, 12)
+        info_layout.setSpacing(8)
         info_title = QLabel("Upload Format:")
-        info_title.setStyleSheet("color: #5e2750; font-size: 13px; font-weight: 700; white-space: nowrap;")
+        info_title.setStyleSheet("color: #2B6CB0; font-size: 13px; font-weight: 700; white-space: nowrap;")
         info_desc = QLabel(
-            "Preferred filename: WORKORDER_YYYYMMDD_HHMMSS_MAC1_MAC2_RESULT.txt. unit_date is derived from filename or Start time."
+            "Preferred filename: WORKORDER_YYYYMMDD_HHMMSS_MAC1_MAC2_RESULT.txt"
         )
-        info_desc.setStyleSheet("color: #5c514b; font-size: 13px;")
+        info_desc.setStyleSheet("color: #2C5282; font-size: 13px;")
         info_layout.addWidget(info_title, 0)
         info_layout.addWidget(info_desc, 1)
         layout.addWidget(info_banner)
-
-        # ════════════════════════════════════════════════════════
-        # 1. Database Connection (QGridLayout)
-        # ════════════════════════════════════════════════════════
-        conn_group = QGroupBox("Database Connection")
-        conn_group.setMinimumHeight(200)
-        conn_grid = QGridLayout()
-        conn_grid.setHorizontalSpacing(14)
-        conn_grid.setVerticalSpacing(14)
-        conn_grid.setContentsMargins(16, 22, 16, 16)
-        conn_grid.setColumnMinimumWidth(0, 72)
-        conn_grid.setColumnMinimumWidth(2, 72)
-        conn_grid.setColumnMinimumWidth(4, 78)
-        conn_grid.setColumnStretch(1, 3)
-        conn_grid.setColumnStretch(3, 2)
-        conn_grid.setColumnStretch(5, 2)
-        conn_grid.setRowMinimumHeight(0, 46)
-        conn_grid.setRowMinimumHeight(1, 46)
-        conn_grid.setRowMinimumHeight(2, 30)
-
-        lbl_host = QLabel("Host:")
-        lbl_port = QLabel("Port:")
-        lbl_db   = QLabel("Database:")
-        lbl_user = QLabel("User:")
-        lbl_pw   = QLabel("Password:")
-        for lbl in [lbl_host, lbl_port, lbl_db, lbl_user, lbl_pw]:
-            lbl.setStyleSheet("color: #5c514b; font-size: 13px; font-weight: 600;")
-            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
-        default_host = self.settings.value("db_host", load_default_db_host())
-        self.inp_host = QLineEdit(default_host)
-        self.inp_port = QLineEdit(self.settings.value("db_port", "5433"))
-        self.inp_db   = QLineEdit(self.settings.value("db_name", "pixi_test"))
-        self.inp_user = QLineEdit(self.settings.value("db_user", "pixi"))
-        self.inp_pass = QLineEdit(self.settings.value("db_pass", "pixipass"))
-        self.inp_pass.setEchoMode(QLineEdit.Password)
-        for inp in [self.inp_host, self.inp_port, self.inp_db, self.inp_user, self.inp_pass]:
-            inp.setFixedHeight(40)
-            inp.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-            inp.textChanged.connect(self._on_conn_changed)
-
-        conn_grid.addWidget(lbl_host, 0, 0)
-        conn_grid.addWidget(self.inp_host, 0, 1)
-        conn_grid.addWidget(lbl_port, 0, 2)
-        self.inp_port.setMinimumWidth(110)
-        self.inp_port.setMaximumWidth(140)
-        conn_grid.addWidget(self.inp_port, 0, 3)
-        conn_grid.addWidget(lbl_pw, 0, 4)
-        self.inp_pass.setMinimumWidth(140)
-        self.inp_pass.setMaximumWidth(160)
-        conn_grid.addWidget(self.inp_pass, 0, 5)
-
-        conn_grid.addWidget(lbl_db, 1, 0)
-        conn_grid.addWidget(self.inp_db, 1, 1)
-        conn_grid.addWidget(lbl_user, 1, 2)
-        conn_grid.addWidget(self.inp_user, 1, 3)
-        self.btn_test_conn = QPushButton("Test Connection")
-        self.btn_test_conn.setObjectName("secondary")
-        self.btn_test_conn.setMinimumHeight(40)
-        self.btn_test_conn.clicked.connect(self.test_connection)
-        conn_grid.addWidget(self.btn_test_conn, 1, 4, 1, 2)
-
-        self.lbl_conn_detail = QLabel("DB connection: checking...")
-        self.lbl_conn_detail.setWordWrap(True)
-        self.lbl_conn_detail.setStyleSheet("color: #8a8886; font-size: 13px;")
-        conn_grid.addWidget(self.lbl_conn_detail, 2, 0, 1, 6)
-
-        conn_group.setLayout(conn_grid)
-        layout.addWidget(conn_group)
 
         # ════════════════════════════════════════════════════════
         # 2. Log Files
@@ -668,17 +664,22 @@ class LogUploaderApp(QMainWindow):
 
         return {'frame': frame, 'value': val_lbl, 'label': txt_lbl}
 
+    # ─── Settings Dialog ─────────────────────────────────────
+    def open_config_dialog(self):
+        dialog = DBConfigDialog(self, self.settings)
+        if dialog.exec_():
+            dialog.save_settings()
+            self._set_db_status("unknown")
+            self._run_db_connection_check()
+
     # ─── Build DSN ───────────────────────────────────────────
     def _build_dsn(self):
-        self.settings.setValue("db_host", self.inp_host.text())
-        self.settings.setValue("db_port", self.inp_port.text())
-        self.settings.setValue("db_name", self.inp_db.text())
-        self.settings.setValue("db_user", self.inp_user.text())
-        self.settings.setValue("db_pass", self.inp_pass.text())
-        return (
-            f"postgresql://{self.inp_user.text()}:{self.inp_pass.text()}"
-            f"@{self.inp_host.text()}:{self.inp_port.text()}/{self.inp_db.text()}"
-        )
+        host = self.settings.value("db_host", load_default_db_host())
+        port = self.settings.value("db_port", "5433")
+        db = self.settings.value("db_name", "pixi_test")
+        user = self.settings.value("db_user", "pixi")
+        pwd = self.settings.value("db_pass", "pixipass")
+        return f"postgresql://{user}:{pwd}@{host}:{port}/{db}"
 
     # ─── DB Heartbeat (auto-check every 15s) ─────────────────
     def _start_db_heartbeat(self):
@@ -705,45 +706,32 @@ class LogUploaderApp(QMainWindow):
             cur.fetchone()
             cur.close()
             conn.close()
-            detail = f"host={self.inp_host.text()}"
+            host = self.settings.value("db_host", load_default_db_host())
+            detail = f"host={host}"
             self._set_db_status("online", detail)
         except Exception as e:
             self._set_db_status("offline", str(e)[:80])
 
     def _set_db_status(self, state, detail=""):
         if state == "online":
-            self.db_status_dot.setStyleSheet("color: #30d158; font-size: 33px;")
-            self.db_status_dot.setStyleSheet("color: #0e8420; font-size: 18px;")
+            self.db_status_dot.setStyleSheet("color: #38A169; font-size: 33px;")
             self.db_status_label.setText("Database Online")
             self.db_status_label.setStyleSheet(
-                "color: #0e8420; font-size: 14px; font-weight: 700;"
+                "color: #2F855A; font-size: 14px; font-weight: 700;"
             )
-            self.lbl_conn_detail.setText(
-                f"DB connection: connected — {detail}" if detail else "DB connection: connected"
-            )
-            self.lbl_conn_detail.setStyleSheet("color: #0e8420; font-size: 13px;")
+            # We don't have lbl_conn_detail anymore in the main UI, it's only in dialog
         elif state == "offline":
-            self.db_status_dot.setStyleSheet("color: #c01c28; font-size: 18px;")
+            self.db_status_dot.setStyleSheet("color: #E53E3E; font-size: 18px;")
             self.db_status_label.setText("Database Offline")
             self.db_status_label.setStyleSheet(
-                "color: #c01c28; font-size: 14px; font-weight: 700;"
+                "color: #C53030; font-size: 14px; font-weight: 700;"
             )
-            self.lbl_conn_detail.setText(
-                f"DB connection: offline — {detail}" if detail else "DB connection: offline"
-            )
-            self.lbl_conn_detail.setStyleSheet("color: #c01c28; font-size: 13px;")
         else:
-            self.db_status_dot.setStyleSheet("color: #8a8886; font-size: 18px;")
+            self.db_status_dot.setStyleSheet("color: #A0AEC0; font-size: 18px;")
             self.db_status_label.setText("Database —")
             self.db_status_label.setStyleSheet(
-                "color: #8a8886; font-size: 14px; font-weight: 700;"
+                "color: #718096; font-size: 14px; font-weight: 700;"
             )
-            self.lbl_conn_detail.setText("DB connection: not checked")
-            self.lbl_conn_detail.setStyleSheet("color: #8a8886; font-size: 13px;")
-
-    # ─── Test Connection (manual button) ─────────────────────
-    def test_connection(self):
-        self._run_db_connection_check()
 
     # ─── File Selection ──────────────────────────────────────
     def browse_folder(self):
@@ -914,6 +902,7 @@ class LogUploaderApp(QMainWindow):
 # ========================================================
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setStyle("Fusion")
     if os.path.exists(APP_ICON_PATH):
         app.setWindowIcon(QIcon(APP_ICON_PATH))
     window = LogUploaderApp()
