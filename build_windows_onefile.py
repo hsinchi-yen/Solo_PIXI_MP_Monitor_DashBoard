@@ -120,14 +120,19 @@ def main() -> None:
         icon_path=icons['splitter'],
         data_files=[(icons['splitter'], shared_icon_dir)],
     )
+    uploader_data_files = [
+        (icons['uploader'], shared_icon_dir),
+        (ROOT_DIR / 'solo-pixi-essential' / 'module_log_parser.py', 'solo-pixi-essential'),
+    ]
+    tn_logo_path = ROOT_DIR / 'build_assets' / 'icons' / 'tn_log.png'
+    if tn_logo_path.exists():
+        uploader_data_files.append((tn_logo_path, shared_icon_dir))
+
     build_executable(
         name='Solo_PIXI_Log_Uploader',
         entry_script='log_uploader_app.py',
         icon_path=icons['uploader'],
-        data_files=[
-            (icons['uploader'], shared_icon_dir),
-            (ROOT_DIR / 'solo-pixi-essential' / 'module_log_parser.py', 'solo-pixi-essential'),
-        ],
+        data_files=uploader_data_files,
     )
     copy_runtime_config(ROOT_DIR / 'dbservip.conf', RAWLOGS_DIR)
 

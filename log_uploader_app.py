@@ -43,11 +43,11 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLineEdit, QLabel,
                              QFileDialog, QTextEdit, QGroupBox, QGridLayout,
                              QMessageBox, QProgressBar, QListWidget,
-                             QAbstractItemView, QFrame, QSizePolicy)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
-from PyQt5.QtGui import QIcon
+                             QAbstractItemView, QFrame, QSizePolicy, QCheckBox)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, QSettings
+from PyQt5.QtGui import QIcon, QPixmap
 
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 DB_CONNECT_TIMEOUT = 3
 DB_HEARTBEAT_INTERVAL_MS = 15_000  # 15 seconds
 DEFAULT_DB_HOST = "10.20.31.111"
@@ -90,168 +90,146 @@ def load_default_db_host():
     return DEFAULT_DB_HOST
 
 # ========================================================
-# Ubuntu Yaru-inspired stylesheet
+# Windows 11 Minimalist stylesheet
 # ========================================================
-YARU_STYLESHEET = """
-QMainWindow {
-    background-color: #f7f6f5;
+WIN11_STYLESHEET = """
+QMainWindow, QMessageBox {
+    background-color: #F3F3F3;
 }
 QWidget {
-    font-family: "Ubuntu", "Noto Sans", "Segoe UI", sans-serif;
-    color: #241f31;
+    font-family: "Segoe UI Variable", "Segoe UI", "Noto Sans", sans-serif;
+    color: #1A1A1A;
     font-size: 13px;
     line-height: 1.2;
 }
 
 QGroupBox {
-    background-color: #ffffff;
-    border: 1px solid #d6d3d1;
-    border-radius: 14px;
-    margin-top: 12px;
-    padding: 20px 18px 16px 18px;
+    background-color: #FFFFFF;
+    border: 1px solid #E5E5E5;
+    border-radius: 8px;
+    margin-top: 16px;
+    padding: 16px;
     font-weight: 600;
-    font-size: 14px;
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    padding: 2px 10px;
-    color: #5e2750;
-    font-weight: 600;
+    padding: 0px 8px;
+    color: #1A1A1A;
     font-size: 15px;
+    font-weight: 600;
 }
 
 QLineEdit {
-    border: 1px solid #c7c2bf;
-    border-radius: 9px;
-    padding: 9px 12px;
-    background-color: #ffffff;
-    selection-background-color: #e95420;
-    color: #241f31;
-    font-size: 13px;
-    min-height: 22px;
+    border: 1px solid #D1D1D1;
+    border-radius: 4px;
+    padding: 6px 10px;
+    background-color: #FFFFFF;
+    selection-background-color: #005FB8;
+    color: #1A1A1A;
+    min-height: 24px;
 }
 QLineEdit:focus {
-    border: 2px solid #e95420;
-    padding: 7px 11px;
+    border: 2px solid #005FB8;
+    padding: 5px 9px;
 }
 QLineEdit[readOnly="true"] {
-    background-color: #f0eeec;
-    color: #636363;
+    background-color: #F9F9F9;
+    color: #6B6B6B;
 }
 
 QPushButton {
-    background-color: #e95420;
+    background-color: #005FB8;
     color: white;
-    border: 1px solid #c34113;
-    border-radius: 10px;
-    padding: 8px 18px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 6px 16px;
     font-weight: 600;
-    font-size: 13px;
-    min-height: 20px;
+    min-height: 24px;
 }
 QPushButton:hover {
-    background-color: #ec6c3a;
+    background-color: #005A9E;
 }
 QPushButton:pressed {
-    background-color: #c34113;
+    background-color: #00528C;
 }
 QPushButton:disabled {
-    background-color: #f0d0c5;
-    color: #8a8886;
-    border-color: #e2c8c0;
+    background-color: #CCCCCC;
+    color: #888888;
 }
 
 QPushButton#secondary {
-    background-color: #f7f3f1;
-    color: #241f31;
-    border: 1px solid #d6d3d1;
+    background-color: #FDFDFD;
+    color: #1A1A1A;
+    border: 1px solid #D1D1D1;
 }
 QPushButton#secondary:hover {
-    background-color: #efe8e4;
+    background-color: #F6F6F6;
 }
 QPushButton#secondary:pressed {
-    background-color: #e3dad5;
+    background-color: #EAEAEA;
 }
 
 QPushButton#danger {
-    background-color: #c01c28;
+    background-color: #C42B1C;
     color: white;
-    border: 1px solid #9e1620;
 }
 QPushButton#danger:hover {
-    background-color: #d73642;
+    background-color: #B02719;
 }
 QPushButton#danger:pressed {
-    background-color: #9e1620;
+    background-color: #9E2216;
 }
 QPushButton#danger:disabled {
-    background-color: #e7c0c3;
-    color: #8a8886;
+    background-color: #E7C0C3;
+    color: #8A8886;
 }
 
-QTextEdit {
-    border: 1px solid #d6d3d1;
-    border-radius: 12px;
-    background-color: #2b2b2b;
-    color: #f5f5f5;
-    padding: 12px;
-    font-family: "Ubuntu Mono", "Cascadia Code", Consolas, monospace;
-    font-size: 13px;
-    selection-background-color: #e95420;
-}
-
-QListWidget {
-    border: 1px solid #d6d3d1;
-    border-radius: 12px;
-    background-color: #ffffff;
-    color: #241f31;
-    padding: 6px;
+QTextEdit, QListWidget {
+    border: 1px solid #D1D1D1;
+    border-radius: 4px;
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    padding: 4px;
     font-size: 12px;
-    font-family: "Ubuntu Mono", "Cascadia Code", Consolas, monospace;
+    font-family: Consolas, monospace;
     outline: none;
 }
 QListWidget::item {
     padding: 6px 10px;
-    border-radius: 6px;
+    border-radius: 4px;
 }
 QListWidget::item:selected {
-    background-color: #e95420;
+    background-color: #005FB8;
     color: white;
 }
 QListWidget::item:hover {
-    background-color: #f2eeeb;
+    background-color: #F3F3F3;
 }
 
 QProgressBar {
-    border: 1px solid #d6d3d1;
-    border-radius: 6px;
-    background-color: #efeae7;
+    border: 1px solid #D1D1D1;
+    border-radius: 4px;
+    background-color: #E6E6E6;
     text-align: center;
-    color: #241f31;
-    font-size: 12px;
-    min-height: 12px;
-    max-height: 12px;
+    color: transparent;
+    max-height: 6px;
+    min-height: 6px;
 }
 QProgressBar::chunk {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-        stop:0 #e95420, stop:1 #eb6536);
-    border-radius: 5px;
+    background-color: #005FB8;
+    border-radius: 3px;
 }
 
 QLabel {
     font-size: 13px;
-    color: #241f31;
+    color: #1A1A1A;
     background: transparent;
 }
 
 QFrame#separator {
-    background-color: #d6d3d1;
+    background-color: #E5E5E5;
     max-height: 1px;
-}
-
-QMessageBox {
-    background-color: #f7f6f5;
 }
 """
 
@@ -266,10 +244,11 @@ class UploadWorkerThread(QThread):
     finished_signal = pyqtSignal(str)
     error = pyqtSignal(str)
 
-    def __init__(self, dsn, file_paths):
+    def __init__(self, dsn, file_paths, replace_mode=False):
         super().__init__()
         self.dsn = dsn
         self.file_paths = file_paths
+        self.replace_mode = replace_mode
         self._stop = False
 
     def stop(self):
@@ -294,6 +273,19 @@ class UploadWorkerThread(QThread):
         except Exception as e:
             self.error.emit(f"Database connection failed: {e}")
             return
+
+        if self.replace_mode:
+            self.log.emit("⚠️  Replace mode: truncating module_test ...")
+            try:
+                cur = conn.cursor()
+                cur.execute("TRUNCATE TABLE module_test RESTART IDENTITY")
+                conn.commit()
+                cur.close()
+                self.log.emit("✓ Database cleared — uploading fresh batch")
+            except Exception as e:
+                self.error.emit(f"TRUNCATE failed: {e}")
+                conn.close()
+                return
 
         total = len(self.file_paths)
         st = {'queued': total, 'uploaded': 0, 'skipped': 0, 'failed': 0}
@@ -349,6 +341,7 @@ class LogUploaderApp(QMainWindow):
         super().__init__()
         self.worker = None
         self._db_heartbeat_timer = None
+        self.settings = QSettings("TN", "LogUploaderApp")
         self.initUI()
         # Auto-check DB on startup
         QTimer.singleShot(300, self._run_db_connection_check)
@@ -357,7 +350,7 @@ class LogUploaderApp(QMainWindow):
     def initUI(self):
         self.setWindowTitle(f'Solo PIXI — Log Uploader  (v{APP_VERSION})')
         self.setMinimumSize(1120, 920)
-        self.setStyleSheet(YARU_STYLESHEET)
+        self.setStyleSheet(WIN11_STYLESHEET)
         if os.path.exists(APP_ICON_PATH):
             self.setWindowIcon(QIcon(APP_ICON_PATH))
 
@@ -371,6 +364,14 @@ class LogUploaderApp(QMainWindow):
 
         # ── Title Bar + DB Status Indicator ───────────────────────
         title_row = QHBoxLayout()
+        title_row.setSpacing(12)
+
+        logo_path = get_resource_path('build_assets', 'icons', 'tn_log.png')
+        logo_lbl = QLabel()
+        if os.path.exists(logo_path):
+            pixmap = QPixmap(logo_path).scaledToHeight(48, Qt.SmoothTransformation)
+            logo_lbl.setPixmap(pixmap)
+        title_row.addWidget(logo_lbl)
 
         title_col = QVBoxLayout()
         title_col.setSpacing(4)
@@ -452,11 +453,12 @@ class LogUploaderApp(QMainWindow):
             lbl.setStyleSheet("color: #5c514b; font-size: 13px; font-weight: 600;")
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        self.inp_host = QLineEdit(load_default_db_host())
-        self.inp_port = QLineEdit("5433")
-        self.inp_db   = QLineEdit("pixi_test")
-        self.inp_user = QLineEdit("pixi")
-        self.inp_pass = QLineEdit("pixipass")
+        default_host = self.settings.value("db_host", load_default_db_host())
+        self.inp_host = QLineEdit(default_host)
+        self.inp_port = QLineEdit(self.settings.value("db_port", "5433"))
+        self.inp_db   = QLineEdit(self.settings.value("db_name", "pixi_test"))
+        self.inp_user = QLineEdit(self.settings.value("db_user", "pixi"))
+        self.inp_pass = QLineEdit(self.settings.value("db_pass", "pixipass"))
         self.inp_pass.setEchoMode(QLineEdit.Password)
         for inp in [self.inp_host, self.inp_port, self.inp_db, self.inp_user, self.inp_pass]:
             inp.setFixedHeight(40)
@@ -585,6 +587,13 @@ class LogUploaderApp(QMainWindow):
         action_row.addWidget(self.btn_clear_stats)
         progress_layout.addLayout(action_row)
 
+        # Replace Mode checkbox
+        self.chk_replace_mode = QCheckBox("Replace Mode — clear ALL existing DB records before uploading (TRUNCATE)")
+        self.chk_replace_mode.setStyleSheet(
+            "color: #c01c28; font-weight: 600; font-size: 13px;"
+        )
+        progress_layout.addWidget(self.chk_replace_mode)
+
         # Thin progress bar
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
@@ -661,6 +670,11 @@ class LogUploaderApp(QMainWindow):
 
     # ─── Build DSN ───────────────────────────────────────────
     def _build_dsn(self):
+        self.settings.setValue("db_host", self.inp_host.text())
+        self.settings.setValue("db_port", self.inp_port.text())
+        self.settings.setValue("db_name", self.inp_db.text())
+        self.settings.setValue("db_user", self.inp_user.text())
+        self.settings.setValue("db_pass", self.inp_pass.text())
         return (
             f"postgresql://{self.inp_user.text()}:{self.inp_pass.text()}"
             f"@{self.inp_host.text()}:{self.inp_port.text()}/{self.inp_db.text()}"
@@ -687,11 +701,11 @@ class LogUploaderApp(QMainWindow):
         try:
             conn = psycopg2.connect(dsn, connect_timeout=DB_CONNECT_TIMEOUT)
             cur = conn.cursor()
-            cur.execute("SELECT COUNT(*) FROM module_test")
-            count = cur.fetchone()[0]
+            cur.execute("SELECT 1")
+            cur.fetchone()
             cur.close()
             conn.close()
-            detail = f"{count} records, host={self.inp_host.text()}"
+            detail = f"host={self.inp_host.text()}"
             self._set_db_status("online", detail)
         except Exception as e:
             self._set_db_status("offline", str(e)[:80])
@@ -807,6 +821,18 @@ class LogUploaderApp(QMainWindow):
             QMessageBox.warning(self, "Warning", "Please select log files first.")
             return
 
+        replace_mode = self.chk_replace_mode.isChecked()
+        if replace_mode:
+            reply = QMessageBox.warning(
+                self, "Confirm Replace Mode",
+                "Replace Mode will DELETE ALL existing records in the database before uploading.\n\n"
+                "This cannot be undone. Continue?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if reply != QMessageBox.Yes:
+                return
+
         dsn = self._build_dsn()
         file_paths = [
             self.file_list.item(i).text() for i in range(self.file_list.count())
@@ -821,7 +847,7 @@ class LogUploaderApp(QMainWindow):
             f"Upload status: uploading {len(file_paths)} files..."
         )
 
-        self.worker = UploadWorkerThread(dsn, file_paths)
+        self.worker = UploadWorkerThread(dsn, file_paths, replace_mode=replace_mode)
         self.worker.progress.connect(self.progress_bar.setValue)
         self.worker.stats.connect(self._on_stats)
         self.worker.finished_signal.connect(self._on_finished)
