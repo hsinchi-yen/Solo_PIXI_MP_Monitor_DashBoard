@@ -372,6 +372,16 @@ class TestAPIFunctions(unittest.TestCase):
         where, _ = self._build_fn(year='2024')
         self.assertTrue(where.startswith("WHERE "))
 
+    # ── /api/fails response contract ─────────────────────────────────────────
+    def test_api_fails_selects_work_order(self):
+        """Fail List rows must include the Work Order rendered by the dashboard."""
+        with open(APP_PATH, encoding='utf-8') as app_file:
+            source = app_file.read()
+
+        endpoint = source.split('def api_fails(', 1)[1].split('\n@app.', 1)[0]
+        select_clause = endpoint.split('SELECT', 1)[1].split('FROM module_test', 1)[0]
+        self.assertRegex(select_clause, r'\bwork_order\b')
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 class TestJavaScriptLogic(unittest.TestCase):

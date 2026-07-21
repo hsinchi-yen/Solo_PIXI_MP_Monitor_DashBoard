@@ -780,7 +780,7 @@ def api_fails(unit_date: str = None, work_order: str = None, year: int = None, m
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(f"""
-        SELECT id, mac1, mac2, COALESCE(unit_date, start_time::date) AS unit_date, start_time, test_duration_sec,
+        SELECT id, work_order, mac1, mac2, COALESCE(unit_date, start_time::date) AS unit_date, start_time, test_duration_sec,
                result, fail_step_num, fail_step_name, fail_message,
                fail_error_code, fail_category,
                bdr_pass, edr1_pass, le_pass, bt_rx_pass, cal_pass,
