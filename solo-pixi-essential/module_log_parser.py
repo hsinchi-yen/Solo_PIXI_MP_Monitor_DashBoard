@@ -107,6 +107,16 @@ def parse_filename(filename):
     }
 
 
+def _plain_sum(values):
+    """Left-to-right float sum. Python 3.12 switched sum() to compensated summation,
+    which shifts some 3-decimal averages by 0.001 versus the Python 3.11 desktop
+    uploader; keeping the plain order makes results identical on every runtime."""
+    total = 0.0
+    for v in values:
+        total += v
+    return total
+
+
 def _classify_wifi_rate(freq, data_rate, bandwidth):
     """Classify a WiFi TX/RX step into a rate category key."""
     freq = int(freq)
@@ -138,12 +148,17 @@ def parse_log_file(filepath):
     """Parse a single log file and return a record dict."""
     with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
+    return parse_log_content(content, filepath)
 
+
+def parse_log_content(content, filename):
+    """Parse one log record already in memory. `filename` supplies the metadata
+    (work order, unit date, result) exactly as parse_log_file does from disk."""
     lines = content.replace('\r\n', '\n').replace('\r', '\n').split('\n')
     file_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()
 
     # Parse filename metadata
-    fmeta = parse_filename(filepath)
+    fmeta = parse_filename(filename)
     rec = {
         'work_order': fmeta['work_order'] if fmeta else None,
         'unit_date': fmeta['unit_date'] if fmeta else None,
@@ -151,7 +166,7 @@ def parse_log_file(filepath):
         'start_time': None, 'end_time': None, 'test_duration_sec': None,
         'result': fmeta['result'] if fmeta else 'UNKNOWN',
         'file_hash': file_hash,
-        'source_file': os.path.basename(filepath),
+        'source_file': os.path.basename(filename),
         'raw_log': content,
     }
 
@@ -391,7 +406,7 @@ def parse_log_file(filepath):
         if data['evm']:
             rec[f'{rate_key}_evm'] = max(data['evm'])  # worst = closest to 0
         if data['power']:
-            rec[f'{rate_key}_power'] = round(sum(data['power']) / len(data['power']), 3)
+            rec[f'{rate_key}_power'] = round(_plain_sum(data['power']) / len(data['power']), 3)
     rec['wifi24_tx_pass'] = wifi_tx_all_pass if wifi_tx else None
     rec['wifi5_tx_pass'] = wifi_tx_all_pass if wifi_tx else None
 
@@ -450,11 +465,13 @@ DB_COLUMNS = [
 ]
 
 
-def insert_record(conn, rec):
-    """Insert a parsed record dict into the database. Returns True if inserted, False if duplicate."""
-    cols = ', '.join(DB_COLUMNS)
-    placeholders = ', '.join(['%s'] * len(DB_COLUMNS))
-    values = [rec.get(c) for c in DB_COLUMNS]
+def insert_record(conn, rec, extra=None):
+    """Insert a parsed record dict into the database. Returns True if inserted, False if duplicate.
+    `extra` adds columns outside DB_COLUMNS (e.g. {'upload_id': ...} from the web uploader)."""
+    columns = DB_COLUMNS + list(extra or {})
+    cols = ', '.join(columns)
+    placeholders = ', '.join(['%s'] * len(columns))
+    values = [rec.get(c) for c in DB_COLUMNS] + list((extra or {}).values())
 
     sql = f"INSERT INTO module_test ({cols}) VALUES ({placeholders}) ON CONFLICT (file_hash) DO NOTHING"
     cur = conn.cursor()

@@ -4,10 +4,14 @@ Solo PIXI Module Test Analysis — FastAPI Backend
 import os
 import hashlib
 import hmac
+import queue
+import shutil
+import uuid
+import zipfile
 import psycopg2
 import psycopg2.extras
-from fastapi import FastAPI, Query, Header, Body
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi import FastAPI, Query, Header, Body, File, Request, UploadFile
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 
 import json
 import urllib.request
@@ -16,6 +20,7 @@ import asyncio
 import time
 import threading
 from ai_summary_helper import build_summary_messages
+import log_splitter
 
 app = FastAPI(title="Solo PIXI Module Test Analysis")
 
@@ -29,7 +34,17 @@ TWEAK_PASS = os.environ.get("TWEAK_PASS", "pixipass")
 # LLM AI Summary configurations
 LLM_API_BASE = os.environ.get("LLM_API_BASE", "http://10.20.30.23:8000/v1")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "tn8227")
-LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen3.6-35B-A3B-Q6_K")
+LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen3.8-27B-UD-Q6_K_L")
+# Dense 27B model: thinking adds ~15x latency for no gain on templated reports.
+LLM_ENABLE_THINKING = os.environ.get("LLM_ENABLE_THINKING", "false").lower() == "true"
+LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "1536"))
+
+# Log Uploader
+UPLOAD_TMP_DIR = os.environ.get("UPLOAD_TMP_DIR", "/tmp/pixi_uploads")
+UPLOAD_TTL_SEC = 3600
+UPLOAD_MAX_LOG_ALL_BYTES = 500 * 1024 * 1024
+UPLOAD_LOCK_KEY = 7360001  # pg advisory lock: one web upload at a time across workers
+MIGRATION_LOCK_KEY = 7360002
 
 
 LLM_STATUS_CACHE = {"status": "error", "connected": False}
@@ -61,6 +76,8 @@ def get_conn():
 def run_migrations():
     conn = get_conn()
     cur = conn.cursor()
+    # Both uvicorn workers run this at startup; serialise so CREATE TABLE IF NOT EXISTS cannot race.
+    cur.execute("SELECT pg_advisory_xact_lock(%s)", (MIGRATION_LOCK_KEY,))
     for col, dtype in [("fail_error_code", "TEXT"), ("fail_category", "TEXT"), ("unit_date", "DATE")]:
         cur.execute(f"""
             DO $$ BEGIN
@@ -84,6 +101,38 @@ def run_migrations():
             updated_at TIMESTAMP DEFAULT NOW()
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS upload_log (
+            id              TEXT PRIMARY KEY,
+            created_at      TIMESTAMPTZ DEFAULT NOW(),
+            finished_at     TIMESTAMPTZ,
+            client_ip       TEXT,
+            tweak_user      TEXT,
+            zip_name        TEXT,
+            zip_size        BIGINT,
+            work_order      TEXT,
+            inferred_wo     TEXT,
+            planned_qty     INT,
+            prev_target     INT,
+            unique_mac1     INT,
+            total_records   INT,
+            facts           JSONB,
+            validation      JSONB,
+            chat_transcript JSONB,
+            mode            TEXT,
+            status          TEXT,
+            uploaded        INT,
+            skipped         INT,
+            failed          INT,
+            failures        JSONB,
+            reverted        INT,
+            elapsed_sec     REAL,
+            error           TEXT
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_upload_log_created ON upload_log(created_at DESC)")
+    cur.execute("ALTER TABLE module_test ADD COLUMN IF NOT EXISTS upload_id TEXT")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_module_test_upload_id ON module_test(upload_id)")
     conn.commit()
     cur.close()
     conn.close()
@@ -1171,6 +1220,24 @@ def tweak_raw_log(record_id: int, x_tweak_token: str = Header(None), token: str 
     )
 
 
+_PARSER = None
+
+
+def _load_parser():
+    """Load module_log_parser once (mounted next to app.py in the container)."""
+    global _PARSER
+    if _PARSER is None:
+        import importlib.util
+        parser_path = os.path.join(os.path.dirname(__file__), "..", "module_log_parser.py")
+        if not os.path.exists(parser_path):
+            parser_path = os.path.join(os.path.dirname(__file__), "module_log_parser.py")
+        spec = importlib.util.spec_from_file_location("module_log_parser", parser_path)
+        parser = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(parser)
+        _PARSER = parser
+    return _PARSER
+
+
 # ─── Reparse existing records (extract fail_error_code/fail_category from raw_log) ──
 @app.post("/api/reparse")
 def api_reparse(x_tweak_token: str = Header(None)):
@@ -1179,14 +1246,7 @@ def api_reparse(x_tweak_token: str = Header(None)):
     import re as _re
     import tempfile
 
-    # Import parser
-    import importlib.util
-    parser_path = os.path.join(os.path.dirname(__file__), "..", "module_log_parser.py")
-    if not os.path.exists(parser_path):
-        parser_path = os.path.join(os.path.dirname(__file__), "module_log_parser.py")
-    spec = importlib.util.spec_from_file_location("module_log_parser", parser_path)
-    parser = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(parser)
+    parser = _load_parser()
 
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1313,6 +1373,8 @@ def ai_summary(wo: str, product_model: str = None, lang: str = "zh", mode: str =
         data = {
             "model": LLM_MODEL,
             "messages": messages,
+            "max_tokens": LLM_REPORT_MAX_TOKENS,
+            "chat_template_kwargs": {"enable_thinking": LLM_ENABLE_THINKING},
         }
 
         try:
@@ -1336,6 +1398,385 @@ def ai_summary(wo: str, product_model: str = None, lang: str = "zh", mode: str =
         except Exception as e:
             print(f"LLM summary failed: {e}")
             return JSONResponse({"error": f"LLM request failed: {e}"}, status_code=500)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Log Uploader — work-order zip → split per station → parse → module_test
+# Flow: analyze (facts, no DB writes) → validate (rules) → commit (NDJSON stream)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _tweak_user(auth_token):
+    import base64
+    try:
+        return base64.b64decode(auth_token).decode().split(":", 1)[0]
+    except Exception:
+        return None
+
+
+def _client_ip(request):
+    return request.headers.get("x-real-ip") or (request.client.host if request.client else None)
+
+
+def _valid_upload_id(upload_id):
+    return isinstance(upload_id, str) and len(upload_id) == 32 and all(c in "0123456789abcdef" for c in upload_id)
+
+
+def _upload_paths(upload_id):
+    base = os.path.join(UPLOAD_TMP_DIR, upload_id)
+    return base + ".zip", base + ".hashes.json"
+
+
+def _remove_upload_files(upload_id):
+    for path in _upload_paths(upload_id):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _cleanup_stale_uploads():
+    if not os.path.isdir(UPLOAD_TMP_DIR):
+        return
+    cutoff = time.time() - UPLOAD_TTL_SEC
+    for name in os.listdir(UPLOAD_TMP_DIR):
+        path = os.path.join(UPLOAD_TMP_DIR, name)
+        try:
+            if os.path.getmtime(path) < cutoff:
+                os.remove(path)
+        except OSError:
+            pass
+
+
+def _existing_by_wo(cur, hashes):
+    """{work_order: count} of hashes already in module_test ('' = no work order)."""
+    if not hashes:
+        return {}
+    cur.execute("""
+        SELECT COALESCE(work_order, '') AS wo, COUNT(*) AS n
+        FROM module_test WHERE file_hash = ANY(%s) GROUP BY 1
+    """, (hashes,))
+    return {row[0]: int(row[1]) for row in cur.fetchall()}
+
+
+def _current_target(cur, work_order):
+    if not log_splitter.is_valid_work_order(work_order):
+        return None
+    cur.execute("SELECT target_total FROM alignment_targets WHERE work_order = %s", (work_order,))
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def _fetch_upload(conn, upload_id):
+    if not _valid_upload_id(upload_id):
+        return None
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM upload_log WHERE id = %s", (upload_id,))
+    row = cur.fetchone()
+    cur.close()
+    return row
+
+
+def _validation_payload(issues):
+    return {
+        "issues": issues,
+        "can_upload": not log_splitter.has_errors(issues),
+        "needs_ack": log_splitter.has_warnings(issues),
+    }
+
+
+@app.post("/api/log-upload/analyze")
+def log_upload_analyze(request: Request, file: UploadFile = File(...), x_tweak_token: str = Header(None)):
+    """Store the zip, split every station's Log_All.txt in memory and report facts. No module_test writes."""
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    zip_name = os.path.basename(file.filename or "upload.zip")
+    if not zip_name.lower().endswith(".zip"):
+        return JSONResponse({"error": "請選擇 .zip 壓縮檔"}, status_code=400)
+
+    _cleanup_stale_uploads()
+    os.makedirs(UPLOAD_TMP_DIR, exist_ok=True)
+    upload_id = uuid.uuid4().hex
+    zip_path, hashes_path = _upload_paths(upload_id)
+    with open(zip_path, "wb") as out:
+        shutil.copyfileobj(file.file, out, 1024 * 1024)
+    zip_size = os.path.getsize(zip_path)
+
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            entries = log_splitter.find_log_all_entries(zf)
+            if not entries:
+                raise ValueError("壓縮檔內找不到站別資料夾（例如 10/20/30/40）下的 Log_All.txt")
+            if sum(info.file_size for _, info in entries) > UPLOAD_MAX_LOG_ALL_BYTES:
+                raise ValueError("Log_All.txt 解壓後總大小超過 500 MB 上限")
+            facts, hashes = log_splitter.analyze_zip(zf, zip_name)
+    except zipfile.BadZipFile:
+        _remove_upload_files(upload_id)
+        return JSONResponse({"error": "檔案不是有效的 zip 壓縮檔"}, status_code=400)
+    except ValueError as exc:
+        _remove_upload_files(upload_id)
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    except Exception as exc:  # corrupt member, unsupported compression, ...
+        _remove_upload_files(upload_id)
+        return JSONResponse({"error": f"無法讀取壓縮檔內容：{exc}"}, status_code=400)
+
+    with open(hashes_path, "w") as f:
+        json.dump(hashes, f)
+
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        facts["existing_by_wo"] = _existing_by_wo(cur, hashes)
+        cur.execute("""
+            INSERT INTO upload_log (id, client_ip, tweak_user, zip_name, zip_size, inferred_wo,
+                                    unique_mac1, total_records, facts, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'analyzed')
+        """, (upload_id, _client_ip(request), _tweak_user(x_tweak_token), zip_name, zip_size,
+              facts["inferred_wo"], facts["unique_mac1"], facts["total_records"],
+              psycopg2.extras.Json(facts)))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"upload_id": upload_id, "facts": facts}
+
+
+@app.post("/api/log-upload/validate")
+def log_upload_validate(body: dict = Body(...), x_tweak_token: str = Header(None)):
+    """Run the upload rules (R1–R8) for the entered work order / planned quantity."""
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    work_order = (body.get("work_order") or "").strip()
+    conn = get_conn()
+    try:
+        row = _fetch_upload(conn, body.get("upload_id"))
+        if not row:
+            return JSONResponse({"error": "找不到這個上傳批次，請重新選擇 zip"}, status_code=404)
+        cur = conn.cursor()
+        facts = row["facts"]
+        issues = log_splitter.validate_upload(facts, work_order, body.get("planned_qty"),
+                                              facts.get("existing_by_wo"), _current_target(cur, work_order))
+    finally:
+        conn.close()
+    return _validation_payload(issues)
+
+
+@app.post("/api/log-upload/commit")
+def log_upload_commit(body: dict = Body(...), x_tweak_token: str = Header(None)):
+    """Re-validate against the current DB, then ingest in a background thread and stream progress as NDJSON.
+    The ingest keeps running if the browser disconnects; the outcome is recorded in upload_log."""
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    upload_id = body.get("upload_id")
+    work_order = (body.get("work_order") or "").strip()
+    planned_qty = body.get("planned_qty")
+    mode = "chat" if body.get("mode") == "chat" else "form"
+
+    conn = get_conn()
+    handed_off = False
+    try:
+        row = _fetch_upload(conn, upload_id)
+        if not row:
+            return JSONResponse({"error": "找不到這個上傳批次，請重新選擇 zip"}, status_code=404)
+        if row["status"] not in ("analyzed", "failed"):
+            return JSONResponse({"error": f"這個批次已經處理過（狀態：{row['status']}）"}, status_code=409)
+        zip_path, hashes_path = _upload_paths(upload_id)
+        if not (os.path.exists(zip_path) and os.path.exists(hashes_path)):
+            return JSONResponse({"error": "暫存檔已過期，請重新選擇 zip"}, status_code=410)
+
+        cur = conn.cursor()
+        # Session-level lock; released when this connection closes (early return or ingest end).
+        cur.execute("SELECT pg_try_advisory_lock(%s)", (UPLOAD_LOCK_KEY,))
+        if not cur.fetchone()[0]:
+            return JSONResponse({"error": "已有其他上傳正在進行，請稍後再試"}, status_code=409)
+
+        with open(hashes_path) as f:
+            hashes = json.load(f)
+        facts = row["facts"]
+        facts["existing_by_wo"] = _existing_by_wo(cur, hashes)
+        prev_target = _current_target(cur, work_order)
+        issues = log_splitter.validate_upload(facts, work_order, planned_qty, facts["existing_by_wo"], prev_target)
+        payload = _validation_payload(issues)
+        if not payload["can_upload"]:
+            return JSONResponse({**payload, "error": "輸入資料有誤，請修正後再上傳"}, status_code=400)
+        if payload["needs_ack"] and not body.get("ack_warnings"):
+            return JSONResponse({**payload, "error": "有警告尚未確認"}, status_code=400)
+
+        qty = log_splitter.parse_quantity(planned_qty)
+        cur.execute("""
+            UPDATE upload_log
+            SET work_order = %s, planned_qty = %s, prev_target = %s, facts = %s, validation = %s,
+                chat_transcript = %s, mode = %s, status = 'running', error = NULL
+            WHERE id = %s
+        """, (work_order, qty, prev_target, psycopg2.extras.Json(facts), psycopg2.extras.Json(issues),
+              psycopg2.extras.Json(body.get("chat_transcript")) if body.get("chat_transcript") else None,
+              mode, upload_id))
+        conn.commit()
+
+        events = queue.Queue()
+        threading.Thread(
+            target=_run_ingest,
+            args=(conn, events, upload_id, zip_path, work_order, qty, facts["total_records"]),
+            daemon=True,
+        ).start()
+        handed_off = True
+        return StreamingResponse(_ndjson_events(events), media_type="application/x-ndjson")
+    finally:
+        if not handed_off:
+            conn.close()
+
+
+def _ndjson_events(events):
+    while True:
+        try:
+            event = events.get(timeout=15)
+        except queue.Empty:
+            yield json.dumps({"type": "heartbeat"}) + "\n"
+            continue
+        yield json.dumps(event, ensure_ascii=False, default=str) + "\n"
+        if event["type"] in ("done", "error"):
+            break
+
+
+def _run_ingest(conn, events, upload_id, zip_path, work_order, planned_qty, total):
+    """Insert every split record with upload_id; commit every 50. Owns `conn` (and its advisory lock)."""
+    st = {"total": total, "done": 0, "uploaded": 0, "skipped": 0, "failed": 0, "invalid": 0}
+    failures = []
+    t0 = time.time()
+    try:
+        parser = _load_parser()
+        cur = conn.cursor()
+        with zipfile.ZipFile(zip_path) as zf:
+            entries = log_splitter.find_log_all_entries(zf)
+            events.put({"type": "start", "upload_id": upload_id, "work_order": work_order,
+                        "total": total, "stations": [station for station, _ in entries]})
+            for station, records, invalid in log_splitter.iter_station_records(zf, entries, work_order):
+                st["invalid"] += len(invalid)
+                events.put({"type": "split", "station": station, "records": len(records), "invalid": len(invalid)})
+                for item in records:
+                    cur.execute("SAVEPOINT rec")
+                    try:
+                        rec = parser.parse_log_content(item["content"], item["filename"])
+                        if parser.insert_record(conn, rec, extra={"upload_id": upload_id}):
+                            st["uploaded"] += 1
+                        else:
+                            st["skipped"] += 1
+                        cur.execute("RELEASE SAVEPOINT rec")
+                    except Exception as exc:
+                        cur.execute("ROLLBACK TO SAVEPOINT rec")
+                        st["failed"] += 1
+                        if len(failures) < 50:
+                            failures.append({"station": station, "filename": item["filename"], "error": str(exc)[:300]})
+                    st["done"] += 1
+                    if st["done"] % 50 == 0:
+                        conn.commit()
+                    if st["done"] % 25 == 0:
+                        events.put({"type": "progress", **st})
+        if planned_qty:
+            cur.execute("""
+                INSERT INTO alignment_targets (work_order, target_total, updated_at)
+                VALUES (%s, %s, NOW())
+                ON CONFLICT (work_order) DO UPDATE
+                SET target_total = EXCLUDED.target_total, updated_at = NOW()
+            """, (work_order, planned_qty))
+        elapsed = round(time.time() - t0, 1)
+        cur.execute("""
+            UPDATE upload_log
+            SET status = 'done', finished_at = NOW(), uploaded = %s, skipped = %s, failed = %s,
+                failures = %s, elapsed_sec = %s
+            WHERE id = %s
+        """, (st["uploaded"], st["skipped"], st["failed"], psycopg2.extras.Json(failures), elapsed, upload_id))
+        conn.commit()
+        _remove_upload_files(upload_id)
+        with _cache_lock:
+            for key in [k for k in AI_SUMMARY_CACHE if k.startswith(f"{work_order}_")]:
+                AI_SUMMARY_CACHE.pop(key, None)
+        events.put({"type": "done", **st, "elapsed_sec": elapsed, "failures": failures})
+    except Exception as exc:
+        print(f"Log upload {upload_id} failed: {exc}")
+        try:
+            conn.rollback()
+            cur = conn.cursor()
+            cur.execute("""
+                UPDATE upload_log
+                SET status = 'failed', finished_at = NOW(), uploaded = %s, skipped = %s, failed = %s,
+                    failures = %s, elapsed_sec = %s, error = %s
+                WHERE id = %s
+            """, (st["uploaded"], st["skipped"], st["failed"], psycopg2.extras.Json(failures),
+                  round(time.time() - t0, 1), str(exc)[:500], upload_id))
+            conn.commit()
+        except Exception:
+            pass
+        events.put({"type": "error", "message": f"上傳中斷：{exc}", **st})
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+
+@app.get("/api/log-upload/history")
+def log_upload_history(limit: int = 20, x_tweak_token: str = Header(None)):
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    limit = min(max(int(limit or 20), 1), 200)
+    conn = get_conn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT id, created_at, finished_at, tweak_user, client_ip, zip_name, work_order, planned_qty,
+                   unique_mac1, total_records, mode, status, uploaded, skipped, failed, reverted,
+                   elapsed_sec, error
+            FROM upload_log
+            WHERE status <> 'analyzed'
+            ORDER BY created_at DESC
+            LIMIT %s
+        """, (limit,))
+        rows = [dict(r) for r in cur.fetchall()]
+    finally:
+        conn.close()
+    return {"items": rows}
+
+
+@app.get("/api/log-upload/{upload_id}")
+def log_upload_detail(upload_id: str, x_tweak_token: str = Header(None)):
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    conn = get_conn()
+    try:
+        row = _fetch_upload(conn, upload_id)
+    finally:
+        conn.close()
+    if not row:
+        return JSONResponse({"error": "找不到這個上傳批次"}, status_code=404)
+    return dict(row)
+
+
+@app.delete("/api/log-upload/{upload_id}")
+def log_upload_revert(upload_id: str, x_tweak_token: str = Header(None)):
+    """Undo one web upload: delete only the rows it inserted and restore the alignment target it set."""
+    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
+        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    conn = get_conn()
+    try:
+        row = _fetch_upload(conn, upload_id)
+        if not row:
+            return JSONResponse({"error": "找不到這個上傳批次"}, status_code=404)
+        if row["status"] not in ("done", "failed"):
+            return JSONResponse({"error": f"只有已完成或失敗的批次可以撤銷（目前狀態：{row['status']}）"}, status_code=400)
+        cur = conn.cursor()
+        cur.execute("DELETE FROM module_test WHERE upload_id = %s", (upload_id,))
+        reverted = cur.rowcount
+        wo, qty = row["work_order"], row["planned_qty"]
+        if wo and qty and _current_target(cur, wo) == qty:
+            if row["prev_target"] is None:
+                cur.execute("DELETE FROM alignment_targets WHERE work_order = %s", (wo,))
+            else:
+                cur.execute("UPDATE alignment_targets SET target_total = %s, updated_at = NOW() WHERE work_order = %s",
+                            (row["prev_target"], wo))
+        cur.execute("UPDATE upload_log SET status = 'reverted', reverted = %s WHERE id = %s", (reverted, upload_id))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"reverted": reverted, "upload_id": upload_id}
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -3,6 +3,7 @@ Solo PIXI MP Monitor Dashboard — Unit Test Suite
 Tests HTML structure, API pure functions, and JS alignment logic.
 Run: python test_dashboard_suite.py
 """
+import io
 import os
 import re
 import sys
@@ -647,11 +648,238 @@ class TestJavaScriptLogic(unittest.TestCase):
         self.assertEqual(out, '0')
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+ESSENTIAL_DIR   = os.path.join(PROJ_ROOT, 'solo-pixi-essential')
+RAWLOGS_DIR     = os.path.join(PROJ_ROOT, 'rawlogs')
+SAMPLE_ZIP_005  = os.path.join(RAWLOGS_DIR, '5101-260630005.zip')
+SAMPLE_SPLIT_S  = os.path.join(RAWLOGS_DIR, '5101-260630005_S')
+
+
+def _load_module(name, filename):
+    spec = importlib.util.spec_from_file_location(name, os.path.join(ESSENTIAL_DIR, filename))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _segment(mac1='001F7B6D92A0', mac2='001F7B6D92A1', start='2026/08/24 14:16:18', result='P A S S'):
+    return (f"MAC1:\t{mac1}\r\nMAC2:\t{mac2}\r\nStart:\t\t {start}\r\n"
+            f"1. BT_BDR\r\n**** {result} ****\r\nEnd:\t\t {start}\r\n\r\n")
+
+
+class TestLogUploader(unittest.TestCase):
+    """Web Log Uploader core: log_splitter.py rules + parser compatibility (no DB)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.ls = _load_module('_log_splitter_under_test', 'log_splitter.py')
+        cls.parser = _load_module('_parser_under_test', 'module_log_parser.py')
+        cls.raw, cls.col = _collect_html()
+
+    @staticmethod
+    def _zip(members):
+        import zipfile
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as z:
+            for name, data in members.items():
+                z.writestr(name, data)
+        buf.seek(0)
+        return zipfile.ZipFile(buf)
+
+    # ── Work order ────────────────────────────────────────────────────────────
+    def test_infer_wo_from_zip_name(self):
+        self.assertEqual(self.ls.infer_work_order('5101-260630005.zip'), '5101-260630005')
+
+    def test_infer_wo_strips_log_prefix(self):
+        self.assertEqual(self.ls.infer_work_order('log5101-260630007.zip', 'log5101-260630007'), '5101-260630007')
+
+    def test_infer_wo_none_when_absent(self):
+        self.assertIsNone(self.ls.infer_work_order('upload.zip', 'logs'))
+
+    def test_wo_format(self):
+        self.assertTrue(self.ls.is_valid_work_order('5101-260630005'))
+        self.assertTrue(self.ls.is_valid_work_order('5101-25122302'))
+        for bad in ('', '5101-2606', 'log5101-260630007', '5101_260630005', '5101-26063000A'):
+            self.assertFalse(self.ls.is_valid_work_order(bad), bad)
+
+    def test_parse_quantity(self):
+        self.assertEqual(self.ls.parse_quantity('4,000'), 4000)
+        self.assertEqual(self.ls.parse_quantity(' 4000 '), 4000)
+        self.assertEqual(self.ls.parse_quantity(4000), 4000)
+        for bad in ('abc', '4000台', '', None, True, '4.5'):
+            self.assertIsNone(self.ls.parse_quantity(bad), repr(bad))
+
+    # ── Zip discovery ─────────────────────────────────────────────────────────
+    def test_find_log_all_entries_rules(self):
+        zf = self._zip({
+            'WO/40/logWO/Log_All.txt': 'x',
+            'WO/10/logWO/Log_ALL.TXT': 'x',          # case-insensitive
+            'WO/20/logWO/Log_all.csv': 'x',          # ignored: not Log_All.txt
+            'WO/misc/Log_All.txt': 'x',              # ignored: no numeric station folder
+            'WO/5/logWO/Log_All.txt': 'x',           # any numeric folder is a station
+        })
+        stations = [s for s, _ in self.ls.find_log_all_entries(zf)]
+        self.assertEqual(stations, ['5', '10', '40'])
+
+    # ── Splitting ─────────────────────────────────────────────────────────────
+    def test_split_to_records_body_and_names(self):
+        content = _segment() + _segment(mac1='001F7B6D92A2', mac2='001F7B6D92A3', result='F A I L')
+        records, invalid = self.ls.split_to_records(content, '5101-260630005')
+        self.assertEqual([r['filename'] for r in records], [
+            '5101-260630005_20260824_141618_001F7B6D92A0_001F7B6D92A1_PASS.txt',
+            '5101-260630005_20260824_141618_001F7B6D92A2_001F7B6D92A3_FAIL.txt',
+        ])
+        self.assertEqual(invalid, [])
+        for r in records:
+            self.assertNotIn('\r', r['content'])
+            self.assertTrue(r['content'].endswith('****\nEnd:\t\t 2026/08/24 14:16:18\n\n'))
+
+    def test_split_to_records_invalid_mac_listed(self):
+        records, invalid = self.ls.split_to_records(_segment(mac1='^%', mac2='^%', result='S T O P'), '5101-260630005')
+        self.assertEqual(records, [])
+        self.assertEqual(len(invalid), 1)
+        self.assertEqual(invalid[0]['start'], '20260824_141618')
+        self.assertIn('MAC', invalid[0]['reason'])
+
+    def test_split_to_records_missing_result_listed(self):
+        seg = "MAC1:\t001F7B6D92A0\nMAC2:\t001F7B6D92A1\nStart:\t\t 2026/08/24 14:16:18\n"
+        records, invalid = self.ls.split_to_records(seg, '5101-260630005')
+        self.assertEqual(records, [])
+        self.assertIn('測試結果', invalid[0]['reason'])
+
+    def test_content_hash_matches_parser_file_hash(self):
+        records, _ = self.ls.split_to_records(_segment(), '5101-260630005')
+        rec = self.parser.parse_log_content(records[0]['content'], records[0]['filename'])
+        self.assertEqual(self.ls.content_hash(records[0]['content']), rec['file_hash'])
+        self.assertEqual(rec['work_order'], '5101-260630005')
+        self.assertEqual(rec['result'], 'PASS')
+
+    def test_analyze_zip_facts(self):
+        zf = self._zip({
+            '5101-260630005/10/x/Log_All.txt': _segment() + _segment(mac1='^%', mac2='^%', result='S T O P'),
+            '5101-260630005/20/x/Log_All.txt': _segment(start='2026/08/25 09:00:00') + _segment(mac1='001F7B6D92A2', result='F A I L'),
+        })
+        facts, hashes = self.ls.analyze_zip(zf, 'whatever.zip')
+        self.assertEqual(facts['inferred_wo'], '5101-260630005')
+        self.assertEqual(facts['total_records'], 3)
+        self.assertEqual(len(hashes), 3)
+        self.assertEqual((facts['pass'], facts['fail'], facts['stop'], facts['invalid']), (2, 1, 0, 1))
+        self.assertEqual(facts['unique_mac1'], 2)
+        self.assertEqual([s['station'] for s in facts['stations']], ['10', '20'])
+        self.assertEqual(facts['invalid_items'][0]['station'], '10')
+        self.assertEqual((facts['first_test'], facts['last_test']), ('2026-08-24 14:16:18', '2026-08-25 09:00:00'))
+
+    # ── Validation rules ──────────────────────────────────────────────────────
+    FACTS = {'inferred_wo': '5101-260630005', 'unique_mac1': 3976, 'invalid': 4}
+
+    def _codes(self, *args, **kw):
+        return {i['code']: i['level'] for i in self.ls.validate_upload(self.FACTS, *args, **kw)}
+
+    def test_rules_errors_for_empty_or_bad_input(self):
+        self.assertEqual(self._codes('', '')['R1'], 'error')
+        self.assertEqual(self._codes('', '')['R2'], 'error')
+        self.assertEqual(self._codes('5101-2606', 'abc')['R1'], 'error')
+        self.assertEqual(self._codes('5101-260630005', '0')['R2'], 'error')
+
+    def test_rules_clean_input_only_info(self):
+        issues = self.ls.validate_upload(self.FACTS, '5101-260630005', '4,000')
+        self.assertFalse(self.ls.has_errors(issues))
+        self.assertFalse(self.ls.has_warnings(issues))
+        codes = {i['code'] for i in issues}
+        self.assertEqual(codes, {'R5', 'R7', 'R8'})
+        r5 = next(i for i in issues if i['code'] == 'R5')['message']
+        self.assertIn('4,000', r5)
+        self.assertIn('3,976', r5)
+        self.assertIn('+24', r5)
+
+    def test_rules_wo_mismatch_warns(self):
+        self.assertEqual(self._codes('5101-260630007', 4000)['R3'], 'warn')
+
+    def test_rules_existing_other_wo_warns_same_wo_info(self):
+        codes = self._codes('5101-260630005', 4000, existing_by_wo={'5101-260630005': 10, '5101-111111111': 5})
+        self.assertEqual(codes['R4'], 'warn')
+        self.assertEqual(codes['R6'], 'info')
+
+    def test_rules_alignment_target(self):
+        self.assertNotIn('R7', self._codes('5101-260630005', 4000, current_target=4000))
+        msg = [i for i in self.ls.validate_upload(self.FACTS, '5101-260630005', 4000, current_target=3900) if i['code'] == 'R7']
+        self.assertIn('3,900', msg[0]['message'])
+
+    # ── Parser compatibility ──────────────────────────────────────────────────
+    def test_insert_record_extra_columns(self):
+        conn = MagicMock()
+        cur = conn.cursor.return_value
+        cur.rowcount = 1
+        self.assertTrue(self.parser.insert_record(conn, {'work_order': 'W'}, extra={'upload_id': 'abc'}))
+        sql, values = cur.execute.call_args[0]
+        self.assertIn('source_file, upload_id)', sql)
+        self.assertEqual(values[-1], 'abc')
+        self.assertEqual(len(values), len(self.parser.DB_COLUMNS) + 1)
+
+    def test_insert_record_without_extra_unchanged(self):
+        conn = MagicMock()
+        conn.cursor.return_value.rowcount = 0
+        self.assertFalse(self.parser.insert_record(conn, {}))
+        sql, values = conn.cursor.return_value.execute.call_args[0]
+        self.assertNotIn('upload_id', sql)
+        self.assertEqual(len(values), len(self.parser.DB_COLUMNS))
+
+    def test_plain_sum_is_left_to_right(self):
+        values = [0.1] * 10
+        expected = 0.0
+        for v in values:
+            expected += v
+        self.assertEqual(self.parser._plain_sum(values), expected)   # 0.9999999999999999, not fsum's 1.0
+
+    @unittest.skipUnless(os.path.isfile(SAMPLE_ZIP_005) and os.path.isdir(SAMPLE_SPLIT_S),
+                         "rawlogs sample (5101-260630005) not present")
+    def test_sample_zip_matches_desktop_split_output(self):
+        import zipfile
+        with zipfile.ZipFile(SAMPLE_ZIP_005) as zf:
+            entries = self.ls.find_log_all_entries(zf)
+            self.assertEqual([s for s, _ in entries], ['10', '20', '30', '40'])
+            web = {r['filename']: r['content']
+                   for _, recs, _ in self.ls.iter_station_records(zf, entries, '5101-260630005') for r in recs}
+        desktop = {n for n in os.listdir(SAMPLE_SPLIT_S) if self.parser.FILENAME_RE.match(n)}
+        self.assertEqual(set(web), desktop)
+        self.assertEqual(len(web), 4335)
+        for name in sorted(desktop)[::40]:   # ~110 files: hashes and every parsed field identical
+            from_disk = self.parser.parse_log_file(os.path.join(SAMPLE_SPLIT_S, name))
+            self.assertEqual(self.parser.parse_log_content(web[name], name), from_disk, name)
+
+    # ── Dashboard page ────────────────────────────────────────────────────────
+    def test_logupload_page_and_nav(self):
+        self.assertIn('logupload', self.col.pages)
+        self.assertIn('logupload', self.col.nav_pages)
+
+    def test_logupload_nav_under_management(self):
+        nav = self.raw[self.raw.index('<nav>'):self.raw.index('</nav>')]
+        mgmt = nav.index('>Management<')
+        self.assertLess(mgmt, nav.index('data-page="dataalign"'))
+        self.assertLess(nav.index('data-page="dataalign"'), nav.index('data-page="logupload"'))
+
+    def test_logupload_page_loader_registered(self):
+        self.assertRegex(self.raw, r'logupload:\s*loadLogUploader')
+
+    def test_scheduled_ai_carousel_removed_manual_button_kept(self):
+        # The 10-minute forced page carousel + AI report popup was cancelled; it also hijacked
+        # the Log Uploader page mid-upload. The on-demand sidebar button stays.
+        for gone in ('startCarouselScheduler', 'startScheduledCarousel', 'prefetchCarouselAiReport'):
+            self.assertNotIn(gone, self.raw)
+        self.assertIn('nav-ai-report', self.col.ids)
+        self.assertIn('function openLatestWoTerminalReport', self.raw)
+
+    def test_logupload_required_ids(self):
+        for eid in ('luLogin', 'luPanel', 'luFile', 'luWo', 'luQty', 'luAck', 'btnLuUpload',
+                    'luIssues', 'luProgressFill', 'btnLuRevert', 'luHistoryRows'):
+            self.assertIn(eid, self.col.ids, eid)
+
+
 # ─── Runner ──────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     loader = unittest.TestLoader()
     suite  = unittest.TestSuite()
-    for cls in (TestHTMLStructure, TestAPIFunctions, TestJavaScriptLogic):
+    for cls in (TestHTMLStructure, TestAPIFunctions, TestJavaScriptLogic, TestLogUploader):
         suite.addTests(loader.loadTestsFromTestCase(cls))
     runner = unittest.TextTestRunner(verbosity=2, stream=sys.stdout)
     result = runner.run(suite)

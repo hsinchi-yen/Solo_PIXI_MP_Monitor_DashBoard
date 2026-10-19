@@ -24,22 +24,27 @@
 
 ### Tests
 - Unit test suite: `python test_dashboard_suite.py`
-- 74 tests: HTML structure, API pure functions (no DB), JS alignment logic via Node.js
+- 89 tests: HTML structure, API pure functions (no DB), JS alignment logic via Node.js, Log Uploader core (`TestLogUploader`)
+- Known pre-existing failures (20): donut-ring / MAC1-range / `alignGetStore` tests expect code not in the dashboard, and `TestAPIFunctions` cannot import `app.py` (needs `ai_summary_helper`/`log_splitter` on the path). New work must not add to this set.
+- `TestLogUploader.test_sample_zip_matches_desktop_split_output` runs only when `rawlogs/5101-260630005.zip` and `rawlogs/5101-260630005_S/` exist (rawlogs is git-ignored)
 
 ## Environment Configuration
 - Database URL: Set via `DATABASE_URL` env var (default: `postgresql://pixi:pixipass@localhost:5433/pixi_test`)
 - DB Tweak credentials: Set via `TWEAK_USER` and `TWEAK_PASS` (default: `pixi`/`pixipass`)
+- Local LLM: `LLM_API_BASE`, `LLM_MODEL` (default `Qwen3.8-27B-UD-Q6_K_L`), `LLM_ENABLE_THINKING` (default `false` — thinking costs ~15x latency on the dense 27B model), `LLM_REPORT_MAX_TOKENS`
 - See `.env.example` for a complete template of all environment variables
 
 ## Project Structure
 - `solo-pixi-essential/`: Contains FastAPI backend and dashboard
   - `api/`: FastAPI application
   - `api/app.py`: Main FastAPI application with all endpoints
-  - `module_log_parser.py`: Log parsing utility used by reparse endpoint
-  - `solo_pixi_dashboard.html`: Frontend dashboard (single-file, ~3260 lines)
+  - `module_log_parser.py`: Log parsing utility used by the web Log Uploader, reparse endpoint and desktop uploader
+  - `log_splitter.py`: Server-side splitter + upload validation rules (R1–R8) for the web Log Uploader; split output is byte-identical to `log_splitter_app.py`
+  - `solo_pixi_dashboard.html`: Frontend dashboard (single-file, ~5000 lines)
   - `docker-compose.yml`: Service definitions for PostgreSQL, API, and Nginx
 - Root level: Desktop applications, utility scripts, and test suite
-  - `test_dashboard_suite.py`: Unit test suite (74 tests, no DB required)
+  - `test_dashboard_suite.py`: Unit test suite (89 tests, no DB required)
+  - `log_uploader_web_plan.md`: Design / alignment record for the web Log Uploader
 
 ## Key API Endpoints
 - Health: `GET /health`
@@ -50,6 +55,11 @@
 - Work order summary: `GET /api/work-order-summary`
 - Retries: `GET /api/retries`
 - DB Tweak (admin): Requires `X-Tweak-Token` header (base64 encoded `user:pass`)
+- Log Uploader (requires `X-Tweak-Token`):
+  - `POST /api/log-upload/analyze` — multipart `file` (.zip); splits every `<station>/…/Log_All.txt` in memory, returns `upload_id` + facts (no `module_test` writes)
+  - `POST /api/log-upload/validate` — `{upload_id, work_order, planned_qty}` → rule results `{issues, can_upload, needs_ack}`
+  - `POST /api/log-upload/commit` — `{upload_id, work_order, planned_qty, ack_warnings, mode}` → NDJSON stream (`start`/`split`/`progress`/`done`/`error`); one upload at a time (pg advisory lock → 409)
+  - `GET /api/log-upload/history`, `GET /api/log-upload/{upload_id}`, `DELETE /api/log-upload/{upload_id}` (undo a batch)
 
 ## Dashboard Pages
 | Page key | Nav label | Auth required |
@@ -63,6 +73,7 @@
 | `failanalysis` | 🔍 Fail Analysis | No |
 | `dbtweak` | 🔧 DB Tweak | Yes (Tweak Token) |
 | `dataalign` | ⚖️ Data Alignment | No |
+| `logupload` | 📤 Log Uploader | Yes (Tweak Token, shared session with DB Tweak) |
 
 ## Client-Side Storage
 - `pixi-align-v1` (localStorage): JSON map of `{ [workOrder]: { target: number } }`.
@@ -77,3 +88,7 @@
 - Data Alignment logic is purely client-side: golden stops and gap calculation happen in-browser
 - Overview page fetches 6 API endpoints in parallel via `Promise.all` for faster load
 - Search inputs (Work Orders, Fails, Fail Analysis) are debounced at 200 ms
+- Log Uploader: `file_hash` = sha256 of each split record and ignores the work order, so a wrong work order cannot be fixed by re-uploading — undo the batch (`DELETE /api/log-upload/{id}`) first. Rows inserted by the web uploader carry `module_test.upload_id`; desktop-uploaded rows have NULL. Upload batches are recorded in `upload_log`; a successful upload writes the planned quantity to `alignment_targets`.
+- `module_log_parser._plain_sum` keeps a left-to-right float sum on purpose: Python 3.12's compensated `sum()` shifts some 3-decimal WiFi power averages by 0.001 versus the Python 3.11 desktop uploader
+- The scheduled 10-minute page carousel + latest-WO AI report popup was removed; the sidebar "AI Report — Latest WO" button opens it on demand. The 5-minute idle page rotation remains and pauses while a Log Upload is unfinished.
+- API files are single-file bind mounts in `docker-compose.yml`: after editing `app.py`, `module_log_parser.py`, `log_splitter.py` or the dashboard HTML, restart the api container (`docker compose restart api`) or it keeps serving the old file

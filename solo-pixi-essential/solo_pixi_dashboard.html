@@ -1125,6 +1125,71 @@ body::before {
     @keyframes term-blink { 0%,100%{opacity:1} 50%{opacity:0} }
     .terminal-footer { background: #02020a; border-top: 1px solid #00e5ff; padding: 6px 18px; font-family: 'Courier New', Courier, monospace; font-size: 11px; color: #0088aa; display: flex; justify-content: space-between; flex-shrink: 0; }
 
+/* ─── Log Uploader ────────────────────────────────────────────────────────── */
+.lu-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 16px;
+}
+.lu-step h3 { font-size: 14px; font-weight: 600; color: var(--text2); margin-bottom: 14px; }
+.lu-step h3 .lu-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%; margin-right: 8px;
+    background: var(--blue-bg); color: var(--blue); font-size: 12px;
+}
+.lu-drop {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 26px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+}
+.lu-drop:hover, .lu-drop:focus-visible, .lu-drop.dragover { border-color: var(--blue); background: var(--blue-bg); outline: none; }
+.lu-drop.disabled { pointer-events: none; opacity: .5; }
+.lu-drop-main { font-size: 14px; color: var(--text); }
+.lu-drop-main .lu-link { color: var(--blue); font-weight: 600; }
+.lu-drop-sub { font-size: 12px; color: var(--text3); margin-top: 6px; font-variant-numeric: tabular-nums; }
+.lu-status { font-size: 13px; color: var(--text2); margin-top: 10px; min-height: 18px; }
+.lu-status.error { color: var(--red); }
+.lu-status.ok { color: var(--green); }
+.lu-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 16px 0; }
+.lu-fact { background: var(--surface2); border-radius: 8px; padding: 12px 14px; }
+.lu-fact .lu-fact-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+.lu-fact .lu-fact-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lu-fact .lu-fact-value.small { font-size: 13px; font-weight: 600; line-height: 1.5; }
+.lu-table { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.lu-table td.num, .lu-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.lu-details { margin-top: 12px; font-size: 12px; color: var(--text2); }
+.lu-details summary { cursor: pointer; color: var(--text2); }
+.lu-details .lu-table { margin-top: 8px; max-height: 260px; overflow-y: auto; }
+.lu-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0 16px; max-width: 640px; }
+.lu-issues { list-style: none; margin: 4px 0 12px; display: flex; flex-direction: column; gap: 6px; }
+.lu-issues li {
+    font-size: 13px; line-height: 1.5; padding: 8px 12px; border-radius: 6px;
+    background: var(--surface2); color: var(--text2); border-left: 3px solid var(--text3);
+}
+.lu-issues li.error { border-left-color: var(--red); color: var(--text); background: rgba(255,69,58,.10); }
+.lu-issues li.warn { border-left-color: var(--orange); color: var(--text); background: rgba(255,159,10,.10); }
+.lu-issues li.info { border-left-color: var(--blue); }
+.lu-ack { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--orange); font-weight: 600; margin-bottom: 12px; cursor: pointer; }
+.lu-ack input { width: 16px; height: 16px; accent-color: var(--orange); }
+.lu-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.lu-actions .tweak-btn { width: auto; margin-top: 0; padding: 9px 20px; font-size: 13px; }
+.lu-progress { height: 8px; border-radius: 4px; background: var(--surface3); overflow: hidden; }
+.lu-progress-fill { height: 100%; width: 0; background: var(--blue); border-radius: 4px; transition: width .2s; }
+.lu-progress-fill.done { background: var(--green); }
+.lu-progress-fill.error { background: var(--red); }
+.lu-results { margin: 16px 0 0; }
+.lu-results .kpi-card { padding: 14px 16px; }
+.lu-results .kpi-card .kpi-value { font-size: 26px; }
+.lu-history-head { display: flex; align-items: center; justify-content: space-between; }
+.lu-history-head .tweak-btn { padding: 4px 12px; font-size: 11px; }
+.badge.running { background: var(--blue-bg); color: var(--blue); }
+.badge.reverted { background: var(--surface3); color: var(--text2); }
+
 </style>
 </head>
 <body>
@@ -1160,6 +1225,7 @@ body::before {
         <div class="section-label">Management</div>
         <a href="#" data-page="dbtweak">🔧 DB Tweak</a>
         <a href="#" data-page="dataalign">⚖️ Data Alignment</a>
+        <a href="#" data-page="logupload">📤 Log Uploader</a>
 
     </nav>
     <div class="sidebar-footer">
@@ -1649,6 +1715,113 @@ body::before {
     </div>
 </div>
 
+<!-- ─── Log Uploader ────────────────────────────────────────────────────── -->
+<div class="page" id="page-logupload">
+    <h2 class="page-title">Log Uploader</h2>
+
+    <!-- Login gate (shares the DB Tweak session) -->
+    <div id="luLogin" class="tweak-login-box">
+        <h3>🔒 需要登入</h3>
+        <p style="color:var(--text2);font-size:13px;margin-bottom:16px">請使用 DB Tweak 帳號登入，登入後兩個頁面皆可使用。</p>
+        <div class="tweak-form-row">
+            <label for="luUser">Username</label>
+            <input type="text" id="luUser" autocomplete="username">
+        </div>
+        <div class="tweak-form-row">
+            <label for="luPass">Password</label>
+            <input type="password" id="luPass" autocomplete="current-password">
+        </div>
+        <button class="tweak-btn primary" id="btnLuLogin">Sign In</button>
+        <div id="luLoginMsg" style="margin-top:10px;font-size:13px;color:var(--red);display:none"></div>
+    </div>
+
+    <div id="luPanel" style="display:none">
+        <div class="align-info-box">
+            <strong>📤 使用方式</strong><br>
+            上傳工單 zip（例如 <code>5101-260630005.zip</code>），系統會找出各站別資料夾（10/20/30/40…）下的 <code>Log_All.txt</code>，依每筆測試切檔並寫入資料庫。<br>
+            <strong>重複上傳：</strong>相同內容的 log 會自動略過，可以安全重傳；與桌面版 Splitter / Uploader 上傳的資料相容。
+        </div>
+
+        <section class="lu-step">
+            <h3><span class="lu-num">1</span>選擇工單 ZIP</h3>
+            <div class="lu-drop" id="luDrop" tabindex="0" role="button" aria-label="選擇工單 zip 檔">
+                <input type="file" id="luFile" accept=".zip,application/zip" hidden>
+                <div class="lu-drop-main">拖放 .zip 到這裡，或 <span class="lu-link">點選選擇檔案</span></div>
+                <div class="lu-drop-sub" id="luFileInfo">尚未選擇檔案</div>
+            </div>
+            <div class="lu-status" id="luAnalyzeStatus" aria-live="polite"></div>
+            <div id="luFacts" style="display:none">
+                <div class="lu-facts" id="luFactGrid"></div>
+                <div class="lu-table">
+                    <table>
+                        <thead><tr><th>站別</th><th class="num">有效筆數</th><th class="num">PASS</th><th class="num">FAIL</th><th class="num">STOP</th><th class="num">無效</th></tr></thead>
+                        <tbody id="luStationRows"></tbody>
+                    </table>
+                </div>
+                <details class="lu-details" id="luInvalidBox" style="display:none">
+                    <summary id="luInvalidSummary"></summary>
+                    <div class="lu-table">
+                        <table>
+                            <thead><tr><th>站別</th><th>測試時間</th><th>MAC1</th><th>結果</th><th>原因</th></tr></thead>
+                            <tbody id="luInvalidRows"></tbody>
+                        </table>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <section class="lu-step" id="luStepConfirm" style="display:none">
+            <h3><span class="lu-num">2</span>確認資訊</h3>
+            <div class="lu-form">
+                <div class="tweak-form-row">
+                    <label for="luWo">工單名稱 *</label>
+                    <input type="text" id="luWo" autocomplete="off" spellcheck="false" placeholder="例如 5101-260630005">
+                </div>
+                <div class="tweak-form-row">
+                    <label for="luQty">工單計畫生產數 *</label>
+                    <input type="text" id="luQty" inputmode="numeric" autocomplete="off" placeholder="例如 4000">
+                </div>
+            </div>
+            <ul class="lu-issues" id="luIssues" aria-live="polite"></ul>
+            <label class="lu-ack" id="luAckRow" style="display:none">
+                <input type="checkbox" id="luAck"> 我已確認上述警告，資料無誤
+            </label>
+            <div class="lu-actions">
+                <button class="tweak-btn primary" id="btnLuUpload" disabled>確認上傳</button>
+                <button class="tweak-btn secondary" id="btnLuReset">重新選擇</button>
+            </div>
+        </section>
+
+        <section class="lu-step" id="luStepProgress" style="display:none">
+            <h3><span class="lu-num">3</span>上傳進度</h3>
+            <div class="lu-progress"><div class="lu-progress-fill" id="luProgressFill"></div></div>
+            <div class="lu-status" id="luProgressText" aria-live="polite"></div>
+            <div class="kpi-grid lu-results" id="luResultGrid" style="display:none"></div>
+            <details class="lu-details" id="luFailureBox" style="display:none">
+                <summary id="luFailureSummary"></summary>
+                <div class="lu-table">
+                    <table>
+                        <thead><tr><th>站別</th><th>檔名</th><th>錯誤</th></tr></thead>
+                        <tbody id="luFailureRows"></tbody>
+                    </table>
+                </div>
+            </details>
+            <div class="lu-actions" style="margin-top:14px">
+                <button class="tweak-btn secondary" id="btnLuNext" style="display:none">上傳下一個工單</button>
+                <button class="tweak-btn danger" id="btnLuRevert" style="display:none">撤銷此批</button>
+            </div>
+        </section>
+
+        <div class="data-table-wrap">
+            <h3 class="lu-history-head">最近上傳紀錄 <button class="tweak-btn secondary" id="btnLuHistoryRefresh">重新整理</button></h3>
+            <table>
+                <thead><tr><th>時間</th><th>工單</th><th class="num">計畫數</th><th>檔案</th><th class="num">新增</th><th class="num">略過</th><th class="num">失敗</th><th>狀態</th><th>上傳者</th><th></th></tr></thead>
+                <tbody id="luHistoryRows"><tr><td colspan="10" style="color:var(--text3)">尚無紀錄</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 </main>
 
 <!-- Terminal AI Report Modal (carousel mode) -->
@@ -2126,6 +2299,10 @@ async function runAutoRotationStep(index, token) {
 
 function startAutoRotation() {
     if (automationState.rotationActive) return;
+    if (logUploadBlocksRotation()) {
+        scheduleIdleRotation();  // never rotate away from an unfinished log upload
+        return;
+    }
     automationState.rotationActive = true;
     automationState.rotationToken += 1;
     if (automationState.idleTimerId) {
@@ -3582,6 +3759,7 @@ document.getElementById('btnTweakLogin').addEventListener('click', async () => {
             document.getElementById('tweakLogin').style.display = 'none';
             document.getElementById('tweakPanel').style.display = 'block';
             resetTweakPanelState();
+            syncLogUploadAuth();
             await loadTweakFilterOptions();
             await loadTweakRecords();
         } else {
@@ -3610,6 +3788,7 @@ document.getElementById('btnTweakLogout').addEventListener('click', () => {
         document.getElementById(id).value = '';
     });
     resetTweakPanelState();
+    syncLogUploadAuth();
 });
 
 document.getElementById('btnTweakRefresh').addEventListener('click', async () => {
@@ -3786,6 +3965,448 @@ function loadDBTweak() {
     }
 }
 
+/* ═══ Log Uploader ═══════════════════════════════════════════════════════
+   zip → POST /api/log-upload/analyze (facts) → /validate (rules R1–R8)
+       → /commit (NDJSON progress stream). Shares the DB Tweak session.     */
+const luState = {
+    uploadId: null,      // analyzed batch
+    facts: null,
+    committedId: null,   // batch that finished (or failed) committing
+    busy: false,
+    validation: null,    // last /validate result for the current inputs
+    validateSeq: 0,
+};
+const luEl = id => document.getElementById(id);
+const luNum = n => (Number(n) || 0).toLocaleString();
+
+function logUploadBlocksRotation() {
+    return luState.busy || (!!luState.uploadId && !luState.committedId);
+}
+
+function syncLogUploadAuth() {
+    const signedIn = !!tweakToken;
+    luEl('luLogin').style.display = signedIn ? 'none' : 'block';
+    luEl('luPanel').style.display = signedIn ? 'block' : 'none';
+    if (signedIn && getActivePage() === 'logupload') loadUploadHistory();
+}
+
+function loadLogUploader() {
+    syncLogUploadAuth();
+    return Promise.resolve();
+}
+
+async function luFetch(path, opts = {}) {
+    const headers = Object.assign({ 'X-Tweak-Token': tweakToken }, opts.headers || {});
+    const r = await fetch(path, Object.assign({}, opts, { headers }));
+    if (r.status === 401) {
+        handleTweakUnauthorized();
+        throw new Error('登入已失效，請重新登入');
+    }
+    return r;
+}
+
+function luSetStatus(id, text, kind = '') {
+    const node = luEl(id);
+    node.textContent = text;
+    node.className = 'lu-status' + (kind ? ' ' + kind : '');
+}
+
+luEl('btnLuLogin').addEventListener('click', async () => {
+    const user = luEl('luUser').value.trim();
+    const pass = luEl('luPass').value.trim();
+    const msg = luEl('luLoginMsg');
+    if (!user || !pass) { msg.textContent = 'Please enter both fields.'; msg.style.display = 'block'; return; }
+    try {
+        const r = await fetch('/api/tweak/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass }),
+        });
+        const data = await r.json();
+        if (!data.ok) { msg.textContent = data.message || 'Login failed'; msg.style.display = 'block'; return; }
+        tweakToken = data.token;
+        msg.style.display = 'none';
+        luEl('luPass').value = '';
+        // Unlock DB Tweak as well; its data loads when that page is opened.
+        luEl('tweakLogin').style.display = 'none';
+        luEl('tweakPanel').style.display = 'block';
+        resetTweakPanelState();
+        syncLogUploadAuth();
+    } catch (e) {
+        msg.textContent = 'Connection error: ' + e.message;
+        msg.style.display = 'block';
+    }
+});
+luEl('luPass').addEventListener('keydown', e => { if (e.key === 'Enter') luEl('btnLuLogin').click(); });
+
+/* ── Step 1: choose + analyze ── */
+const luDrop = luEl('luDrop');
+luDrop.addEventListener('click', () => { if (!luState.busy) luEl('luFile').click(); });
+luDrop.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && !luState.busy) { e.preventDefault(); luEl('luFile').click(); }
+});
+luDrop.addEventListener('dragover', e => { e.preventDefault(); luDrop.classList.add('dragover'); });
+luDrop.addEventListener('dragleave', () => luDrop.classList.remove('dragover'));
+luDrop.addEventListener('drop', e => {
+    e.preventDefault();
+    luDrop.classList.remove('dragover');
+    const file = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (file && !luState.busy) luAnalyze(file);
+});
+luEl('luFile').addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    if (file) luAnalyze(file);
+});
+
+function luResetFlow() {
+    Object.assign(luState, { uploadId: null, facts: null, committedId: null, validation: null });
+    luState.validateSeq += 1;
+    luEl('luFile').value = '';
+    luEl('luFileInfo').textContent = '尚未選擇檔案';
+    luSetStatus('luAnalyzeStatus', '');
+    luEl('luFacts').style.display = 'none';
+    luEl('luStepConfirm').style.display = 'none';
+    luEl('luStepProgress').style.display = 'none';
+    luEl('luWo').value = '';
+    luEl('luQty').value = '';
+    luEl('luAck').checked = false;
+    luEl('luIssues').innerHTML = '';
+    luEl('luAckRow').style.display = 'none';
+    luSetInputsDisabled(false);
+    luUpdateUploadButton();
+}
+
+function luSetInputsDisabled(disabled) {
+    ['luWo', 'luQty', 'luAck', 'btnLuReset'].forEach(id => { luEl(id).disabled = disabled; });
+    luDrop.classList.toggle('disabled', disabled);
+}
+
+function luUploadWithProgress(url, formData, onProgress) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url);
+        xhr.setRequestHeader('X-Tweak-Token', tweakToken);
+        xhr.upload.onprogress = e => { if (e.lengthComputable) onProgress(Math.round(e.loaded * 100 / e.total)); };
+        xhr.onload = () => {
+            let body = {};
+            try { body = JSON.parse(xhr.responseText || '{}'); } catch (_) { /* non-JSON error page */ }
+            resolve({ status: xhr.status, body });
+        };
+        xhr.onerror = () => reject(new Error('網路錯誤，無法連線到伺服器'));
+        xhr.send(formData);
+    });
+}
+
+async function luAnalyze(file) {
+    luResetFlow();
+    luEl('luFileInfo').textContent = `${file.name}・${(file.size / 1048576).toFixed(1)} MB`;
+    if (!/\.zip$/i.test(file.name)) {
+        luSetStatus('luAnalyzeStatus', '請選擇 .zip 壓縮檔', 'error');
+        return;
+    }
+    luState.busy = true;
+    luSetInputsDisabled(true);
+    luSetStatus('luAnalyzeStatus', '上傳中…');
+    try {
+        const fd = new FormData();
+        fd.append('file', file);
+        const { status, body } = await luUploadWithProgress('/api/log-upload/analyze', fd, pct => {
+            luSetStatus('luAnalyzeStatus', pct < 100 ? `上傳中… ${pct}%` : '分析中：正在切檔並比對資料庫…');
+        });
+        if (status === 401) { handleTweakUnauthorized(); return; }
+        if (status !== 200) {
+            luSetStatus('luAnalyzeStatus', body.error || `分析失敗（HTTP ${status}）`, 'error');
+            return;
+        }
+        luState.uploadId = body.upload_id;
+        luState.facts = body.facts;
+        luRenderFacts(body.facts);
+        luSetStatus('luAnalyzeStatus', '✓ 分析完成，請確認下方資訊', 'ok');
+        luEl('luStepConfirm').style.display = 'block';
+        luEl('luWo').placeholder = body.facts.inferred_wo
+            ? `例如 ${body.facts.inferred_wo}（依檔名推斷）`
+            : '例如 5101-260630005';
+        luEl('luWo').focus();
+        luValidate();
+    } catch (e) {
+        luSetStatus('luAnalyzeStatus', e.message, 'error');
+    } finally {
+        luState.busy = false;
+        luSetInputsDisabled(false);
+        luUpdateUploadButton();
+    }
+}
+
+function luRenderFacts(f) {
+    const existing = Object.values(f.existing_by_wo || {}).reduce((a, b) => a + b, 0);
+    const facts = [
+        ['站別', f.stations.map(s => s.station).join(' / '), true],
+        ['有效測試筆數', luNum(f.total_records)],
+        ['實測台數（不重複 MAC1）', luNum(f.unique_mac1)],
+        ['PASS / FAIL / STOP', `${luNum(f.pass)} / ${luNum(f.fail)} / ${luNum(f.stop)}`, true],
+        ['無效段落', luNum(f.invalid)],
+        ['已存在於資料庫', luNum(existing)],
+        ['測試期間', f.first_test ? `${f.first_test}<br>~ ${f.last_test}` : '—', true],
+    ];
+    luEl('luFactGrid').innerHTML = facts.map(([label, value, small]) =>
+        `<div class="lu-fact"><div class="lu-fact-label">${esc(label)}</div>` +
+        `<div class="lu-fact-value${small ? ' small' : ''}">${String(value).split('<br>').map(esc).join('<br>')}</div></div>`
+    ).join('');
+    luEl('luStationRows').innerHTML = f.stations.map(s =>
+        `<tr><td>${esc(s.station)}</td><td class="num">${luNum(s.records)}</td><td class="num">${luNum(s.pass)}</td>` +
+        `<td class="num">${luNum(s.fail)}</td><td class="num">${luNum(s.stop)}</td><td class="num">${luNum(s.invalid)}</td></tr>`
+    ).join('');
+    const invalid = f.invalid_items || [];
+    luEl('luInvalidBox').style.display = invalid.length ? 'block' : 'none';
+    luEl('luInvalidSummary').textContent = `${invalid.length} 筆無效段落將略過（點此查看明細）`;
+    luEl('luInvalidRows').innerHTML = invalid.map(i => {
+        const start = i.start ? i.start.replace(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6') : '—';
+        return `<tr><td>${esc(i.station)}</td><td>${esc(start)}</td><td>${esc(i.mac1 || '—')}</td>` +
+               `<td>${esc(i.result || '—')}</td><td>${esc(i.reason)}</td></tr>`;
+    }).join('');
+    luEl('luFacts').style.display = 'block';
+}
+
+/* ── Step 2: work order + planned quantity → server rules ── */
+const luValidateDebounced = debounce(luValidate, 300);
+['luWo', 'luQty'].forEach(id => luEl(id).addEventListener('input', () => {
+    luState.validation = null;  // stale until the server answers
+    luUpdateUploadButton();
+    luValidateDebounced();
+}));
+luEl('luAck').addEventListener('change', luUpdateUploadButton);
+luEl('btnLuReset').addEventListener('click', luResetFlow);
+luEl('btnLuNext').addEventListener('click', () => { luResetFlow(); luEl('luDrop').focus(); });
+
+async function luValidate() {
+    if (!luState.uploadId || luState.committedId) return;
+    const seq = ++luState.validateSeq;
+    try {
+        const r = await luFetch('/api/log-upload/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                upload_id: luState.uploadId,
+                work_order: luEl('luWo').value.trim(),
+                planned_qty: luEl('luQty').value.trim(),
+            }),
+        });
+        const data = await r.json();
+        if (seq !== luState.validateSeq) return;
+        if (!r.ok) {
+            luRenderIssues([{ level: 'error', message: data.error || `驗證失敗（HTTP ${r.status}）` }]);
+            luState.validation = null;
+        } else {
+            luState.validation = data;
+            luRenderIssues(data.issues);
+        }
+    } catch (e) {
+        if (seq === luState.validateSeq) luRenderIssues([{ level: 'error', message: e.message }]);
+    }
+    luUpdateUploadButton();
+}
+
+function luRenderIssues(issues) {
+    const icon = { error: '❌', warn: '⚠️', info: 'ℹ️' };
+    const order = { error: 0, warn: 1, info: 2 };
+    luEl('luIssues').innerHTML = [...issues]
+        .sort((a, b) => order[a.level] - order[b.level])
+        .map(i => `<li class="${i.level}">${icon[i.level] || ''} ${esc(i.message)}</li>`)
+        .join('');
+    const needsAck = issues.some(i => i.level === 'warn');
+    luEl('luAckRow').style.display = needsAck ? 'flex' : 'none';
+    if (!needsAck) luEl('luAck').checked = false;
+}
+
+function luUpdateUploadButton() {
+    const v = luState.validation;
+    luEl('btnLuUpload').disabled = luState.busy || !!luState.committedId || !v || !v.can_upload
+        || (v.needs_ack && !luEl('luAck').checked);
+}
+
+/* ── Step 3: commit + progress stream ── */
+luEl('btnLuUpload').addEventListener('click', luCommit);
+
+async function luCommit() {
+    const wo = luEl('luWo').value.trim();
+    const qty = luEl('luQty').value.trim();
+    if (!confirm(`將以工單 ${wo}（計畫生產數 ${qty}）切檔並上傳至資料庫，確定？`)) return;
+
+    luState.busy = true;
+    luSetInputsDisabled(true);
+    luUpdateUploadButton();
+    luEl('luStepProgress').style.display = 'block';
+    luEl('luResultGrid').style.display = 'none';
+    luEl('luFailureBox').style.display = 'none';
+    luEl('btnLuRevert').style.display = 'none';
+    luEl('btnLuNext').style.display = 'none';
+    luEl('luProgressFill').className = 'lu-progress-fill';
+    luEl('luProgressFill').style.width = '0%';
+    luSetStatus('luProgressText', '準備上傳…');
+    luEl('luStepProgress').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    let finished = false;
+    try {
+        const r = await luFetch('/api/log-upload/commit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                upload_id: luState.uploadId, work_order: wo, planned_qty: qty,
+                ack_warnings: luEl('luAck').checked, mode: 'form',
+            }),
+        });
+        if (!r.ok) {
+            const data = await r.json().catch(() => ({}));
+            if (data.issues) { luState.validation = data; luRenderIssues(data.issues); }
+            luEl('luProgressFill').className = 'lu-progress-fill error';
+            luSetStatus('luProgressText', data.error || `上傳失敗（HTTP ${r.status}）`, 'error');
+            return;
+        }
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            let nl;
+            while ((nl = buf.indexOf('\n')) >= 0) {
+                const line = buf.slice(0, nl).trim();
+                buf = buf.slice(nl + 1);
+                if (line && luHandleEvent(JSON.parse(line))) finished = true;
+            }
+        }
+        if (!finished) {
+            luSetStatus('luProgressText', '與伺服器的連線中斷；伺服器仍會繼續處理，請稍後查看「最近上傳紀錄」。', 'error');
+        }
+    } catch (e) {
+        luSetStatus('luProgressText', e.message, 'error');
+    } finally {
+        luState.busy = false;
+        if (!luState.committedId) luSetInputsDisabled(false);
+        luUpdateUploadButton();
+        loadUploadHistory();
+    }
+}
+
+/* Returns true once the stream reached a terminal event. */
+function luHandleEvent(ev) {
+    const fill = luEl('luProgressFill');
+    if (ev.type === 'start') {
+        luSetStatus('luProgressText', `開始處理工單 ${ev.work_order}：${ev.stations.length} 個站別，共 ${luNum(ev.total)} 筆`);
+    } else if (ev.type === 'split') {
+        luSetStatus('luProgressText', `站別 ${ev.station}：切出 ${luNum(ev.records)} 筆，寫入資料庫中…`);
+    } else if (ev.type === 'progress') {
+        fill.style.width = `${Math.round(ev.done * 100 / Math.max(ev.total, 1))}%`;
+        luSetStatus('luProgressText', `寫入資料庫 ${luNum(ev.done)} / ${luNum(ev.total)}（新增 ${luNum(ev.uploaded)}・略過 ${luNum(ev.skipped)}・失敗 ${luNum(ev.failed)}）`);
+    } else if (ev.type === 'done') {
+        luState.committedId = luState.uploadId;
+        fill.style.width = '100%';
+        fill.className = 'lu-progress-fill done';
+        luSetStatus('luProgressText', `✓ 上傳完成，耗時 ${ev.elapsed_sec} 秒`, 'ok');
+        luRenderResults(ev);
+        luEl('btnLuRevert').style.display = ev.uploaded > 0 ? 'inline-block' : 'none';
+        luEl('btnLuNext').style.display = 'inline-block';
+        clearDashboardCaches();
+        loadFilterOptions();
+        return true;
+    } else if (ev.type === 'error') {
+        luState.committedId = luState.uploadId;
+        fill.className = 'lu-progress-fill error';
+        luSetStatus('luProgressText', `${ev.message}。已寫入的資料可用「撤銷此批」移除，或重新上傳（重複資料會略過）。`, 'error');
+        luRenderResults(ev);
+        luEl('btnLuRevert').style.display = ev.uploaded > 0 ? 'inline-block' : 'none';
+        luEl('btnLuNext').style.display = 'inline-block';
+        return true;
+    }
+    return false;
+}
+
+function luRenderResults(ev) {
+    const cards = [
+        ['新增', ev.uploaded, 'green'],
+        ['略過（已存在）', ev.skipped, 'blue'],
+        ['無效段落', ev.invalid, 'orange'],
+        ['失敗', ev.failed, ev.failed ? 'red' : ''],
+    ];
+    luEl('luResultGrid').innerHTML = cards.map(([label, value, color]) =>
+        `<div class="kpi-card"><div class="kpi-label">${esc(label)}</div><div class="kpi-value ${color}">${luNum(value)}</div></div>`
+    ).join('');
+    luEl('luResultGrid').style.display = 'grid';
+    const failures = ev.failures || [];
+    luEl('luFailureBox').style.display = failures.length ? 'block' : 'none';
+    luEl('luFailureSummary').textContent = `${failures.length} 筆寫入失敗（點此查看明細）`;
+    luEl('luFailureRows').innerHTML = failures.map(f =>
+        `<tr><td>${esc(f.station)}</td><td>${esc(f.filename)}</td><td>${esc(f.error)}</td></tr>`
+    ).join('');
+}
+
+luEl('btnLuRevert').addEventListener('click', async () => {
+    if (await luRevert(luState.committedId)) luEl('btnLuRevert').style.display = 'none';
+});
+
+async function luRevert(uploadId, label = '') {
+    if (!uploadId) return false;
+    if (!confirm(`確定撤銷此批上傳${label ? `（${label}）` : ''}？\n只會刪除這批新增的資料，原本已存在的資料不受影響。`)) return false;
+    try {
+        const r = await luFetch(`/api/log-upload/${uploadId}`, { method: 'DELETE' });
+        const data = await r.json();
+        if (!r.ok) { alert(data.error || `撤銷失敗（HTTP ${r.status}）`); return false; }
+        if (uploadId === luState.committedId) {
+            luSetStatus('luProgressText', `已撤銷此批上傳，刪除 ${luNum(data.reverted)} 筆資料。`, 'ok');
+        }
+        clearDashboardCaches();
+        loadFilterOptions();
+        loadUploadHistory();
+        return true;
+    } catch (e) {
+        alert(e.message);
+        return false;
+    }
+}
+
+/* ── Upload history ── */
+const LU_STATUS = {
+    done: ['pass', '完成'], failed: ['fail', '失敗'], reverted: ['reverted', '已撤銷'], running: ['running', '進行中'],
+};
+luEl('btnLuHistoryRefresh').addEventListener('click', loadUploadHistory);
+
+async function loadUploadHistory() {
+    if (!tweakToken) return;
+    const tbody = luEl('luHistoryRows');
+    try {
+        const r = await luFetch('/api/log-upload/history?limit=20');
+        const data = await r.json();
+        const rows = data.items || [];
+        if (!rows.length) { tbody.innerHTML = '<tr><td colspan="10" style="color:var(--text3)">尚無紀錄</td></tr>'; return; }
+        tbody.innerHTML = rows.map(row => {
+            const [cls, label] = LU_STATUS[row.status] || ['', row.status];
+            const canRevert = (row.status === 'done' || row.status === 'failed') && row.uploaded > 0;
+            return `<tr>
+                <td>${esc(fmtTime(row.created_at))}</td>
+                <td>${esc(row.work_order || '—')}</td>
+                <td class="num">${row.planned_qty != null ? luNum(row.planned_qty) : '—'}</td>
+                <td>${esc(row.zip_name || '—')}</td>
+                <td class="num">${row.uploaded != null ? luNum(row.uploaded) : '—'}</td>
+                <td class="num">${row.skipped != null ? luNum(row.skipped) : '—'}</td>
+                <td class="num">${row.failed != null ? luNum(row.failed) : '—'}</td>
+                <td><span class="badge ${cls}" title="${esc(row.error || '')}">${esc(label)}</span></td>
+                <td>${esc(row.tweak_user || '—')}</td>
+                <td>${canRevert ? `<button class="tweak-action-btn del" data-revert="${esc(row.id)}" data-label="${esc(row.work_order || '')}">撤銷</button>` : ''}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="10" style="color:var(--red)">${esc(e.message)}</td></tr>`;
+    }
+}
+
+luEl('luHistoryRows').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-revert]');
+    if (!btn) return;
+    const reverted = await luRevert(btn.dataset.revert, btn.dataset.label);
+    if (reverted && btn.dataset.revert === luState.committedId) luEl('btnLuRevert').style.display = 'none';
+});
+
 /* ═══ Page data loader ═══════════════════════════════════════════════════ */
 const pageLoaders = {
     overview: loadOverview,
@@ -3797,6 +4418,7 @@ const pageLoaders = {
     failanalysis: loadFailAnalysis,
     dbtweak: loadDBTweak,
     dataalign: loadDataAlign,
+    logupload: loadLogUploader,
 };
 function loadPageData(page) {
     if (!pageLoaders[page]) return Promise.resolve();
@@ -3937,13 +4559,10 @@ initDashboard();
       }
       // Re-render workorder buttons when LLM connection state changes
       if (wasConnected !== window.llmConnected) renderWorkOrders();
-      // Kick off background prefetch when LLM first becomes available
-      if (!wasConnected && window.llmConnected) prefetchCarouselAiReport();
     }
 
-    // AI Carousel
-    let carouselAiCache = null;    // { summary, wo, yieldPct }
-    let carouselAiFetching = false;
+    // Latest-WO AI report cache (filled on demand by the sidebar button)
+    let carouselAiCache = null;    // { summaryEn, summaryZh, wo, yieldPct }
 
     async function fetchWithTimeout(url, timeoutMs = 180000) {
       const ctrl  = new AbortController();
@@ -3952,43 +4571,6 @@ initDashboard();
         return await fetch(url, { signal: ctrl.signal });
       } finally {
         clearTimeout(timer);
-      }
-    }
-
-    async function prefetchCarouselAiReport() {
-      if (!window.llmConnected) return;
-      const rows = dashboardState.workorders.rows;
-      const latest = Array.isArray(rows) && rows.length > 0
-        ? rows.slice().sort((a, b) => {
-            const ts = s => s ? new Date(s).getTime() : 0;
-            return ts(b.last_test) - ts(a.last_test);
-          })[0]
-        : null;
-      if (!latest) return;
-      if (carouselAiFetching) return;
-      carouselAiFetching = true;
-      carouselAiCache = null;
-      try {
-        const urlEn = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=en&mode=carousel`;
-        const urlZh = `${API_BASE}/api/workorders/${encodeURIComponent(latest.work_order)}/ai-summary?lang=zh&mode=carousel`;
-        const [resEn, resZh] = await Promise.all([
-          fetchWithTimeout(urlEn),
-          fetchWithTimeout(urlZh)
-        ]);
-        const dataEn = await resEn.json();
-        const dataZh = await resZh.json();
-        if (resEn.ok && dataEn.summary && resZh.ok && dataZh.summary) {
-          carouselAiCache = { 
-            summaryEn: dataEn.summary, 
-            summaryZh: dataZh.summary,
-            wo: latest.work_order, 
-            yieldPct: parseFloat(latest.yield_pct) || 0 
-          };
-        }
-      } catch(e) {
-        console.warn('AI carousel prefetch failed:', e.name === 'AbortError' ? 'timeout (180s)' : e.message);
-      } finally {
-        carouselAiFetching = false;
       }
     }
 
@@ -4232,14 +4814,6 @@ initDashboard();
       if (navItem) navItem.style.opacity = '0.5';
 
       try {
-        if (carouselAiFetching) {
-          let waited = 0;
-          while (carouselAiFetching && waited < 180000) {
-            await new Promise(r => setTimeout(r, 500));
-            waited += 500;
-          }
-        }
-        
         if (carouselAiCache && carouselAiCache.wo === latest.work_order) {
           openTerminalReport(latest.work_order, latest.yield_pct || 0, carouselAiCache.summaryEn, (skippedEn) => {
             setTimeout(() => {
@@ -4291,26 +4865,6 @@ initDashboard();
       document.getElementById('terminal-modal').classList.add('show');
       document.getElementById('term-body').scrollTop = 0;
       startTerminalContent(summary, onDone);
-    }
-
-    async function showCarouselAiReport(onDone) {
-      if (!window.llmConnected || (!carouselAiCache && !carouselAiFetching)) {
-        if (onDone) onDone(); return;
-      }
-      let waited = 0;
-      while (carouselAiFetching && waited < 130000) {
-        await new Promise(r => setTimeout(r, 500));
-        waited += 500;
-      }
-      if (!window.llmConnected || !carouselAiCache) { if (onDone) onDone(); return; }
-      const { summaryEn, summaryZh, wo, yieldPct } = carouselAiCache;
-      openTerminalReport(wo, yieldPct, summaryEn, (skippedEn) => {
-        setTimeout(() => {
-          openTerminalReport(wo, yieldPct, summaryZh, (skippedZh) => {
-             if (onDone) onDone();
-          });
-        }, 500);
-      });
     }
 
     // ── AI Summary Modal (Markdown, ZH / EN) ─────────────────────────────────
@@ -4366,58 +4920,8 @@ initDashboard();
       document.getElementById('ai-modal').classList.remove('show');
     }
 
-    // ── Scheduled carousel (08:00–20:00, every 10 min) ───────────────────────
-    const SCHEDULED_CAROUSEL_PAGES = ['overview', 'workorders', 'bt', 'wifi'];
-    const SCHEDULED_CAROUSEL_PAGE_MS = 20000;
-    let _schedCarouselInterval  = null;
-    let _schedCarouselIdx       = 0;
-    let _schedCheckerInterval   = null;
-    let _lastSchedTriggerMinute = -1;
-
-    function isScheduledHour() {
-      const d = new Date();
-      const h = d.getHours();
-      const dow = d.getDay(); // 0=Sun, 6=Sat
-      return h >= 8 && h < 19 && dow >= 1 && dow <= 5;
-    }
-
-    function startScheduledCarousel() {
-      if (_schedCarouselInterval) return;
-      carouselAiCache    = null;
-      carouselAiFetching = false;
-      prefetchCarouselAiReport();
-
-      _schedCarouselIdx = 0;
-      setActivePage(SCHEDULED_CAROUSEL_PAGES[0], { reload: false });
-
-      _schedCarouselInterval = setInterval(() => {
-        _schedCarouselIdx++;
-        if (_schedCarouselIdx < SCHEDULED_CAROUSEL_PAGES.length) {
-          setActivePage(SCHEDULED_CAROUSEL_PAGES[_schedCarouselIdx], { reload: false });
-        } else {
-          clearInterval(_schedCarouselInterval); _schedCarouselInterval = null;
-          showCarouselAiReport(() => { _schedCarouselIdx = 0; });
-        }
-      }, SCHEDULED_CAROUSEL_PAGE_MS);
-    }
-
-    function startCarouselScheduler() {
-      if (_schedCheckerInterval) clearInterval(_schedCheckerInterval);
-      _lastSchedTriggerMinute = -1;
-      _schedCheckerInterval = setInterval(() => {
-        if (!isScheduledHour()) return;
-        const m = new Date().getMinutes();
-        if (m % 10 !== 0) return;
-        if (m === _lastSchedTriggerMinute) return;
-        _lastSchedTriggerMinute = m;
-        // Add random jitter (0-60 seconds) to prevent thundering herd when multiple dashboards exist
-        setTimeout(() => startScheduledCarousel(), Math.random() * 60000);
-      }, 30000);
-    }
-
   setTimeout(checkLlmStatus, 500);
   setInterval(checkLlmStatus, 30000);
-  startCarouselScheduler();
 </script>
 </body>
 </html>
