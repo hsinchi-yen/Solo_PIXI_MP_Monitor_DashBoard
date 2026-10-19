@@ -875,11 +875,166 @@ class TestLogUploader(unittest.TestCase):
             self.assertIn(eid, self.col.ids, eid)
 
 
+class TestAccountsAndChat(unittest.TestCase):
+    """Phase 2: auth_utils.py (accounts) + upload_chat.py (AI confirmation), no DB / LLM."""
+
+    @classmethod
+    def setUpClass(cls):
+        if ESSENTIAL_DIR not in sys.path:
+            sys.path.insert(0, ESSENTIAL_DIR)   # upload_chat imports log_splitter
+        cls.auth = _load_module('_auth_utils_under_test', 'auth_utils.py')
+        cls.chat = _load_module('_upload_chat_under_test', 'upload_chat.py')
+        cls.raw, cls.col = _collect_html()
+        cls.facts = {'zip_name': 'log5101-260630007.zip', 'inferred_wo': '5101-260630007',
+                     'stations': [{'station': s} for s in ('10', '20', '30', '40')],
+                     'total_records': 2041, 'unique_mac1': 1893, 'invalid': 3,
+                     'first_test': '2026-09-30 08:00:00', 'last_test': '2026-10-01 13:07:58'}
+
+    # ── Passwords / sessions ──────────────────────────────────────────────────
+    def test_password_hash_roundtrip(self):
+        h = self.auth.hash_password('dummy1234', iterations=1000)
+        self.assertTrue(h.startswith('pbkdf2_sha256$1000$'))
+        self.assertTrue(self.auth.verify_password('dummy1234', h))
+        self.assertFalse(self.auth.verify_password('dummy12345', h))
+
+    def test_password_hash_is_salted(self):
+        self.assertNotEqual(self.auth.hash_password('same-pass', iterations=1000),
+                            self.auth.hash_password('same-pass', iterations=1000))
+
+    def test_verify_rejects_garbage(self):
+        for stored in (None, '', 'plain', 'md5$1$aa$bb', 'pbkdf2_sha256$x$zz$yy'):
+            self.assertFalse(self.auth.verify_password('x', stored), stored)
+
+    def test_session_token_stored_as_digest(self):
+        token = self.auth.new_session_token()
+        self.assertGreaterEqual(len(token), 40)
+        digest = self.auth.token_hash(token)
+        self.assertEqual(len(digest), 64)
+        self.assertNotIn(token, digest)
+
+    def test_username_rules(self):
+        n = self.auth.normalize_username
+        self.assertEqual(n('  Wang.Li '), 'wang.li')
+        self.assertIsNone(self.auth.username_error('wang.li'))
+        for bad in ('ab', 'a b', '王小明', 'x' * 33, ''):
+            self.assertIsNotNone(self.auth.username_error(n(bad)), bad)
+        self.assertIsNotNone(self.auth.username_error('pixi', reserved=['PIXI']))
+
+    def test_password_rules(self):
+        self.assertIsNone(self.auth.password_error('12345678'))
+        for bad in (None, '', '1234567', 'x' * 129):
+            self.assertIsNotNone(self.auth.password_error(bad))
+
+    def test_profile_rules(self):
+        profile, err = self.auth.clean_profile('  王小明 ', '', ' wang@example.com ')
+        self.assertIsNone(err)
+        self.assertEqual(profile, {'display_name': '王小明', 'department': None, 'email': 'wang@example.com'})
+        self.assertIsNotNone(self.auth.clean_profile(' ', None, None)[1])
+        self.assertIsNotNone(self.auth.clean_profile('x', None, 'not-an-email')[1])
+
+    def test_upload_ownership(self):
+        admin = {'username': 'pixi', 'role': 'admin'}
+        wang = {'username': 'wang', 'role': 'uploader'}
+        self.assertTrue(self.auth.can_access_upload(admin, 'wang'))
+        self.assertTrue(self.auth.can_access_upload(wang, 'wang'))
+        self.assertFalse(self.auth.can_access_upload(wang, 'chen'))
+        self.assertFalse(self.auth.can_access_upload(wang, None))
+
+    # ── AI chat ───────────────────────────────────────────────────────────────
+    def test_opening_uses_exact_facts(self):
+        text = self.chat.opening_message(self.facts)
+        for part in ('4 個站別', '2,041', '1,893', '3 筆無效'):
+            self.assertIn(part, text)
+
+    def test_work_order_regex_wins(self):
+        f = self.chat.merge_fields({}, '工單是5101-260630007，2000台', llm_wo='5101-260630001', llm_qty=2000)
+        self.assertEqual(f, {'work_order': '5101-260630007', 'planned_qty': 2000})
+
+    def test_known_values_kept_when_message_adds_nothing(self):
+        f = self.chat.merge_fields({'work_order': '5101-260630007', 'planned_qty': '2,000'}, '好')
+        self.assertEqual(f, {'work_order': '5101-260630007', 'planned_qty': 2000})
+        self.assertEqual(self.chat.merge_fields('not-a-dict', '好'), {'work_order': None, 'planned_qty': None})
+
+    def test_fallback_quantity_without_llm(self):
+        q = self.chat.fallback_quantity
+        self.assertEqual(q('工單是5101-260630007，2000台'), 2000)
+        self.assertEqual(q('4,000 pcs'), 4000)
+        for unsure in ('4k', '四千', '3500 台，不對，是 3,600', '5101-2606300'):
+            self.assertIsNone(q(unsure), unsure)
+        f = self.chat.merge_fields({}, '5101-260630007 2000台', llm_ok=False)
+        self.assertEqual(f, {'work_order': '5101-260630007', 'planned_qty': 2000})
+
+    def test_parse_extract(self):
+        self.assertEqual(self.chat.parse_extract('{"work_order": " 5101-260630007 ", "planned_qty": 2000}'),
+                         ('5101-260630007', 2000))
+        self.assertEqual(self.chat.parse_extract('{"work_order": null, "planned_qty": true}'), (None, None))
+        with self.assertRaises(ValueError):
+            self.chat.parse_extract('not json')
+
+    def test_next_step(self):
+        s = self.chat.next_step
+        self.assertEqual(s({'work_order': None, 'planned_qty': None}), 'work_order')
+        self.assertEqual(s({'work_order': '5101-26063', 'planned_qty': 2000}), 'work_order')
+        self.assertEqual(s({'work_order': '5101-260630007', 'planned_qty': None}), 'planned_qty')
+        self.assertEqual(s({'work_order': '5101-260630007', 'planned_qty': 0}), 'planned_qty')
+        self.assertEqual(s({'work_order': '5101-260630007', 'planned_qty': 2000}), 'confirm')
+
+    def test_normalize_messages(self):
+        ok = self.chat.normalize_messages([{'role': 'assistant', 'content': 'hi'}, {'role': 'user', 'content': ' x '}])
+        self.assertEqual(ok[-1], {'role': 'user', 'content': 'x'})
+        for bad in ([], [{'role': 'system', 'content': 'x'}], [{'role': 'user', 'content': 'x' * 501}],
+                    [{'role': 'user', 'content': 'x'}, {'role': 'assistant', 'content': 'y'}],
+                    [{'role': 'user', 'content': 'x'}] * 41):
+            with self.assertRaises(ValueError):
+                self.chat.normalize_messages(bad)
+
+    def test_reply_prompt_carries_rule_results_only(self):
+        ls = _load_module('_log_splitter_for_chat', 'log_splitter.py')
+        fields = {'work_order': '5101-260630007', 'planned_qty': 2000}
+        issues = ls.validate_upload(self.facts, fields['work_order'], 2000, {}, None)
+        msgs = self.chat.build_reply_messages(self.facts, fields, issues, [{'role': 'user', 'content': 'x'}])
+        system = msgs[0]['content']
+        self.assertEqual(msgs[0]['role'], 'system')
+        self.assertIn('不可以自行判斷資料對錯', system)
+        self.assertIn('差 +107 台', system)                  # R5 text from the rules, not the model
+        self.assertIn('不要提到「我已確認」', system)          # no warning → no ack instruction
+        warn = ls.validate_upload(self.facts, '5101-260630099', 2000, {}, None)
+        system = self.chat.build_reply_messages(self.facts, {'work_order': '5101-260630099', 'planned_qty': 2000},
+                                                warn, [{'role': 'user', 'content': 'x'}])[0]['content']
+        self.assertIn('勾選畫面上的「我已確認」', system)
+
+    def test_reply_prompt_hides_missing_value_errors_while_asking(self):
+        ls = _load_module('_log_splitter_for_chat2', 'log_splitter.py')
+        issues = ls.validate_upload(self.facts, '', None, {}, None)
+        system = self.chat.build_reply_messages(self.facts, {'work_order': None, 'planned_qty': None},
+                                                issues, [{'role': 'user', 'content': 'x'}])[0]['content']
+        self.assertNotIn('請輸入工單計畫生產數。', system)
+        self.assertIn('還沒有取得工單名稱', system)
+
+    # ── Dashboard page ────────────────────────────────────────────────────────
+    def test_accounts_page_nav_after_logupload(self):
+        self.assertIn('accounts', self.col.pages)
+        nav = self.raw[self.raw.index('<nav>'):self.raw.index('</nav>')]
+        self.assertLess(nav.index('data-page="logupload"'), nav.index('data-page="accounts"'))
+        self.assertRegex(self.raw, r'accounts:\s*loadAccounts')
+
+    def test_session_login_replaces_base64_token(self):
+        self.assertIn("fetch('/api/auth/login'", self.raw)
+        self.assertNotIn("fetch('/api/tweak/login'", self.raw)
+        self.assertIn('sessionStorage', self.raw)
+
+    def test_phase2_required_ids(self):
+        for eid in ('authBox', 'btnAuthChangePw', 'btnAuthLogout', 'navAccounts', 'tweakForbidden',
+                    'luChatPanel', 'luChatLog', 'luChatInput', 'btnLuChatSend', 'btnLuMode', 'luFormPanel',
+                    'luHistoryUser', 'acctUserRows', 'acctAuditRows', 'acctLoginRows', 'btnAcctNew', 'formModal'):
+            self.assertIn(eid, self.col.ids, eid)
+
+
 # ─── Runner ──────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     loader = unittest.TestLoader()
     suite  = unittest.TestSuite()
-    for cls in (TestHTMLStructure, TestAPIFunctions, TestJavaScriptLogic, TestLogUploader):
+    for cls in (TestHTMLStructure, TestAPIFunctions, TestJavaScriptLogic, TestLogUploader, TestAccountsAndChat):
         suite.addTests(loader.loadTestsFromTestCase(cls))
     runner = unittest.TextTestRunner(verbosity=2, stream=sys.stdout)
     result = runner.run(suite)

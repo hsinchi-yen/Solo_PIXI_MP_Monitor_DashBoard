@@ -57,10 +57,15 @@ services:
       PYTHONUNBUFFERED: "1"
       LLM_MODEL: ${LLM_MODEL:-Qwen3.8-27B-UD-Q6_K_L}
       LLM_ENABLE_THINKING: ${LLM_ENABLE_THINKING:-false}
+      TWEAK_USER: ${TWEAK_USER:-pixi}
+      TWEAK_PASS: ${TWEAK_PASS:-pixipass}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
     volumes:
       - ./api/app.py:/app/app.py
       - ./module_log_parser.py:/app/module_log_parser.py
       - ./log_splitter.py:/app/log_splitter.py
+      - ./auth_utils.py:/app/auth_utils.py
+      - ./upload_chat.py:/app/upload_chat.py
       - ./ai_summary_helper.py:/app/ai_summary_helper.py
       - ./solo_pixi_dashboard.html:/app/solo_pixi_dashboard.html
     expose:

@@ -24,13 +24,14 @@
 
 ### Tests
 - Unit test suite: `python test_dashboard_suite.py`
-- 89 tests: HTML structure, API pure functions (no DB), JS alignment logic via Node.js, Log Uploader core (`TestLogUploader`)
-- Known pre-existing failures (20): donut-ring / MAC1-range / `alignGetStore` tests expect code not in the dashboard, and `TestAPIFunctions` cannot import `app.py` (needs `ai_summary_helper`/`log_splitter` on the path). New work must not add to this set.
+- 109 tests: HTML structure, API pure functions (no DB), JS alignment logic via Node.js, Log Uploader core (`TestLogUploader`), accounts + AI chat helpers (`TestAccountsAndChat`)
+- Known pre-existing failures (20): donut-ring / MAC1-range / `alignGetStore` tests expect code not in the dashboard, and `TestAPIFunctions` cannot import `app.py` (needs `ai_summary_helper`/`log_splitter`/`auth_utils`/`upload_chat` on the path). New work must not add to this set.
 - `TestLogUploader.test_sample_zip_matches_desktop_split_output` runs only when `rawlogs/5101-260630005.zip` and `rawlogs/5101-260630005_S/` exist (rawlogs is git-ignored)
 
 ## Environment Configuration
 - Database URL: Set via `DATABASE_URL` env var (default: `postgresql://pixi:pixipass@localhost:5433/pixi_test`)
-- DB Tweak credentials: Set via `TWEAK_USER` and `TWEAK_PASS` (default: `pixi`/`pixipass`)
+- Administrator account: `TWEAK_USER` / `TWEAK_PASS` (default: `pixi`/`pixipass`) — the only admin; uploader accounts live in the `app_users` table
+- Login sessions: `SESSION_TTL_HOURS` (default 8)
 - Local LLM: `LLM_API_BASE`, `LLM_MODEL` (default `Qwen3.8-27B-UD-Q6_K_L`), `LLM_ENABLE_THINKING` (default `false` — thinking costs ~15x latency on the dense 27B model), `LLM_REPORT_MAX_TOKENS`
 - See `.env.example` for a complete template of all environment variables
 
@@ -40,10 +41,12 @@
   - `api/app.py`: Main FastAPI application with all endpoints
   - `module_log_parser.py`: Log parsing utility used by the web Log Uploader, reparse endpoint and desktop uploader
   - `log_splitter.py`: Server-side splitter + upload validation rules (R1–R8) for the web Log Uploader; split output is byte-identical to `log_splitter_app.py`
+  - `auth_utils.py`: Password hashing (PBKDF2), session tokens, account input checks — pure functions
+  - `upload_chat.py`: Log Uploader AI assistant — prompt building, value extraction, fallback parsing — pure functions
   - `solo_pixi_dashboard.html`: Frontend dashboard (single-file, ~5000 lines)
   - `docker-compose.yml`: Service definitions for PostgreSQL, API, and Nginx
 - Root level: Desktop applications, utility scripts, and test suite
-  - `test_dashboard_suite.py`: Unit test suite (89 tests, no DB required)
+  - `test_dashboard_suite.py`: Unit test suite (109 tests, no DB required)
   - `log_uploader_web_plan.md`: Design / alignment record for the web Log Uploader
 
 ## Key API Endpoints
@@ -54,12 +57,16 @@
 - Filter options: `GET /api/filter-options`
 - Work order summary: `GET /api/work-order-summary`
 - Retries: `GET /api/retries`
-- DB Tweak (admin): Requires `X-Tweak-Token` header (base64 encoded `user:pass`)
-- Log Uploader (requires `X-Tweak-Token`):
-  - `POST /api/log-upload/analyze` — multipart `file` (.zip); splits every `<station>/…/Log_All.txt` in memory, returns `upload_id` + facts (no `module_test` writes)
+- Auth: `POST /api/auth/login` (alias `/api/tweak/login`) → `{token, role, username, display_name, expires_at}`; `POST /api/auth/logout`; `GET /api/auth/me`; `POST /api/auth/change-password` (uploaders only)
+  - `X-Tweak-Token` carries that random session token (the DB stores only its SHA-256). The old base64 `user:pass` token is rejected. 401 = sign in again, 403 = role not allowed
+- DB Tweak + `/api/reparse` + `/api/tweak/raw-log`: administrator only
+- Accounts (administrator only): `GET/POST /api/admin/users`, `PATCH /api/admin/users/{username}` (profile / `enabled`), `POST /api/admin/users/{username}/reset-password`, `GET /api/admin/audit`, `GET /api/admin/login-log`
+- Log Uploader (administrator or uploader; uploaders only reach batches they analyzed):
+  - `POST /api/log-upload/analyze` — multipart `file` (.zip); splits every `<station>/…/Log_All.txt` in memory, returns `upload_id` + facts + `chat_opening` (no `module_test` writes)
+  - `POST /api/log-upload/chat` — `{upload_id, messages, known}` → NDJSON (`extract`/`validation`/`delta`/`done` or `fallback`); regex extracts the work order, the LLM the quantity, the R1–R8 rules decide
   - `POST /api/log-upload/validate` — `{upload_id, work_order, planned_qty}` → rule results `{issues, can_upload, needs_ack}`
   - `POST /api/log-upload/commit` — `{upload_id, work_order, planned_qty, ack_warnings, mode}` → NDJSON stream (`start`/`split`/`progress`/`done`/`error`); one upload at a time (pg advisory lock → 409)
-  - `GET /api/log-upload/history`, `GET /api/log-upload/{upload_id}`, `DELETE /api/log-upload/{upload_id}` (undo a batch)
+  - `GET /api/log-upload/history?username=` (uploaders always get only their own), `GET /api/log-upload/{upload_id}`, `DELETE /api/log-upload/{upload_id}` (undo a batch)
 
 ## Dashboard Pages
 | Page key | Nav label | Auth required |
@@ -71,11 +78,13 @@
 | `wifi` | 📶 WiFi Analysis | No |
 | `advanced` | 📈 Advanced Analytics | No |
 | `failanalysis` | 🔍 Fail Analysis | No |
-| `dbtweak` | 🔧 DB Tweak | Yes (Tweak Token) |
+| `dbtweak` | 🔧 DB Tweak | Yes (administrator) |
 | `dataalign` | ⚖️ Data Alignment | No |
-| `logupload` | 📤 Log Uploader | Yes (Tweak Token, shared session with DB Tweak) |
+| `logupload` | 📤 Log Uploader | Yes (administrator or uploader) |
+| `accounts` | 👥 帳號管理 | Yes (administrator; nav link hidden otherwise) |
 
 ## Client-Side Storage
+- `pixi-auth-v1` (sessionStorage): the login session token. Survives a reload, cleared when the tab closes.
 - `pixi-align-v1` (localStorage): JSON map of `{ [workOrder]: { target: number } }`.
   Stores per-WO alignment targets for the Data Alignment page. No backend write required.
 
@@ -91,4 +100,6 @@
 - Log Uploader: `file_hash` = sha256 of each split record and ignores the work order, so a wrong work order cannot be fixed by re-uploading — undo the batch (`DELETE /api/log-upload/{id}`) first. Rows inserted by the web uploader carry `module_test.upload_id`; desktop-uploaded rows have NULL. Upload batches are recorded in `upload_log`; a successful upload writes the planned quantity to `alignment_targets`.
 - `module_log_parser._plain_sum` keeps a left-to-right float sum on purpose: Python 3.12's compensated `sum()` shifts some 3-decimal WiFi power averages by 0.001 versus the Python 3.11 desktop uploader
 - The scheduled 10-minute page carousel + latest-WO AI report popup was removed; the sidebar "AI Report — Latest WO" button opens it on demand. The 5-minute idle page rotation remains and pauses while a Log Upload is unfinished.
-- API files are single-file bind mounts in `docker-compose.yml`: after editing `app.py`, `module_log_parser.py`, `log_splitter.py` or the dashboard HTML, restart the api container (`docker compose restart api`) or it keeps serving the old file
+- Accounts: uploader accounts are disabled, never deleted (history stays attributable). Disabling or resetting a password revokes that account's sessions immediately; no lockout on failed logins, but every attempt is in `auth_log`. Account changes go to `account_audit`. `upload_log.username` / `user_role` record who uploaded; `reverted_by` who undid it.
+- Log Uploader AI assistant: chat is the default when `/api/llm-status` is connected, with a manual switch to the form; both modes share the same hidden `luWo`/`luQty` inputs. The first assistant line is built from the facts (no LLM). The reply prompt branches on warnings in code — left to the model, it told users to tick the ack box when none was shown. On LLM failure the page falls back to the form; the transcript is saved server-side per turn (`upload_log.chat_transcript`).
+- API files are single-file bind mounts in `docker-compose.yml`: after editing `app.py`, `module_log_parser.py`, `log_splitter.py`, `auth_utils.py`, `upload_chat.py` or the dashboard HTML, restart the api container (`docker compose restart api`) or it keeps serving the old file. Adding a new mount or env var needs `docker compose up -d api`.

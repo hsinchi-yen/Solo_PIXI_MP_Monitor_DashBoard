@@ -1189,6 +1189,85 @@ body::before {
 .lu-history-head .tweak-btn { padding: 4px 12px; font-size: 11px; }
 .badge.running { background: var(--blue-bg); color: var(--blue); }
 .badge.reverted { background: var(--surface3); color: var(--text2); }
+.lu-history-filter { display: flex; align-items: center; gap: 8px; margin-left: auto; margin-right: 8px; font-size: 12px; font-weight: 400; color: var(--text2); }
+.lu-history-filter select, .acct-filter select {
+    padding: 4px 8px; background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 12px;
+}
+
+/* ─── Log Uploader: AI assistant ──────────────────────────────────────────── */
+.lu-mode-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 12px; color: var(--text2); }
+.lu-mode-bar .lu-mode-label { font-weight: 600; color: var(--text); }
+.lu-mode-bar .tweak-btn { margin-left: auto; padding: 4px 12px; font-size: 11px; }
+.lu-chat { border: 1px solid var(--border); border-radius: 10px; background: var(--surface2); max-width: 760px; }
+.lu-chat-log { max-height: 340px; min-height: 120px; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.lu-msg { max-width: 85%; padding: 9px 13px; border-radius: 12px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.lu-msg.assistant { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.lu-msg.user { align-self: flex-end; background: var(--blue); color: #fff; border-bottom-right-radius: 4px; }
+.lu-msg.note { align-self: center; max-width: 100%; background: transparent; color: var(--text3); font-size: 12px; padding: 2px 0; }
+.lu-msg.typing::after { content: "▍"; animation: lu-blink 1s steps(2) infinite; color: var(--text3); }
+@keyframes lu-blink { 50% { opacity: 0; } }
+.lu-chat-input { display: flex; gap: 8px; padding: 10px; border-top: 1px solid var(--border); }
+.lu-chat-input input {
+    flex: 1; padding: 8px 12px; background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 13px; outline: none; min-width: 0;
+}
+.lu-chat-input input:focus { border-color: var(--blue); }
+.lu-chat-input .tweak-btn { width: auto; margin-top: 0; padding: 8px 18px; }
+.lu-extract { font-size: 12px; color: var(--text2); margin: 10px 0 12px; font-variant-numeric: tabular-nums; }
+.lu-extract strong { color: var(--text); }
+
+/* ─── Signed-in user (sidebar) ────────────────────────────────────────────── */
+.auth-box { margin-bottom: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+.auth-box .auth-name { font-size: 12px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-box .auth-role { font-size: 10px; color: var(--text3); margin-top: 2px; }
+.auth-box .auth-actions { display: flex; gap: 6px; margin-top: 8px; }
+.auth-box .auth-actions button {
+    flex: 1; padding: 4px 6px; border: none; border-radius: 4px; background: var(--surface3); color: var(--text);
+    font-size: 11px; cursor: pointer;
+}
+.auth-box .auth-actions button:hover { background: var(--border); }
+.tweak-forbidden { max-width: 460px; margin: 60px auto; text-align: center; color: var(--text2); font-size: 13px; line-height: 1.7; }
+.tweak-forbidden .tweak-btn { width: auto; margin-top: 14px; }
+
+/* ─── Accounts ────────────────────────────────────────────────────────────── */
+.acct-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.acct-tab {
+    padding: 7px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface);
+    color: var(--text2); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.acct-tab.active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+.acct-toolbar .tweak-btn.primary { width: auto; margin: 0 0 0 auto; padding: 8px 16px; }
+.acct-filter { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); margin-bottom: 10px; flex-wrap: wrap; }
+.acct-table td { font-size: 12px; }
+.acct-table th, .acct-table td.nowrap { white-space: nowrap; }
+.acct-table td.num, .acct-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.acct-table .acct-ops { white-space: nowrap; }
+.acct-table .acct-ops button { margin: 2px 4px 2px 0; }
+.acct-state { font-size: 11px; font-weight: 600; white-space: nowrap; }
+.acct-state.on { color: var(--green); }
+.acct-state.off { color: var(--text3); }
+.acct-sub { font-size: 11px; color: var(--text3); }
+.acct-pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--text2); }
+.acct-pager .tweak-btn { padding: 4px 12px; font-size: 11px; }
+.acct-detail { font-size: 11px; color: var(--text2); max-width: 360px; }
+
+/* ─── Form dialog ─────────────────────────────────────────────────────────── */
+.form-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 10000;
+    display: none; align-items: center; justify-content: center; padding: 16px;
+}
+.form-modal-overlay.show { display: flex; }
+.form-modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    width: 100%; max-width: 420px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,.4);
+}
+.form-modal h3 { font-size: 16px; margin-bottom: 6px; }
+.form-modal .form-modal-desc { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.6; }
+.form-modal .form-modal-msg { font-size: 12px; color: var(--red); min-height: 18px; margin-bottom: 8px; }
+.form-modal .form-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.form-modal .form-modal-actions .tweak-btn { width: auto; margin-top: 0; padding: 8px 18px; }
+.form-modal .form-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
 
 </style>
 </head>
@@ -1226,9 +1305,18 @@ body::before {
         <a href="#" data-page="dbtweak">🔧 DB Tweak</a>
         <a href="#" data-page="dataalign">⚖️ Data Alignment</a>
         <a href="#" data-page="logupload">📤 Log Uploader</a>
+        <a href="#" data-page="accounts" id="navAccounts" style="display:none">👥 帳號管理</a>
 
     </nav>
     <div class="sidebar-footer">
+        <div class="auth-box" id="authBox" style="display:none">
+            <div class="auth-name" id="authName"></div>
+            <div class="auth-role" id="authRole"></div>
+            <div class="auth-actions">
+                <button type="button" id="btnAuthChangePw">🔑 改密碼</button>
+                <button type="button" id="btnAuthLogout">⏏ 登出</button>
+            </div>
+        </div>
         <div class="theme-label">🎨 Theme</div>
         <div class="ds-theme-chips" id="themeChips">
             <div class="ds-theme-chip" data-theme-val="default">Blue</div>
@@ -1591,6 +1679,13 @@ body::before {
         <div id="tweakLoginMsg" style="margin-top:10px;font-size:13px;color:var(--red);display:none"></div>
     </div>
 
+    <!-- Signed in as an uploader: DB Tweak is administrator-only -->
+    <div id="tweakForbidden" class="tweak-forbidden" style="display:none">
+        <div style="font-size:32px">🔒</div>
+        <div>目前登入的是上傳者帳號 <strong id="tweakForbiddenUser"></strong>，沒有 DB Tweak 權限。<br>請登出後改用管理者帳號登入。</div>
+        <button class="tweak-btn secondary" id="btnTweakSwitchUser">登出並切換帳號</button>
+    </div>
+
     <!-- Tweak panel (hidden until authenticated) -->
     <div id="tweakPanel" style="display:none">
         <div class="tweak-toolbar">
@@ -1719,10 +1814,10 @@ body::before {
 <div class="page" id="page-logupload">
     <h2 class="page-title">Log Uploader</h2>
 
-    <!-- Login gate (shares the DB Tweak session) -->
+    <!-- Login gate (one session for the whole dashboard) -->
     <div id="luLogin" class="tweak-login-box">
         <h3>🔒 需要登入</h3>
-        <p style="color:var(--text2);font-size:13px;margin-bottom:16px">請使用 DB Tweak 帳號登入，登入後兩個頁面皆可使用。</p>
+        <p style="color:var(--text2);font-size:13px;margin-bottom:16px">請使用上傳者帳號或管理者帳號登入。</p>
         <div class="tweak-form-row">
             <label for="luUser">Username</label>
             <input type="text" id="luUser" autocomplete="username">
@@ -1772,7 +1867,22 @@ body::before {
 
         <section class="lu-step" id="luStepConfirm" style="display:none">
             <h3><span class="lu-num">2</span>確認資訊</h3>
-            <div class="lu-form">
+            <div class="lu-mode-bar">
+                <span class="lu-mode-label" id="luModeLabel">📝 表單</span>
+                <span id="luModeHint"></span>
+                <button class="tweak-btn secondary" id="btnLuMode" style="display:none"></button>
+            </div>
+            <div id="luChatPanel" style="display:none">
+                <div class="lu-chat">
+                    <div class="lu-chat-log" id="luChatLog" aria-live="polite"></div>
+                    <div class="lu-chat-input">
+                        <input type="text" id="luChatInput" maxlength="500" autocomplete="off" placeholder="輸入訊息，例如：5101-260630005">
+                        <button class="tweak-btn primary" id="btnLuChatSend">送出</button>
+                    </div>
+                </div>
+                <div class="lu-extract" id="luExtract"></div>
+            </div>
+            <div class="lu-form" id="luFormPanel">
                 <div class="tweak-form-row">
                     <label for="luWo">工單名稱 *</label>
                     <input type="text" id="luWo" autocomplete="off" spellcheck="false" placeholder="例如 5101-260630005">
@@ -1813,7 +1923,13 @@ body::before {
         </section>
 
         <div class="data-table-wrap">
-            <h3 class="lu-history-head">最近上傳紀錄 <button class="tweak-btn secondary" id="btnLuHistoryRefresh">重新整理</button></h3>
+            <h3 class="lu-history-head">
+                <span id="luHistoryTitle">最近上傳紀錄</span>
+                <label class="lu-history-filter" id="luHistoryFilterBox" style="display:none">上傳者
+                    <select id="luHistoryUser"><option value="">全部</option></select>
+                </label>
+                <button class="tweak-btn secondary" id="btnLuHistoryRefresh">重新整理</button>
+            </h3>
             <table>
                 <thead><tr><th>時間</th><th>工單</th><th class="num">計畫數</th><th>檔案</th><th class="num">新增</th><th class="num">略過</th><th class="num">失敗</th><th>狀態</th><th>上傳者</th><th></th></tr></thead>
                 <tbody id="luHistoryRows"><tr><td colspan="10" style="color:var(--text3)">尚無紀錄</td></tr></tbody>
@@ -1822,7 +1938,86 @@ body::before {
     </div>
 </div>
 
+<!-- ─── Accounts (administrator only) ──────────────────────────────────── -->
+<div class="page" id="page-accounts">
+    <h2 class="page-title">帳號管理</h2>
+    <div id="acctDenied" class="tweak-forbidden" style="display:none">🔒 這個頁面只有管理者可以使用，請先以管理者帳號登入（DB Tweak 或 Log Uploader 頁面）。</div>
+    <div id="acctPanel" style="display:none">
+        <div class="acct-toolbar">
+            <button class="acct-tab active" data-acct-tab="users">帳號列表</button>
+            <button class="acct-tab" data-acct-tab="audit">帳號異動紀錄</button>
+            <button class="acct-tab" data-acct-tab="logins">登入紀錄</button>
+            <button class="tweak-btn primary" id="btnAcctNew">＋ 新增上傳者</button>
+        </div>
+
+        <div data-acct-view="users">
+            <div class="data-table-wrap">
+                <div class="table-scroll">
+                    <table class="acct-table">
+                        <thead><tr>
+                            <th>帳號</th><th>姓名</th><th>部門／產線</th><th>Email</th><th>狀態</th>
+                            <th class="num">上傳次數</th><th class="num">新增筆數</th><th class="num">已撤銷</th>
+                            <th>最後上傳</th><th>最後登入</th><th>操作</th>
+                        </tr></thead>
+                        <tbody id="acctUserRows"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6">
+                * 「上傳次數」「新增筆數」只計算完成的批次；已撤銷的批次另外列出。帳號不能刪除，只能停用（停用後立即登出、無法登入，紀錄保留）。<br>
+                * 管理者帳號由伺服器環境變數設定，不能在這裡修改。
+            </div>
+        </div>
+
+        <div data-acct-view="audit" style="display:none">
+            <div class="acct-filter">帳號
+                <select id="acctAuditUser"><option value="">全部</option></select>
+            </div>
+            <div class="data-table-wrap">
+                <table class="acct-table">
+                    <thead><tr><th>時間</th><th>執行者</th><th>動作</th><th>對象帳號</th><th>內容</th><th>IP</th></tr></thead>
+                    <tbody id="acctAuditRows"></tbody>
+                </table>
+            </div>
+            <div class="acct-pager" id="acctAuditPager"></div>
+        </div>
+
+        <div data-acct-view="logins" style="display:none">
+            <div class="acct-filter">帳號
+                <select id="acctLoginUser"><option value="">全部</option></select>
+                結果
+                <select id="acctLoginResult">
+                    <option value="">全部</option>
+                    <option value="true">成功</option>
+                    <option value="false">失敗</option>
+                </select>
+            </div>
+            <div class="data-table-wrap">
+                <table class="acct-table">
+                    <thead><tr><th>時間</th><th>帳號</th><th>事件</th><th>結果</th><th>原因</th><th>IP</th><th>瀏覽器</th></tr></thead>
+                    <tbody id="acctLoginRows"></tbody>
+                </table>
+            </div>
+            <div class="acct-pager" id="acctLoginPager"></div>
+        </div>
+    </div>
+</div>
+
 </main>
+
+<!-- Form dialog (change password, accounts) -->
+<div class="form-modal-overlay" id="formModal" role="dialog" aria-modal="true" aria-labelledby="formModalTitle">
+    <form class="form-modal" id="formModalForm" novalidate>
+        <h3 id="formModalTitle"></h3>
+        <div class="form-modal-desc" id="formModalDesc"></div>
+        <div id="formModalFields"></div>
+        <div class="form-modal-msg" id="formModalMsg" aria-live="polite"></div>
+        <div class="form-modal-actions">
+            <button type="button" class="tweak-btn secondary" id="btnFormModalCancel">取消</button>
+            <button type="submit" class="tweak-btn primary" id="btnFormModalSubmit">確定</button>
+        </div>
+    </form>
+</div>
 
 <!-- Terminal AI Report Modal (carousel mode) -->
 <div class="terminal-overlay" id="terminal-modal">
@@ -3608,8 +3803,221 @@ function initAlignPage() {
     });
 }
 
-/* ═══ DB Tweak ═══════════════════════════════════════════════════════════ */
+/* ═══ Auth ═══════════════════════════════════════════════════════════════
+   One session for DB Tweak, Log Uploader and Accounts. POST /api/auth/login
+   returns a random session token (sent as X-Tweak-Token). It is kept in
+   sessionStorage: a reload stays signed in, closing the tab signs out.
+   role 'admin' → everything; role 'uploader' → Log Uploader (own batches). */
+const AUTH_STORE_KEY = 'pixi-auth-v1';
 let tweakToken = null;
+let authUser = null;   // { username, role, display_name }
+
+function isAdmin() { return !!authUser && authUser.role === 'admin'; }
+
+function authSave() {
+    try {
+        if (tweakToken) sessionStorage.setItem(AUTH_STORE_KEY, tweakToken);
+        else sessionStorage.removeItem(AUTH_STORE_KEY);
+    } catch (_) { /* storage blocked: the session just won't survive a reload */ }
+}
+
+async function authLogin(username, password) {
+    const r = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) throw new Error(data.message || `登入失敗（HTTP ${r.status}）`);
+    tweakToken = data.token;
+    authUser = { username: data.username, role: data.role, display_name: data.display_name };
+    authSave();
+    applyAuthState();
+    return authUser;
+}
+
+function authClear() {
+    tweakToken = null;
+    authUser = null;
+    authSave();
+    applyAuthState();
+}
+
+function authLogout() {
+    const token = tweakToken;
+    authClear();
+    if (token) fetch('/api/auth/logout', { method: 'POST', headers: { 'X-Tweak-Token': token } }).catch(() => {});
+}
+
+async function authRestore() {
+    let token = null;
+    try { token = sessionStorage.getItem(AUTH_STORE_KEY); } catch (_) { /* storage blocked */ }
+    if (token) {
+        try {
+            const r = await fetch('/api/auth/me', { headers: { 'X-Tweak-Token': token } });
+            if (r.ok) {
+                const me = await r.json();
+                tweakToken = token;
+                authUser = { username: me.username, role: me.role, display_name: me.display_name };
+            } else if (r.status === 401) {
+                authSave();  // expired or revoked: forget it
+            }
+        } catch (_) { /* API unreachable: stay signed out, keep the token for the next reload */ }
+    }
+    applyAuthState();
+}
+
+/* Any 401: the session expired, was revoked, or the account was disabled. */
+function handleTweakUnauthorized() {
+    authClear();
+    showLoginMessage('登入已失效，請重新登入。');
+}
+
+function showLoginMessage(text) {
+    ['tweakLoginMsg', 'luLoginMsg'].forEach(id => {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.style.display = text ? 'block' : 'none';
+    });
+}
+
+async function authFetch(path, opts = {}) {
+    const headers = Object.assign({ 'X-Tweak-Token': tweakToken }, opts.headers || {});
+    const r = await fetch(path, Object.assign({}, opts, { headers }));
+    if (r.status === 401) {
+        handleTweakUnauthorized();
+        throw new Error('登入已失效，請重新登入');
+    }
+    return r;
+}
+
+function applyAuthState() {
+    const signedIn = !!authUser;
+    const admin = isAdmin();
+    document.getElementById('authBox').style.display = signedIn ? 'block' : 'none';
+    if (signedIn) {
+        const name = authUser.display_name && authUser.display_name !== authUser.username
+            ? `${authUser.display_name}（${authUser.username}）` : authUser.username;
+        document.getElementById('authName').textContent = `👤 ${name}`;
+        document.getElementById('authName').title = name;
+        document.getElementById('authRole').textContent = admin ? '管理者' : '上傳者';
+        document.getElementById('btnAuthChangePw').style.display = admin ? 'none' : '';
+    }
+    document.getElementById('navAccounts').style.display = admin ? '' : 'none';
+    syncTweakAuth();
+    syncLogUploadAuth();
+    syncAccountsAuth();
+}
+
+document.getElementById('btnAuthLogout').addEventListener('click', authLogout);
+document.getElementById('btnAuthChangePw').addEventListener('click', () => {
+    openFormModal({
+        title: '修改密碼',
+        desc: '修改後，你在其他分頁或電腦上的登入會被登出。',
+        fields: [
+            { name: 'old_password', label: '目前的密碼', type: 'password', required: true, autocomplete: 'current-password' },
+            { name: 'new_password', label: '新密碼', type: 'password', required: true, autocomplete: 'new-password', hint: '至少 8 碼' },
+            { name: 'new_password2', label: '再輸入一次新密碼', type: 'password', required: true, autocomplete: 'new-password' },
+        ],
+        submitLabel: '修改密碼',
+        onSubmit: async v => {
+            if (v.new_password !== v.new_password2) return '兩次輸入的新密碼不一致。';
+            const r = await authFetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ old_password: v.old_password, new_password: v.new_password }),
+            });
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) return data.error || `修改失敗（HTTP ${r.status}）`;
+            alert('密碼已修改。');
+            return null;
+        },
+    });
+});
+
+/* ═══ Form dialog ════════════════════════════════════════════════════════
+   openFormModal({ title, desc, fields: [{ name, label, type, value, required,
+   autocomplete, hint, maxlength }], submitLabel, onSubmit(values) → error text | null }) */
+const formModalState = { onSubmit: null, lastFocus: null };
+
+function openFormModal({ title, desc = '', fields, submitLabel = '確定', onSubmit }) {
+    formModalState.onSubmit = onSubmit;
+    formModalState.lastFocus = document.activeElement;
+    document.getElementById('formModalTitle').textContent = title;
+    const descEl = document.getElementById('formModalDesc');
+    descEl.textContent = desc;
+    descEl.style.display = desc ? 'block' : 'none';
+    const box = document.getElementById('formModalFields');
+    box.innerHTML = '';
+    fields.forEach(f => {
+        const row = document.createElement('div');
+        row.className = 'tweak-form-row';
+        const label = document.createElement('label');
+        label.htmlFor = `fm_${f.name}`;
+        label.textContent = f.label + (f.required ? ' *' : '');
+        const input = document.createElement('input');
+        input.id = `fm_${f.name}`;
+        input.name = f.name;
+        input.type = f.type || 'text';
+        input.value = f.value || '';
+        input.autocomplete = f.autocomplete || 'off';
+        input.spellcheck = false;
+        if (f.maxlength) input.maxLength = f.maxlength;
+        row.append(label, input);
+        if (f.hint) {
+            const hint = document.createElement('div');
+            hint.className = 'form-hint';
+            hint.textContent = f.hint;
+            row.appendChild(hint);
+        }
+        box.appendChild(row);
+    });
+    document.getElementById('formModalMsg').textContent = '';
+    document.getElementById('btnFormModalSubmit').textContent = submitLabel;
+    document.getElementById('btnFormModalSubmit').disabled = false;
+    document.getElementById('formModal').classList.add('show');
+    const first = box.querySelector('input');
+    if (first) first.focus();
+}
+
+function closeFormModal() {
+    document.getElementById('formModal').classList.remove('show');
+    formModalState.onSubmit = null;
+    if (formModalState.lastFocus && formModalState.lastFocus.focus) formModalState.lastFocus.focus();
+}
+
+document.getElementById('formModalForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!formModalState.onSubmit) return;
+    const values = {};
+    document.querySelectorAll('#formModalFields input').forEach(input => { values[input.name] = input.value; });
+    const missing = [...document.querySelectorAll('#formModalFields label')]
+        .filter(l => l.textContent.endsWith(' *') && !values[l.htmlFor.slice(3)].trim())
+        .map(l => l.textContent.slice(0, -2));
+    const msg = document.getElementById('formModalMsg');
+    if (missing.length) { msg.textContent = `請填寫：${missing.join('、')}`; return; }
+    const submit = document.getElementById('btnFormModalSubmit');
+    submit.disabled = true;
+    msg.textContent = '';
+    try {
+        const error = await formModalState.onSubmit(values);
+        if (error) msg.textContent = error;
+        else closeFormModal();
+    } catch (err) {
+        msg.textContent = err.message;
+    } finally {
+        submit.disabled = false;
+    }
+});
+document.getElementById('btnFormModalCancel').addEventListener('click', closeFormModal);
+document.getElementById('formModal').addEventListener('mousedown', e => {
+    if (e.target.id === 'formModal') closeFormModal();
+});
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && document.getElementById('formModal').classList.contains('show')) closeFormModal();
+});
+
+/* ═══ DB Tweak (administrator only) ══════════════════════════════════════ */
 const tweakState = {
     page: 1,
     pageSize: '50',
@@ -3617,8 +4025,19 @@ const tweakState = {
     totalPages: 0,
 };
 
-function handleTweakUnauthorized() {
-    document.getElementById('btnTweakLogout').click();
+function syncTweakAuth() {
+    const admin = isAdmin();
+    const wasOpen = document.getElementById('tweakPanel').style.display === 'block';
+    document.getElementById('tweakLogin').style.display = authUser ? 'none' : 'block';
+    document.getElementById('tweakForbidden').style.display = authUser && !admin ? 'block' : 'none';
+    document.getElementById('tweakPanel').style.display = admin ? 'block' : 'none';
+    if (authUser && !admin) document.getElementById('tweakForbiddenUser').textContent = authUser.username;
+    if (!admin && wasOpen) {
+        ['tweakFilterYear','tweakFilterMonth','tweakFilterWeek','tweakFilterDay','tweakFilterWorkOrder'].forEach(id => {
+            document.getElementById(id).value = '';
+        });
+        resetTweakPanelState();
+    }
 }
 
 function getTweakFilters() {
@@ -3721,7 +4140,7 @@ function resetTweakPanelState() {
 }
 
 async function loadTweakFilterOptions() {
-    if (!tweakToken) return;
+    if (!isAdmin()) return;
     try {
         const params = getTweakFilterParams(false);
         const qs = params.toString() ? `?${params.toString()}` : '';
@@ -3744,30 +4163,20 @@ async function loadTweakFilterOptions() {
 
 document.getElementById('btnTweakLogin').addEventListener('click', async () => {
     const user = document.getElementById('tweakUser').value.trim();
-    const pass = document.getElementById('tweakPass').value.trim();
+    const pass = document.getElementById('tweakPass').value;
     const msg = document.getElementById('tweakLoginMsg');
     if (!user || !pass) { msg.textContent = 'Please enter both fields.'; msg.style.display = 'block'; return; }
     try {
-        const r = await fetch('/api/tweak/login', {
-            method: 'POST',
-            headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({username: user, password: pass})
-        });
-        const data = await r.json();
-        if (data.ok) {
-            tweakToken = data.token;
-            document.getElementById('tweakLogin').style.display = 'none';
-            document.getElementById('tweakPanel').style.display = 'block';
+        await authLogin(user, pass);
+        document.getElementById('tweakPass').value = '';
+        showLoginMessage('');
+        if (isAdmin()) {
             resetTweakPanelState();
-            syncLogUploadAuth();
             await loadTweakFilterOptions();
             await loadTweakRecords();
-        } else {
-            msg.textContent = data.message || 'Login failed';
-            msg.style.display = 'block';
         }
     } catch(e) {
-        msg.textContent = 'Connection error: ' + e.message;
+        msg.textContent = e.message;
         msg.style.display = 'block';
     }
 });
@@ -3777,19 +4186,8 @@ document.getElementById('tweakPass').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('btnTweakLogin').click();
 });
 
-document.getElementById('btnTweakLogout').addEventListener('click', () => {
-    tweakToken = null;
-    document.getElementById('tweakPanel').style.display = 'none';
-    document.getElementById('tweakLogin').style.display = 'block';
-    document.getElementById('tweakUser').value = '';
-    document.getElementById('tweakPass').value = '';
-    document.getElementById('tweakLoginMsg').style.display = 'none';
-    ['tweakFilterYear','tweakFilterMonth','tweakFilterWeek','tweakFilterDay','tweakFilterWorkOrder'].forEach(id => {
-        document.getElementById(id).value = '';
-    });
-    resetTweakPanelState();
-    syncLogUploadAuth();
-});
+document.getElementById('btnTweakLogout').addEventListener('click', authLogout);
+document.getElementById('btnTweakSwitchUser').addEventListener('click', authLogout);
 
 document.getElementById('btnTweakRefresh').addEventListener('click', async () => {
     tweakState.page = 1;
@@ -3872,7 +4270,7 @@ document.getElementById('btnTweakDeleteScope').addEventListener('click', async (
 });
 
 async function loadTweakRecords() {
-    if (!tweakToken) return;
+    if (!isAdmin()) return;
     try {
         const params = getTweakFilterParams(true);
         const qs = params.toString() ? `?${params.toString()}` : '';
@@ -3959,50 +4357,55 @@ function downloadFailLog(id) {
 }
 
 function loadDBTweak() {
-    if (tweakToken) {
+    if (isAdmin()) {
         loadTweakFilterOptions();
         loadTweakRecords();
     }
 }
 
 /* ═══ Log Uploader ═══════════════════════════════════════════════════════
-   zip → POST /api/log-upload/analyze (facts) → /validate (rules R1–R8)
-       → /commit (NDJSON progress stream). Shares the DB Tweak session.     */
+   zip → POST /api/log-upload/analyze (facts) → confirm work order + planned qty
+   (AI chat: /chat, or form: /validate — same rules R1–R8, same hidden inputs)
+   → /commit (NDJSON progress stream). Uploaders see and undo only their own batches. */
 const luState = {
     uploadId: null,      // analyzed batch
+    owner: null,         // account that analyzed it
     facts: null,
     committedId: null,   // batch that finished (or failed) committing
     busy: false,
-    validation: null,    // last /validate result for the current inputs
+    validation: null,    // last rule result for the current work order / quantity
     validateSeq: 0,
+    mode: 'form',        // 'chat' | 'form'
+    aiAvailable: false,
+    chat: [],            // [{role: 'assistant'|'user'|'note', content}] — notes are display-only
+    chatBusy: false,
+    extractFails: 0,
+    opening: '',         // server-built first assistant line (exact numbers, no LLM)
 };
 const luEl = id => document.getElementById(id);
 const luNum = n => (Number(n) || 0).toLocaleString();
 
 function logUploadBlocksRotation() {
-    return luState.busy || (!!luState.uploadId && !luState.committedId);
+    return luState.busy || luState.chatBusy || (!!luState.uploadId && !luState.committedId);
 }
 
 function syncLogUploadAuth() {
-    const signedIn = !!tweakToken;
+    const signedIn = !!authUser;
     luEl('luLogin').style.display = signedIn ? 'none' : 'block';
     luEl('luPanel').style.display = signedIn ? 'block' : 'none';
-    if (signedIn && getActivePage() === 'logupload') loadUploadHistory();
+    luEl('luHistoryFilterBox').style.display = isAdmin() ? 'flex' : 'none';
+    luEl('luHistoryTitle').textContent = isAdmin() ? '最近上傳紀錄' : '我的上傳紀錄';
+    // A batch analyzed by another account is not reachable from this session.
+    if (luState.uploadId && !luState.busy && (!authUser || authUser.username !== luState.owner)) luResetFlow();
+    if (signedIn && getActivePage() === 'logupload') {
+        if (isAdmin()) loadUploaderOptions();
+        loadUploadHistory();
+    }
 }
 
 function loadLogUploader() {
     syncLogUploadAuth();
     return Promise.resolve();
-}
-
-async function luFetch(path, opts = {}) {
-    const headers = Object.assign({ 'X-Tweak-Token': tweakToken }, opts.headers || {});
-    const r = await fetch(path, Object.assign({}, opts, { headers }));
-    if (r.status === 401) {
-        handleTweakUnauthorized();
-        throw new Error('登入已失效，請重新登入');
-    }
-    return r;
 }
 
 function luSetStatus(id, text, kind = '') {
@@ -4013,27 +4416,15 @@ function luSetStatus(id, text, kind = '') {
 
 luEl('btnLuLogin').addEventListener('click', async () => {
     const user = luEl('luUser').value.trim();
-    const pass = luEl('luPass').value.trim();
+    const pass = luEl('luPass').value;
     const msg = luEl('luLoginMsg');
-    if (!user || !pass) { msg.textContent = 'Please enter both fields.'; msg.style.display = 'block'; return; }
+    if (!user || !pass) { msg.textContent = '請輸入帳號和密碼。'; msg.style.display = 'block'; return; }
     try {
-        const r = await fetch('/api/tweak/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, password: pass }),
-        });
-        const data = await r.json();
-        if (!data.ok) { msg.textContent = data.message || 'Login failed'; msg.style.display = 'block'; return; }
-        tweakToken = data.token;
-        msg.style.display = 'none';
+        await authLogin(user, pass);
         luEl('luPass').value = '';
-        // Unlock DB Tweak as well; its data loads when that page is opened.
-        luEl('tweakLogin').style.display = 'none';
-        luEl('tweakPanel').style.display = 'block';
-        resetTweakPanelState();
-        syncLogUploadAuth();
+        showLoginMessage('');
     } catch (e) {
-        msg.textContent = 'Connection error: ' + e.message;
+        msg.textContent = e.message;
         msg.style.display = 'block';
     }
 });
@@ -4059,8 +4450,13 @@ luEl('luFile').addEventListener('change', e => {
 });
 
 function luResetFlow() {
-    Object.assign(luState, { uploadId: null, facts: null, committedId: null, validation: null });
+    Object.assign(luState, {
+        uploadId: null, owner: null, facts: null, committedId: null, validation: null,
+        chat: [], extractFails: 0, opening: '',
+    });
     luState.validateSeq += 1;
+    luRenderChat();
+    luEl('luChatInput').value = '';
     luEl('luFile').value = '';
     luEl('luFileInfo').textContent = '尚未選擇檔案';
     luSetStatus('luAnalyzeStatus', '');
@@ -4069,6 +4465,7 @@ function luResetFlow() {
     luEl('luStepProgress').style.display = 'none';
     luEl('luWo').value = '';
     luEl('luQty').value = '';
+    luRenderExtract();
     luEl('luAck').checked = false;
     luEl('luIssues').innerHTML = '';
     luEl('luAckRow').style.display = 'none';
@@ -4077,7 +4474,8 @@ function luResetFlow() {
 }
 
 function luSetInputsDisabled(disabled) {
-    ['luWo', 'luQty', 'luAck', 'btnLuReset'].forEach(id => { luEl(id).disabled = disabled; });
+    ['luWo', 'luQty', 'luAck', 'btnLuReset', 'btnLuMode'].forEach(id => { luEl(id).disabled = disabled; });
+    luSetChatInputDisabled(disabled || luState.chatBusy);
     luDrop.classList.toggle('disabled', disabled);
 }
 
@@ -4119,21 +4517,24 @@ async function luAnalyze(file) {
             return;
         }
         luState.uploadId = body.upload_id;
+        luState.owner = authUser && authUser.username;
         luState.facts = body.facts;
+        luState.opening = body.chat_opening || '';
         luRenderFacts(body.facts);
         luSetStatus('luAnalyzeStatus', '✓ 分析完成，請確認下方資訊', 'ok');
         luEl('luStepConfirm').style.display = 'block';
         luEl('luWo').placeholder = body.facts.inferred_wo
             ? `例如 ${body.facts.inferred_wo}（依檔名推斷）`
             : '例如 5101-260630005';
-        luEl('luWo').focus();
-        luValidate();
+        luState.aiAvailable = await luCheckAi();
+        luSetMode(luState.aiAvailable ? 'chat' : 'form');
     } catch (e) {
         luSetStatus('luAnalyzeStatus', e.message, 'error');
     } finally {
         luState.busy = false;
         luSetInputsDisabled(false);
         luUpdateUploadButton();
+        if (luState.uploadId) luFocusInput();
     }
 }
 
@@ -4182,7 +4583,7 @@ async function luValidate() {
     if (!luState.uploadId || luState.committedId) return;
     const seq = ++luState.validateSeq;
     try {
-        const r = await luFetch('/api/log-upload/validate', {
+        const r = await authFetch('/api/log-upload/validate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4209,7 +4610,10 @@ async function luValidate() {
 function luRenderIssues(issues) {
     const icon = { error: '❌', warn: '⚠️', info: 'ℹ️' };
     const order = { error: 0, warn: 1, info: 2 };
-    luEl('luIssues').innerHTML = [...issues]
+    // In chat mode the assistant asks for missing values itself; "please enter …" errors would just repeat it.
+    const missing = { R1: !luEl('luWo').value.trim(), R2: !luEl('luQty').value.trim() };
+    luEl('luIssues').innerHTML = issues
+        .filter(i => !(luState.mode === 'chat' && missing[i.code]))
         .sort((a, b) => order[a.level] - order[b.level])
         .map(i => `<li class="${i.level}">${icon[i.level] || ''} ${esc(i.message)}</li>`)
         .join('');
@@ -4220,8 +4624,179 @@ function luRenderIssues(issues) {
 
 function luUpdateUploadButton() {
     const v = luState.validation;
-    luEl('btnLuUpload').disabled = luState.busy || !!luState.committedId || !v || !v.can_upload
+    luEl('btnLuUpload').disabled = luState.busy || luState.chatBusy || !!luState.committedId || !v || !v.can_upload
         || (v.needs_ack && !luEl('luAck').checked);
+}
+
+/* ── Step 2 (AI mode): chat → /api/log-upload/chat ──
+   The server extracts the values, runs the same rules and streams a reply.
+   Extracted values go into the (hidden) form inputs, so both modes share them. */
+async function luCheckAi() {
+    try {
+        const r = await fetch('/api/llm-status');
+        return !!(await r.json()).connected;
+    } catch (_) {
+        return false;
+    }
+}
+
+function luSetMode(mode, note = '') {
+    const prev = luState.mode;
+    luState.mode = mode;
+    const chat = mode === 'chat';
+    luEl('luChatPanel').style.display = chat ? 'block' : 'none';
+    luEl('luFormPanel').style.display = chat ? 'none' : 'grid';
+    luEl('luModeLabel').textContent = chat ? '🤖 AI 助理' : '📝 表單';
+    luEl('luModeHint').textContent = chat
+        ? '用對話告訴助理工單名稱和計畫生產數'
+        : (luState.aiAvailable ? '' : 'AI 助理離線，請直接填寫');
+    const btn = luEl('btnLuMode');
+    btn.textContent = chat ? '改用表單' : '改用 AI 對話';
+    btn.style.display = luState.aiAvailable || chat ? 'inline-block' : 'none';
+    if (note) luState.chat.push({ role: 'note', content: note });
+    if (chat) {
+        if (!luState.chat.some(m => m.role === 'assistant')) {
+            luState.chat.unshift({ role: 'assistant', content: luState.opening || '請輸入這批 log 的工單名稱。' });
+        }
+        const wo = luEl('luWo').value.trim(), qty = luEl('luQty').value.trim();
+        if (prev === 'form' && (wo || qty)) {
+            luState.chat.push({ role: 'note', content: `表單目前的值：工單 ${wo || '—'}、計畫生產數 ${qty || '—'}（可以直接在對話中修改）` });
+        }
+    }
+    luRenderChat();
+    luRenderExtract();
+    if (!chat) luValidate();
+    else if (luState.validation) luRenderIssues(luState.validation.issues);
+    else luEl('luIssues').innerHTML = '';
+    luUpdateUploadButton();
+    if (!luState.busy) luFocusInput();
+}
+
+function luFocusInput() {
+    if (luState.mode === 'chat') luEl('luChatInput').focus();
+    else luEl(luEl('luWo').value.trim() ? 'luQty' : 'luWo').focus();
+}
+
+luEl('btnLuMode').addEventListener('click', () => {
+    if (luState.chatBusy) return;
+    luSetMode(luState.mode === 'chat' ? 'form' : 'chat');
+});
+
+function luRenderChat() {
+    const log = luEl('luChatLog');
+    log.innerHTML = '';
+    luState.chat.forEach(m => log.appendChild(luChatBubble(m.role, m.content)));
+    log.scrollTop = log.scrollHeight;
+}
+
+function luChatBubble(role, text) {
+    const div = document.createElement('div');
+    div.className = `lu-msg ${role}`;
+    div.textContent = text;
+    return div;
+}
+
+function luRenderExtract() {
+    const wo = luEl('luWo').value.trim(), qty = luEl('luQty').value.trim();
+    luEl('luExtract').innerHTML = (wo || qty)
+        ? `擷取結果：工單 <strong>${esc(wo || '尚未提供')}</strong>｜計畫生產數 <strong>${qty ? esc(luNum(qty)) + ' 台' : '尚未提供'}</strong>`
+        : '擷取結果：尚未取得工單名稱和計畫生產數';
+}
+
+function luSetChatInputDisabled(disabled) {
+    luEl('luChatInput').disabled = disabled;
+    luEl('btnLuChatSend').disabled = disabled;
+}
+
+luEl('btnLuChatSend').addEventListener('click', luChatSend);
+luEl('luChatInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); luChatSend(); }
+});
+
+async function luChatSend() {
+    const input = luEl('luChatInput');
+    const text = input.value.trim();
+    if (!text || luState.chatBusy || luState.busy || !luState.uploadId || luState.committedId) return;
+    input.value = '';
+    luState.chat.push({ role: 'user', content: text });
+    luRenderChat();
+    luState.chatBusy = true;
+    luSetChatInputDisabled(true);
+    luEl('btnLuMode').disabled = true;
+    luUpdateUploadButton();
+
+    const log = luEl('luChatLog');
+    const bubble = luChatBubble('assistant typing', '');
+    log.appendChild(bubble);
+    log.scrollTop = log.scrollHeight;
+    let reply = null, fallback = null;
+    try {
+        const r = await authFetch('/api/log-upload/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                upload_id: luState.uploadId,
+                messages: luState.chat.filter(m => m.role !== 'note'),
+                known: { work_order: luEl('luWo').value.trim(), planned_qty: luEl('luQty').value.trim() },
+            }),
+        });
+        if (!r.ok) {
+            const data = await r.json().catch(() => ({}));
+            throw new Error(data.error || `AI 助理回覆失敗（HTTP ${r.status}）`);
+        }
+        const reader = r.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = '';
+        for (;;) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            let nl;
+            while ((nl = buf.indexOf('\n')) >= 0) {
+                const line = buf.slice(0, nl).trim();
+                buf = buf.slice(nl + 1);
+                if (!line) continue;
+                const ev = JSON.parse(line);
+                if (ev.type === 'extract') {
+                    luEl('luWo').value = ev.work_order || '';
+                    luEl('luQty').value = ev.planned_qty != null ? String(ev.planned_qty) : '';
+                    luState.extractFails = ev.extract_ok ? 0 : luState.extractFails + 1;
+                    luRenderExtract();
+                } else if (ev.type === 'validation') {
+                    luState.validateSeq += 1;  // drop any in-flight form validation
+                    luState.validation = ev;
+                    luRenderIssues(ev.issues);
+                } else if (ev.type === 'delta') {
+                    bubble.textContent += ev.text;
+                    log.scrollTop = log.scrollHeight;
+                } else if (ev.type === 'done') {
+                    reply = ev.reply;
+                } else if (ev.type === 'fallback') {
+                    fallback = ev.reason;
+                }
+            }
+        }
+        if (!reply && !fallback) fallback = 'AI 助理回覆中斷';
+    } catch (e) {
+        fallback = e.message;
+    } finally {
+        bubble.remove();
+        luState.chatBusy = false;
+        luSetChatInputDisabled(false);
+        luEl('btnLuMode').disabled = false;
+        if (!luState.uploadId) {
+            // flow was reset meanwhile (e.g. signed out)
+        } else if (reply && luState.extractFails < 2) {
+            luState.chat.push({ role: 'assistant', content: reply });
+            luRenderChat();
+            luUpdateUploadButton();
+            luEl('luChatInput').focus();
+        } else {
+            if (reply) luState.chat.push({ role: 'assistant', content: reply });
+            luState.aiAvailable = false;
+            luSetMode('form', `${fallback || 'AI 助理無法判讀輸入'}，已改用表單；已取得的值會保留。`);
+        }
+    }
 }
 
 /* ── Step 3: commit + progress stream ── */
@@ -4247,12 +4822,12 @@ async function luCommit() {
 
     let finished = false;
     try {
-        const r = await luFetch('/api/log-upload/commit', {
+        const r = await authFetch('/api/log-upload/commit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 upload_id: luState.uploadId, work_order: wo, planned_qty: qty,
-                ack_warnings: luEl('luAck').checked, mode: 'form',
+                ack_warnings: luEl('luAck').checked, mode: luState.mode,
             }),
         });
         if (!r.ok) {
@@ -4349,7 +4924,7 @@ async function luRevert(uploadId, label = '') {
     if (!uploadId) return false;
     if (!confirm(`確定撤銷此批上傳${label ? `（${label}）` : ''}？\n只會刪除這批新增的資料，原本已存在的資料不受影響。`)) return false;
     try {
-        const r = await luFetch(`/api/log-upload/${uploadId}`, { method: 'DELETE' });
+        const r = await authFetch(`/api/log-upload/${uploadId}`, { method: 'DELETE' });
         const data = await r.json();
         if (!r.ok) { alert(data.error || `撤銷失敗（HTTP ${r.status}）`); return false; }
         if (uploadId === luState.committedId) {
@@ -4370,18 +4945,55 @@ const LU_STATUS = {
     done: ['pass', '完成'], failed: ['fail', '失敗'], reverted: ['reverted', '已撤銷'], running: ['running', '進行中'],
 };
 luEl('btnLuHistoryRefresh').addEventListener('click', loadUploadHistory);
+luEl('luHistoryUser').addEventListener('change', loadUploadHistory);
+
+/* Administrator: fill the uploader filters (Log Uploader history, account logs). */
+async function loadUploaderOptions() {
+    try {
+        const r = await authFetch('/api/admin/users');
+        if (!r.ok) return null;
+        const data = await r.json();
+        fillUploaderSelects(data);
+        return data;
+    } catch (_) {
+        return null;
+    }
+}
+
+function fillUploaderSelects(data) {
+    const options = [[data.admin.username, `${data.admin.username}（管理者）`]]
+        .concat(data.items.map(u => [u.username, u.display_name !== u.username ? `${u.display_name}（${u.username}）` : u.username]));
+    ['luHistoryUser', 'acctAuditUser', 'acctLoginUser'].forEach(id => {
+        const sel = luEl(id);
+        const current = sel.value;
+        sel.innerHTML = '<option value="">全部</option>';
+        options.forEach(([value, label]) => {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = label;
+            sel.appendChild(opt);
+        });
+        sel.value = options.some(([v]) => v === current) ? current : '';
+    });
+}
 
 async function loadUploadHistory() {
-    if (!tweakToken) return;
+    if (!authUser) return;
     const tbody = luEl('luHistoryRows');
+    const filterUser = isAdmin() ? luEl('luHistoryUser').value : '';
     try {
-        const r = await luFetch('/api/log-upload/history?limit=20');
+        const r = await authFetch('/api/log-upload/history?limit=20' + (filterUser ? `&username=${encodeURIComponent(filterUser)}` : ''));
         const data = await r.json();
         const rows = data.items || [];
         if (!rows.length) { tbody.innerHTML = '<tr><td colspan="10" style="color:var(--text3)">尚無紀錄</td></tr>'; return; }
         tbody.innerHTML = rows.map(row => {
             const [cls, label] = LU_STATUS[row.status] || ['', row.status];
-            const canRevert = (row.status === 'done' || row.status === 'failed') && row.uploaded > 0;
+            const canRevert = (row.status === 'done' || row.status === 'failed') && row.uploaded > 0
+                && (isAdmin() || row.username === authUser.username);
+            const who = row.display_name && row.display_name !== row.username
+                ? `${row.display_name}（${row.username}）` : (row.username || '—');
+            const statusTip = row.status === 'reverted' && row.reverted_by
+                ? `由 ${row.reverted_by} 於 ${fmtTime(row.reverted_at)} 撤銷` : (row.error || '');
             return `<tr>
                 <td>${esc(fmtTime(row.created_at))}</td>
                 <td>${esc(row.work_order || '—')}</td>
@@ -4390,8 +5002,8 @@ async function loadUploadHistory() {
                 <td class="num">${row.uploaded != null ? luNum(row.uploaded) : '—'}</td>
                 <td class="num">${row.skipped != null ? luNum(row.skipped) : '—'}</td>
                 <td class="num">${row.failed != null ? luNum(row.failed) : '—'}</td>
-                <td><span class="badge ${cls}" title="${esc(row.error || '')}">${esc(label)}</span></td>
-                <td>${esc(row.tweak_user || '—')}</td>
+                <td><span class="badge ${cls}" title="${esc(statusTip)}">${esc(label)}</span>${row.mode === 'chat' ? ' <span title="使用 AI 對話確認">🤖</span>' : ''}</td>
+                <td>${esc(who)}</td>
                 <td>${canRevert ? `<button class="tweak-action-btn del" data-revert="${esc(row.id)}" data-label="${esc(row.work_order || '')}">撤銷</button>` : ''}</td>
             </tr>`;
         }).join('');
@@ -4407,6 +5019,239 @@ luEl('luHistoryRows').addEventListener('click', async e => {
     if (reverted && btn.dataset.revert === luState.committedId) luEl('btnLuRevert').style.display = 'none';
 });
 
+/* ═══ Accounts (administrator only) ══════════════════════════════════════
+   Uploader accounts are disabled, never deleted, so their history stays. */
+const ACCT_PAGE_SIZE = 50;
+const ACCT_ACTIONS = {
+    create: '建立帳號', update: '修改資料', disable: '停用', enable: '啟用',
+    reset_password: '重設密碼', change_password: '自行修改密碼',
+};
+const ACCT_FIELDS = { display_name: '姓名', department: '部門／產線', email: 'Email' };
+const LOGIN_EVENTS = { login: '登入', logout: '登出', change_password: '修改密碼' };
+const LOGIN_REASONS = { bad_password: '密碼錯誤', unknown_user: '帳號不存在', disabled: '帳號已停用' };
+const acctState = { tab: 'users', users: [], auditOffset: 0, loginOffset: 0 };
+
+function syncAccountsAuth() {
+    const admin = isAdmin();
+    luEl('acctDenied').style.display = admin ? 'none' : 'block';
+    luEl('acctPanel').style.display = admin ? 'block' : 'none';
+    if (admin && getActivePage() === 'accounts') acctLoadTab();
+}
+
+function loadAccounts() {
+    syncAccountsAuth();
+    return Promise.resolve();
+}
+
+function acctLoadTab() {
+    if (acctState.tab === 'audit') return acctLoadAudit();
+    if (acctState.tab === 'logins') return acctLoadLogins();
+    return acctLoadUsers();
+}
+
+document.querySelectorAll('[data-acct-tab]').forEach(btn => btn.addEventListener('click', () => {
+    acctState.tab = btn.dataset.acctTab;
+    document.querySelectorAll('[data-acct-tab]').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('[data-acct-view]').forEach(v => {
+        v.style.display = v.dataset.acctView === acctState.tab ? 'block' : 'none';
+    });
+    acctLoadTab();
+}));
+
+function acctCell(text, cls = '') {
+    return `<td${cls ? ` class="${cls}"` : ''}>${esc(text == null || text === '' ? '—' : String(text))}</td>`;
+}
+
+async function acctLoadUsers() {
+    const tbody = luEl('acctUserRows');
+    try {
+        const r = await authFetch('/api/admin/users');
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || `讀取失敗（HTTP ${r.status}）`);
+        acctState.users = data.items;
+        fillUploaderSelects(data);
+        const a = data.admin;
+        const adminRow = `<tr>
+            ${acctCell(a.username)}<td colspan="3"><span class="acct-sub">內建管理者（伺服器環境變數）</span></td>
+            <td><span class="acct-state on">● 管理者</span></td>
+            ${acctCell(luNum(a.uploads), 'num')}${acctCell(luNum(a.uploaded_rows), 'num')}${acctCell(luNum(a.reverted_batches), 'num')}
+            ${acctCell(a.last_upload_at ? fmtTime(a.last_upload_at) : '', 'nowrap')}${acctCell(a.last_login_at ? fmtTime(a.last_login_at) : '', 'nowrap')}
+            <td class="acct-ops"><button class="tweak-action-btn dl" data-acct-op="history" data-user="${esc(a.username)}">看紀錄</button></td>
+        </tr>`;
+        const rows = data.items.map(u => `<tr>
+            ${acctCell(u.username)}${acctCell(u.display_name)}${acctCell(u.department)}${acctCell(u.email)}
+            <td><span class="acct-state ${u.enabled ? 'on' : 'off'}">${u.enabled ? '● 啟用' : '○ 停用'}</span></td>
+            ${acctCell(luNum(u.uploads), 'num')}${acctCell(luNum(u.uploaded_rows), 'num')}${acctCell(luNum(u.reverted_batches), 'num')}
+            ${acctCell(u.last_upload_at ? fmtTime(u.last_upload_at) : '', 'nowrap')}${acctCell(u.last_login_at ? fmtTime(u.last_login_at) : '', 'nowrap')}
+            <td class="acct-ops">
+                <button class="tweak-action-btn dl" data-acct-op="edit" data-user="${esc(u.username)}">編輯</button>
+                <button class="tweak-action-btn dl" data-acct-op="reset" data-user="${esc(u.username)}">重設密碼</button>
+                ${u.enabled
+                    ? `<button class="tweak-action-btn del" data-acct-op="disable" data-user="${esc(u.username)}">停用</button>`
+                    : `<button class="tweak-action-btn dl" data-acct-op="enable" data-user="${esc(u.username)}">啟用</button>`}
+                <button class="tweak-action-btn dl" data-acct-op="history" data-user="${esc(u.username)}">看紀錄</button>
+            </td>
+        </tr>`).join('');
+        tbody.innerHTML = adminRow + (rows || '<tr><td colspan="11" style="color:var(--text3)">還沒有上傳者帳號，請按「＋ 新增上傳者」。</td></tr>');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="11" style="color:var(--red)">${esc(e.message)}</td></tr>`;
+    }
+}
+
+async function acctSend(path, method, body) {
+    const r = await authFetch(path, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    return r.ok ? null : (data.error || `操作失敗（HTTP ${r.status}）`);
+}
+
+luEl('btnAcctNew').addEventListener('click', () => openFormModal({
+    title: '新增上傳者',
+    desc: '上傳者只能使用 Log Uploader，並只能看到、撤銷自己的上傳批次。',
+    fields: [
+        { name: 'username', label: '帳號', required: true, maxlength: 32, hint: '英文、數字和 . _ -，3–32 字，不分大小寫' },
+        { name: 'display_name', label: '顯示名稱（姓名）', required: true, maxlength: 50 },
+        { name: 'department', label: '部門／產線', maxlength: 50 },
+        { name: 'email', label: 'Email', type: 'email', maxlength: 120 },
+        { name: 'password', label: '初始密碼', type: 'password', required: true, autocomplete: 'new-password', hint: '至少 8 碼；上傳者登入後可以自行修改' },
+        { name: 'password2', label: '再輸入一次密碼', type: 'password', required: true, autocomplete: 'new-password' },
+    ],
+    submitLabel: '建立帳號',
+    onSubmit: async v => {
+        if (v.password !== v.password2) return '兩次輸入的密碼不一致。';
+        const error = await acctSend('/api/admin/users', 'POST', {
+            username: v.username, display_name: v.display_name, department: v.department, email: v.email, password: v.password,
+        });
+        if (!error) acctLoadUsers();
+        return error;
+    },
+}));
+
+luEl('acctUserRows').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-acct-op]');
+    if (!btn) return;
+    const username = btn.dataset.user;
+    const user = acctState.users.find(u => u.username === username);
+    const op = btn.dataset.acctOp;
+    if (op === 'history') {
+        luEl('luHistoryUser').value = username;
+        setActivePage('logupload');
+    } else if (op === 'edit' && user) {
+        openFormModal({
+            title: `編輯帳號 ${username}`,
+            fields: [
+                { name: 'display_name', label: '顯示名稱（姓名）', required: true, value: user.display_name, maxlength: 50 },
+                { name: 'department', label: '部門／產線', value: user.department, maxlength: 50 },
+                { name: 'email', label: 'Email', type: 'email', value: user.email, maxlength: 120 },
+            ],
+            submitLabel: '儲存',
+            onSubmit: async v => {
+                const error = await acctSend(`/api/admin/users/${encodeURIComponent(username)}`, 'PATCH', v);
+                if (!error) acctLoadUsers();
+                return error;
+            },
+        });
+    } else if (op === 'reset') {
+        openFormModal({
+            title: `重設 ${username} 的密碼`,
+            desc: '重設後，這個帳號目前所有的登入都會被登出。',
+            fields: [
+                { name: 'password', label: '新密碼', type: 'password', required: true, autocomplete: 'new-password', hint: '至少 8 碼' },
+                { name: 'password2', label: '再輸入一次新密碼', type: 'password', required: true, autocomplete: 'new-password' },
+            ],
+            submitLabel: '重設密碼',
+            onSubmit: async v => {
+                if (v.password !== v.password2) return '兩次輸入的密碼不一致。';
+                const error = await acctSend(`/api/admin/users/${encodeURIComponent(username)}/reset-password`, 'POST', { password: v.password });
+                if (!error) alert(`已重設 ${username} 的密碼。`);
+                return error;
+            },
+        });
+    } else if (op === 'disable' || op === 'enable') {
+        const enable = op === 'enable';
+        const question = enable
+            ? `確定重新啟用 ${username}？`
+            : `確定停用 ${username}？\n停用後會立即登出、無法再登入；帳號和上傳紀錄都會保留，之後可以重新啟用。`;
+        if (!confirm(question)) return;
+        const error = await acctSend(`/api/admin/users/${encodeURIComponent(username)}`, 'PATCH', { enabled: enable });
+        if (error) alert(error);
+        acctLoadUsers();
+    }
+});
+
+function acctRenderPager(id, offset, total, onPage) {
+    const box = luEl(id);
+    if (!total) { box.innerHTML = ''; return; }
+    const end = Math.min(offset + ACCT_PAGE_SIZE, total);
+    box.innerHTML = `<span>第 ${luNum(offset + 1)}–${luNum(end)} 筆，共 ${luNum(total)} 筆</span>
+        <button class="tweak-btn secondary" data-page-dir="-1" ${offset <= 0 ? 'disabled' : ''}>上一頁</button>
+        <button class="tweak-btn secondary" data-page-dir="1" ${end >= total ? 'disabled' : ''}>下一頁</button>`;
+    box.onclick = e => {
+        const btn = e.target.closest('[data-page-dir]');
+        if (btn && !btn.disabled) onPage(offset + Number(btn.dataset.pageDir) * ACCT_PAGE_SIZE);
+    };
+}
+
+function acctAuditDetail(row) {
+    const d = row.detail || {};
+    if (row.action === 'update' && d.before) {
+        return Object.keys(d.after || {}).map(k =>
+            `${ACCT_FIELDS[k] || k}：${d.before[k] || '（空白）'} → ${d.after[k] || '（空白）'}`).join('；');
+    }
+    if (row.action === 'create') {
+        return Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${ACCT_FIELDS[k] || k}：${v}`).join('；');
+    }
+    return '';
+}
+
+async function acctLoadAudit() {
+    const tbody = luEl('acctAuditRows');
+    const params = new URLSearchParams({ limit: ACCT_PAGE_SIZE, offset: acctState.auditOffset });
+    if (luEl('acctAuditUser').value) params.set('username', luEl('acctAuditUser').value);
+    try {
+        if (!acctState.users.length) await loadUploaderOptions();
+        const r = await authFetch(`/api/admin/audit?${params}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || `讀取失敗（HTTP ${r.status}）`);
+        tbody.innerHTML = data.items.map(row => `<tr>
+            ${acctCell(fmtTime(row.at), 'nowrap')}${acctCell(row.actor)}${acctCell(ACCT_ACTIONS[row.action] || row.action)}
+            ${acctCell(row.target)}<td class="acct-detail">${esc(acctAuditDetail(row) || '—')}</td>${acctCell(row.client_ip)}
+        </tr>`).join('') || '<tr><td colspan="6" style="color:var(--text3)">沒有紀錄</td></tr>';
+        acctRenderPager('acctAuditPager', data.offset, data.total, offset => { acctState.auditOffset = offset; acctLoadAudit(); });
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red)">${esc(e.message)}</td></tr>`;
+    }
+}
+
+async function acctLoadLogins() {
+    const tbody = luEl('acctLoginRows');
+    const params = new URLSearchParams({ limit: ACCT_PAGE_SIZE, offset: acctState.loginOffset });
+    if (luEl('acctLoginUser').value) params.set('username', luEl('acctLoginUser').value);
+    if (luEl('acctLoginResult').value) params.set('success', luEl('acctLoginResult').value);
+    try {
+        if (!acctState.users.length) await loadUploaderOptions();
+        const r = await authFetch(`/api/admin/login-log?${params}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || `讀取失敗（HTTP ${r.status}）`);
+        tbody.innerHTML = data.items.map(row => `<tr>
+            ${acctCell(fmtTime(row.at), 'nowrap')}${acctCell(row.username)}${acctCell(LOGIN_EVENTS[row.event] || row.event)}
+            <td><span class="acct-state ${row.success ? 'on' : 'off'}" style="${row.success ? '' : 'color:var(--red)'}">${row.success ? '✓ 成功' : '✕ 失敗'}</span></td>
+            ${acctCell(LOGIN_REASONS[row.reason] || row.reason)}${acctCell(row.client_ip)}
+            <td class="acct-sub" title="${esc(row.user_agent || '')}" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(row.user_agent || '—')}</td>
+        </tr>`).join('') || '<tr><td colspan="7" style="color:var(--text3)">沒有紀錄</td></tr>';
+        acctRenderPager('acctLoginPager', data.offset, data.total, offset => { acctState.loginOffset = offset; acctLoadLogins(); });
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="color:var(--red)">${esc(e.message)}</td></tr>`;
+    }
+}
+
+luEl('acctAuditUser').addEventListener('change', () => { acctState.auditOffset = 0; acctLoadAudit(); });
+luEl('acctLoginUser').addEventListener('change', () => { acctState.loginOffset = 0; acctLoadLogins(); });
+luEl('acctLoginResult').addEventListener('change', () => { acctState.loginOffset = 0; acctLoadLogins(); });
+
 /* ═══ Page data loader ═══════════════════════════════════════════════════ */
 const pageLoaders = {
     overview: loadOverview,
@@ -4419,6 +5264,7 @@ const pageLoaders = {
     dbtweak: loadDBTweak,
     dataalign: loadDataAlign,
     logupload: loadLogUploader,
+    accounts: loadAccounts,
 };
 function loadPageData(page) {
     if (!pageLoaders[page]) return Promise.resolve();
@@ -4506,6 +5352,7 @@ function refreshAllChartsForTheme() {
 
 /* ═══ Init ═══════════════════════════════════════════════════════════════ */
 async function initDashboard() {
+    authRestore();
     initDashboardInteractions();
     initAlignPage();
     initDashboardAutomation();

@@ -20,16 +20,19 @@ import asyncio
 import time
 import threading
 from ai_summary_helper import build_summary_messages
+import auth_utils
 import log_splitter
+import upload_chat
 
 app = FastAPI(title="Solo PIXI Module Test Analysis")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://pixi:pixipass@localhost:5433/pixi_test")
 DASHBOARD_PATH = os.path.join(os.path.dirname(__file__), "solo_pixi_dashboard.html")
 
-# DB Tweak credentials (override via env)
+# Administrator account (DB Tweak + account management); uploader accounts live in app_users
 TWEAK_USER = os.environ.get("TWEAK_USER", "pixi")
 TWEAK_PASS = os.environ.get("TWEAK_PASS", "pixipass")
+SESSION_TTL_HOURS = float(os.environ.get("SESSION_TTL_HOURS", "8"))
 
 # LLM AI Summary configurations
 LLM_API_BASE = os.environ.get("LLM_API_BASE", "http://10.20.30.23:8000/v1")
@@ -38,6 +41,7 @@ LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen3.8-27B-UD-Q6_K_L")
 # Dense 27B model: thinking adds ~15x latency for no gain on templated reports.
 LLM_ENABLE_THINKING = os.environ.get("LLM_ENABLE_THINKING", "false").lower() == "true"
 LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "1536"))
+LLM_CHAT_TIMEOUT = 60  # per call; on timeout the uploader falls back to the form
 
 # Log Uploader
 UPLOAD_TMP_DIR = os.environ.get("UPLOAD_TMP_DIR", "/tmp/pixi_uploads")
@@ -107,7 +111,8 @@ def run_migrations():
             created_at      TIMESTAMPTZ DEFAULT NOW(),
             finished_at     TIMESTAMPTZ,
             client_ip       TEXT,
-            tweak_user      TEXT,
+            username        TEXT,
+            user_role       TEXT,
             zip_name        TEXT,
             zip_size        BIGINT,
             work_order      TEXT,
@@ -133,6 +138,76 @@ def run_migrations():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_upload_log_created ON upload_log(created_at DESC)")
     cur.execute("ALTER TABLE module_test ADD COLUMN IF NOT EXISTS upload_id TEXT")
     cur.execute("CREATE INDEX IF NOT EXISTS idx_module_test_upload_id ON module_test(upload_id)")
+    # Phase-1 test databases named the uploader column tweak_user.
+    cur.execute("""
+        DO $$ BEGIN
+            IF EXISTS (SELECT 1 FROM information_schema.columns
+                       WHERE table_schema = current_schema() AND table_name = 'upload_log'
+                         AND column_name = 'tweak_user') THEN
+                ALTER TABLE upload_log RENAME COLUMN tweak_user TO username;
+            END IF;
+        END $$;
+    """)
+    cur.execute("ALTER TABLE upload_log ADD COLUMN IF NOT EXISTS user_role TEXT")
+    cur.execute("ALTER TABLE upload_log ADD COLUMN IF NOT EXISTS reverted_by TEXT")
+    cur.execute("ALTER TABLE upload_log ADD COLUMN IF NOT EXISTS reverted_at TIMESTAMPTZ")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_upload_log_username ON upload_log(username, created_at DESC)")
+    # Accounts: uploaders are rows here; the administrator is TWEAK_USER from the environment.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_users (
+            id                  SERIAL PRIMARY KEY,
+            username            TEXT NOT NULL UNIQUE,
+            display_name        TEXT NOT NULL,
+            department          TEXT,
+            email               TEXT,
+            password_hash       TEXT NOT NULL,
+            enabled             BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at          TIMESTAMPTZ DEFAULT NOW(),
+            created_by          TEXT,
+            updated_at          TIMESTAMPTZ,
+            password_changed_at TIMESTAMPTZ,
+            last_login_at       TIMESTAMPTZ,
+            last_login_ip       TEXT
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_sessions (
+            token_hash  TEXT PRIMARY KEY,
+            username    TEXT NOT NULL,
+            role        TEXT NOT NULL,
+            cred_fp     TEXT,
+            created_at  TIMESTAMPTZ DEFAULT NOW(),
+            expires_at  TIMESTAMPTZ NOT NULL,
+            client_ip   TEXT,
+            revoked_at  TIMESTAMPTZ
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_app_sessions_username ON app_sessions(username)")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS auth_log (
+            id          BIGSERIAL PRIMARY KEY,
+            at          TIMESTAMPTZ DEFAULT NOW(),
+            username    TEXT,
+            event       TEXT,
+            success     BOOLEAN,
+            reason      TEXT,
+            client_ip   TEXT,
+            user_agent  TEXT
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_auth_log_at ON auth_log(at DESC)")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS account_audit (
+            id          BIGSERIAL PRIMARY KEY,
+            at          TIMESTAMPTZ DEFAULT NOW(),
+            actor       TEXT,
+            action      TEXT,
+            target      TEXT,
+            detail      JSONB,
+            client_ip   TEXT
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_account_audit_at ON account_audit(at DESC)")
     conn.commit()
     cur.close()
     conn.close()
@@ -981,31 +1056,389 @@ def api_filter_options(work_order: str = None, year: int = None, month: int = No
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# DB Tweak endpoints
+# Accounts & sessions
+# The X-Tweak-Token header carries a random session token (only its SHA-256 is
+# stored). role 'admin' = TWEAK_USER/TWEAK_PASS (DB Tweak, accounts, every upload);
+# role 'uploader' = app_users row (Log Uploader, own batches only).
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _check_tweak_auth(auth_token: str):
-    """Validate the X-Tweak-Token header (base64 of user:pass)."""
-    import base64
+def _client_ip(request):
+    return request.headers.get("x-real-ip") or (request.client.host if request.client else None)
+
+
+def _admin_fingerprint():
+    """Bound into admin sessions so changing TWEAK_USER/TWEAK_PASS invalidates them."""
+    return hashlib.sha256(f"{TWEAK_USER}\0{TWEAK_PASS}".encode()).hexdigest()[:16]
+
+
+def _session_identity(token):
+    """Session token → {username, role, display_name, expires_at}, or None when missing/expired/revoked."""
+    if not token or len(token) > 128:
+        return None
+    conn = get_conn()
     try:
-        decoded = base64.b64decode(auth_token).decode()
-        user, pw = decoded.split(":", 1)
-        return hmac.compare_digest(user, TWEAK_USER) and hmac.compare_digest(pw, TWEAK_PASS)
-    except Exception:
-        return False
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT s.username, s.role, s.cred_fp, s.expires_at, u.display_name, u.enabled
+            FROM app_sessions s LEFT JOIN app_users u ON u.username = s.username
+            WHERE s.token_hash = %s AND s.revoked_at IS NULL AND s.expires_at > NOW()
+        """, (auth_utils.token_hash(token),))
+        row = cur.fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    if row["role"] == "admin":
+        if row["username"] != TWEAK_USER or row["cred_fp"] != _admin_fingerprint():
+            return None
+    elif not row["enabled"]:
+        return None
+    return {"username": row["username"], "role": row["role"],
+            "display_name": row["display_name"] or row["username"], "expires_at": row["expires_at"]}
 
 
+def _authenticate(token, admin=False):
+    """Returns (identity, None) or (None, error response): 401 = sign in again, 403 = not allowed."""
+    identity = _session_identity(token)
+    if not identity:
+        return None, JSONResponse({"error": "Unauthorized"}, status_code=401)
+    if admin and identity["role"] != "admin":
+        return None, JSONResponse({"error": "此功能僅限管理者使用"}, status_code=403)
+    return identity, None
+
+
+def _auth_log(cur, request, username, event, success, reason=None):
+    cur.execute("""
+        INSERT INTO auth_log (username, event, success, reason, client_ip, user_agent)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, ((username or "")[:64], event, success, reason, _client_ip(request),
+          (request.headers.get("user-agent") or "")[:200]))
+
+
+def _audit(cur, request, actor, action, target, detail=None):
+    cur.execute("""
+        INSERT INTO account_audit (actor, action, target, detail, client_ip)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (actor, action, target, psycopg2.extras.Json(detail) if detail else None, _client_ip(request)))
+
+
+def _revoke_sessions(cur, username, keep_token_hash=None):
+    cur.execute("""
+        UPDATE app_sessions SET revoked_at = NOW()
+        WHERE username = %s AND revoked_at IS NULL AND token_hash IS DISTINCT FROM %s
+    """, (username, keep_token_hash))
+
+
+@app.post("/api/auth/login")
 @app.post("/api/tweak/login")
-def tweak_login(body: dict = Body(...)):
-    """Validate DB Tweak credentials. Returns {ok: true/false}."""
-    user = body.get("username", "")
-    pw = body.get("password", "")
-    ok = hmac.compare_digest(user, TWEAK_USER) and hmac.compare_digest(pw, TWEAK_PASS)
-    if not ok:
-        return JSONResponse({"ok": False, "message": "Invalid credentials"}, status_code=401)
-    import base64
-    token = base64.b64encode(f"{user}:{pw}".encode()).decode()
-    return {"ok": True, "token": token}
+def auth_login(request: Request, body: dict = Body(...)):
+    """Sign in as the administrator or an uploader. Returns a session token valid for SESSION_TTL_HOURS."""
+    raw_user = str(body.get("username") or "").strip()
+    password = body.get("password") if isinstance(body.get("password"), str) else ""
+    conn = get_conn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if raw_user == TWEAK_USER:
+            username, role, display_name = TWEAK_USER, "admin", TWEAK_USER
+            ok = hmac.compare_digest(password.encode(), TWEAK_PASS.encode())
+            reason = None if ok else "bad_password"
+        else:
+            username, role = auth_utils.normalize_username(raw_user), "uploader"
+            cur.execute("SELECT display_name, password_hash, enabled FROM app_users WHERE username = %s", (username,))
+            user = cur.fetchone()
+            ok = auth_utils.verify_password(password, user["password_hash"] if user else auth_utils.dummy_hash())
+            display_name = user["display_name"] if user else None
+            if not user:
+                ok, reason = False, "unknown_user"
+            elif not ok:
+                reason = "bad_password"
+            elif not user["enabled"]:
+                ok, reason = False, "disabled"
+            else:
+                reason = None
+        if not ok:
+            _auth_log(cur, request, raw_user, "login", False, reason)
+            conn.commit()
+            if reason == "disabled":
+                return JSONResponse({"ok": False, "message": "此帳號已停用，請聯絡管理者"}, status_code=403)
+            return JSONResponse({"ok": False, "message": "帳號或密碼錯誤"}, status_code=401)
+
+        cur.execute("DELETE FROM app_sessions WHERE expires_at < NOW() - INTERVAL '7 days'")
+        token = auth_utils.new_session_token()
+        cur.execute("""
+            INSERT INTO app_sessions (token_hash, username, role, cred_fp, expires_at, client_ip)
+            VALUES (%s, %s, %s, %s, NOW() + make_interval(secs => %s), %s)
+            RETURNING expires_at
+        """, (auth_utils.token_hash(token), username, role,
+              _admin_fingerprint() if role == "admin" else None, SESSION_TTL_HOURS * 3600, _client_ip(request)))
+        expires_at = cur.fetchone()["expires_at"]
+        if role == "uploader":
+            cur.execute("UPDATE app_users SET last_login_at = NOW(), last_login_ip = %s WHERE username = %s",
+                        (_client_ip(request), username))
+        _auth_log(cur, request, username, "login", True)
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "token": token, "role": role, "username": username,
+            "display_name": display_name, "expires_at": expires_at}
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request, x_tweak_token: str = Header(None)):
+    identity = _session_identity(x_tweak_token)
+    if not identity:
+        return {"ok": True}
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("UPDATE app_sessions SET revoked_at = NOW() WHERE token_hash = %s",
+                    (auth_utils.token_hash(x_tweak_token),))
+        _auth_log(cur, request, identity["username"], "logout", True)
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+@app.get("/api/auth/me")
+def auth_me(x_tweak_token: str = Header(None)):
+    identity, denied = _authenticate(x_tweak_token)
+    return denied or identity
+
+
+@app.post("/api/auth/change-password")
+def auth_change_password(request: Request, body: dict = Body(...), x_tweak_token: str = Header(None)):
+    """Uploaders change their own password; their other sessions are signed out, this one stays."""
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
+    if identity["role"] != "uploader":
+        return JSONResponse({"error": "管理者密碼由伺服器環境變數設定，無法在網頁上修改"}, status_code=400)
+    old = body.get("old_password") if isinstance(body.get("old_password"), str) else ""
+    new = body.get("new_password")
+    error = auth_utils.password_error(new)
+    if error:
+        return JSONResponse({"error": error}, status_code=400)
+    if new == old:
+        return JSONResponse({"error": "新密碼不可以和舊密碼相同。"}, status_code=400)
+    username = identity["username"]
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT password_hash FROM app_users WHERE username = %s", (username,))
+        row = cur.fetchone()
+        if not row or not auth_utils.verify_password(old, row[0]):
+            _auth_log(cur, request, username, "change_password", False, "bad_password")
+            conn.commit()
+            return JSONResponse({"error": "舊密碼不正確。"}, status_code=400)
+        cur.execute("""
+            UPDATE app_users SET password_hash = %s, password_changed_at = NOW(), updated_at = NOW()
+            WHERE username = %s
+        """, (auth_utils.hash_password(new), username))
+        _revoke_sessions(cur, username, keep_token_hash=auth_utils.token_hash(x_tweak_token))
+        _audit(cur, request, username, "change_password", username)
+        _auth_log(cur, request, username, "change_password", True)
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+# ─── Account management (administrator only) ────────────────────────────────
+
+USER_FIELDS = ("username", "display_name", "department", "email", "enabled", "created_at", "created_by",
+               "updated_at", "password_changed_at", "last_login_at", "last_login_ip")
+
+
+def _upload_stats_sql(where):
+    return f"""
+        SELECT username,
+               COUNT(*) FILTER (WHERE status = 'done')                       AS uploads,
+               COALESCE(SUM(uploaded) FILTER (WHERE status = 'done'), 0)      AS uploaded_rows,
+               COUNT(*) FILTER (WHERE status = 'reverted')                   AS reverted_batches,
+               MAX(created_at) FILTER (WHERE status IN ('done', 'failed', 'reverted')) AS last_upload_at
+        FROM upload_log {where} GROUP BY username
+    """
+
+
+@app.get("/api/admin/users")
+def admin_list_users(x_tweak_token: str = Header(None)):
+    """Uploader accounts with their upload statistics; `admin` carries the administrator's own totals."""
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
+    conn = get_conn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(f"""
+            SELECT {', '.join('u.' + f for f in USER_FIELDS)},
+                   COALESCE(s.uploads, 0) AS uploads, COALESCE(s.uploaded_rows, 0) AS uploaded_rows,
+                   COALESCE(s.reverted_batches, 0) AS reverted_batches, s.last_upload_at
+            FROM app_users u
+            LEFT JOIN ({_upload_stats_sql('')}) s ON s.username = u.username
+            ORDER BY u.enabled DESC, u.username
+        """)
+        items = [dict(r) for r in cur.fetchall()]
+        cur.execute(_upload_stats_sql("WHERE username = %s"), (TWEAK_USER,))
+        admin_stats = cur.fetchone()
+        cur.execute("""
+            SELECT MAX(at) AS last_login_at FROM auth_log
+            WHERE username = %s AND event = 'login' AND success
+        """, (TWEAK_USER,))
+        admin_login = cur.fetchone()["last_login_at"]
+    finally:
+        conn.close()
+    admin = {"username": TWEAK_USER, "uploads": 0, "uploaded_rows": 0, "reverted_batches": 0,
+             "last_upload_at": None, **(dict(admin_stats) if admin_stats else {}), "last_login_at": admin_login}
+    return {"items": items, "admin": admin}
+
+
+@app.post("/api/admin/users")
+def admin_create_user(request: Request, body: dict = Body(...), x_tweak_token: str = Header(None)):
+    identity, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
+    username = auth_utils.normalize_username(body.get("username"))
+    profile, error = auth_utils.clean_profile(body.get("display_name"), body.get("department"), body.get("email"))
+    error = auth_utils.username_error(username, reserved=[TWEAK_USER]) or error \
+        or auth_utils.password_error(body.get("password"))
+    if error:
+        return JSONResponse({"error": error}, status_code=400)
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO app_users (username, display_name, department, email, password_hash, created_by,
+                                   password_changed_at)
+            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            ON CONFLICT (username) DO NOTHING
+        """, (username, profile["display_name"], profile["department"], profile["email"],
+              auth_utils.hash_password(body["password"]), identity["username"]))
+        if cur.rowcount == 0:
+            return JSONResponse({"error": f"帳號 {username} 已存在。"}, status_code=400)
+        _audit(cur, request, identity["username"], "create", username, profile)
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "username": username}
+
+
+@app.patch("/api/admin/users/{username}")
+def admin_update_user(username: str, request: Request, body: dict = Body(...), x_tweak_token: str = Header(None)):
+    """Edit the profile and/or enable/disable. Disabling signs the account out everywhere."""
+    identity, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
+    username = auth_utils.normalize_username(username)
+    conn = get_conn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT display_name, department, email, enabled FROM app_users WHERE username = %s", (username,))
+        before = cur.fetchone()
+        if not before:
+            return JSONResponse({"error": "找不到這個帳號。"}, status_code=404)
+        merged = {k: body.get(k, before[k]) for k in ("display_name", "department", "email")}
+        profile, error = auth_utils.clean_profile(merged["display_name"], merged["department"], merged["email"])
+        if error:
+            return JSONResponse({"error": error}, status_code=400)
+        enabled = before["enabled"] if body.get("enabled") is None else bool(body.get("enabled"))
+        changed = {k: (before[k], profile[k]) for k in profile if before[k] != profile[k]}
+        if changed:
+            _audit(cur, request, identity["username"], "update", username,
+                   {"before": {k: v[0] for k, v in changed.items()}, "after": {k: v[1] for k, v in changed.items()}})
+        if enabled != before["enabled"]:
+            _audit(cur, request, identity["username"], "enable" if enabled else "disable", username)
+            if not enabled:
+                _revoke_sessions(cur, username)
+        cur.execute("""
+            UPDATE app_users SET display_name = %s, department = %s, email = %s, enabled = %s, updated_at = NOW()
+            WHERE username = %s
+        """, (profile["display_name"], profile["department"], profile["email"], enabled, username))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "username": username, "enabled": enabled}
+
+
+@app.post("/api/admin/users/{username}/reset-password")
+def admin_reset_password(username: str, request: Request, body: dict = Body(...), x_tweak_token: str = Header(None)):
+    identity, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
+    username = auth_utils.normalize_username(username)
+    error = auth_utils.password_error(body.get("password"))
+    if error:
+        return JSONResponse({"error": error}, status_code=400)
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE app_users SET password_hash = %s, password_changed_at = NOW(), updated_at = NOW()
+            WHERE username = %s
+        """, (auth_utils.hash_password(body["password"]), username))
+        if cur.rowcount == 0:
+            return JSONResponse({"error": "找不到這個帳號。"}, status_code=404)
+        _revoke_sessions(cur, username)
+        _audit(cur, request, identity["username"], "reset_password", username)
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+def _paged_query(cur, base_sql, where, params, order, limit, offset):
+    limit = min(max(int(limit or 50), 1), 200)
+    offset = max(int(offset or 0), 0)
+    cur.execute(f"SELECT COUNT(*) AS n FROM ({base_sql} {where}) t", params)
+    total = cur.fetchone()["n"]
+    cur.execute(f"{base_sql} {where} ORDER BY {order} LIMIT %s OFFSET %s", list(params) + [limit, offset])
+    return {"items": [dict(r) for r in cur.fetchall()], "total": total, "limit": limit, "offset": offset}
+
+
+@app.get("/api/admin/audit")
+def admin_audit(username: str = None, limit: int = 50, offset: int = 0, x_tweak_token: str = Header(None)):
+    """Account changes; `username` matches either the actor or the target."""
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
+    where, params = "", []
+    if username:
+        where, params = "WHERE actor = %s OR target = %s", [username, username]
+    conn = get_conn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        return _paged_query(cur, "SELECT id, at, actor, action, target, detail, client_ip FROM account_audit",
+                            where, params, "at DESC, id DESC", limit, offset)
+    finally:
+        conn.close()
+
+
+@app.get("/api/admin/login-log")
+def admin_login_log(username: str = None, success: str = None, limit: int = 50, offset: int = 0,
+                    x_tweak_token: str = Header(None)):
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
+    clauses, params = [], []
+    if username:
+        clauses.append("username = %s")
+        params.append(username)
+    if success in ("true", "false"):
+        clauses.append("success = %s")
+        params.append(success == "true")
+    where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+    conn = get_conn()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        return _paged_query(cur, "SELECT id, at, username, event, success, reason, client_ip, user_agent FROM auth_log",
+                            where, params, "at DESC, id DESC", limit, offset)
+    finally:
+        conn.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# DB Tweak endpoints (administrator only)
+# ═══════════════════════════════════════════════════════════════════════════════
 
 
 @app.get("/api/tweak/records")
@@ -1014,8 +1447,9 @@ def tweak_records(
     week: int = None, day: str = None, page: int = 1, page_size: str = "50",
     x_tweak_token: str = Header(None),
 ):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     try:
         normalized_page_size = _normalize_page_size(page_size)
     except ValueError as exc:
@@ -1072,8 +1506,9 @@ def tweak_filter_options(
     day: str = None,
     x_tweak_token: str = Header(None),
 ):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     return _get_filter_options(work_order=work_order, year=year, month=month, week=week, day=day)
 
 
@@ -1086,8 +1521,9 @@ def tweak_delete_scope(
     day: str = None,
     x_tweak_token: str = Header(None),
 ):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
 
     if not any([work_order, year, month, week, day]):
         return JSONResponse({"error": "At least one filter is required for scoped delete"}, status_code=400)
@@ -1114,8 +1550,9 @@ def tweak_delete_scope(
 
 @app.delete("/api/tweak/records/{record_id}")
 def tweak_delete_record(record_id: int, x_tweak_token: str = Header(None)):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("DELETE FROM module_test WHERE id = %s", (record_id,))
@@ -1128,8 +1565,9 @@ def tweak_delete_record(record_id: int, x_tweak_token: str = Header(None)):
 
 @app.delete("/api/tweak/date-unit/{unit_date}")
 def tweak_delete_date_unit(unit_date: str, x_tweak_token: str = Header(None)):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("DELETE FROM module_test WHERE COALESCE(unit_date, start_time::date) = %s", (unit_date,))
@@ -1142,8 +1580,9 @@ def tweak_delete_date_unit(unit_date: str, x_tweak_token: str = Header(None)):
 
 @app.delete("/api/tweak/work-order/{wo}")
 def tweak_delete_work_order(wo: str, x_tweak_token: str = Header(None)):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     conn = get_conn()
     cur = conn.cursor()
     cur.execute("DELETE FROM module_test WHERE work_order = %s", (wo,))
@@ -1160,8 +1599,9 @@ def tweak_delete_by_date(
     month: int = Query(None),
     x_tweak_token: str = Header(None),
 ):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     clauses = ["EXTRACT(YEAR FROM COALESCE(unit_date, start_time::date)) = %s"]
     params = [year]
     label = str(year)
@@ -1181,8 +1621,9 @@ def tweak_delete_by_date(
 
 @app.get("/api/tweak/date-options")
 def tweak_date_options(x_tweak_token: str = Header(None)):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
@@ -1202,9 +1643,9 @@ def tweak_date_options(x_tweak_token: str = Header(None)):
 
 @app.get("/api/tweak/raw-log/{record_id}")
 def tweak_raw_log(record_id: int, x_tweak_token: str = Header(None), token: str = None):
-    auth_token = x_tweak_token or token
-    if not auth_token or not _check_tweak_auth(auth_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token or token, admin=True)
+    if denied:
+        return denied
     conn = get_conn()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("SELECT raw_log, source_file FROM module_test WHERE id = %s", (record_id,))
@@ -1241,8 +1682,9 @@ def _load_parser():
 # ─── Reparse existing records (extract fail_error_code/fail_category from raw_log) ──
 @app.post("/api/reparse")
 def api_reparse(x_tweak_token: str = Header(None)):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    _, denied = _authenticate(x_tweak_token, admin=True)
+    if denied:
+        return denied
     import re as _re
     import tempfile
 
@@ -1403,18 +1845,6 @@ def ai_summary(wo: str, product_model: str = None, lang: str = "zh", mode: str =
 # Flow: analyze (facts, no DB writes) → validate (rules) → commit (NDJSON stream)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def _tweak_user(auth_token):
-    import base64
-    try:
-        return base64.b64decode(auth_token).decode().split(":", 1)[0]
-    except Exception:
-        return None
-
-
-def _client_ip(request):
-    return request.headers.get("x-real-ip") or (request.client.host if request.client else None)
-
-
 def _valid_upload_id(upload_id):
     return isinstance(upload_id, str) and len(upload_id) == 32 and all(c in "0123456789abcdef" for c in upload_id)
 
@@ -1474,6 +1904,16 @@ def _fetch_upload(conn, upload_id):
     return row
 
 
+def _owned_upload(conn, upload_id, identity, not_found="找不到這個上傳批次"):
+    """(row, None) or (None, 404/403 response). Uploaders reach only the batches they analyzed."""
+    row = _fetch_upload(conn, upload_id)
+    if not row:
+        return None, JSONResponse({"error": not_found}, status_code=404)
+    if not auth_utils.can_access_upload(identity, row["username"]):
+        return None, JSONResponse({"error": "這不是你的上傳批次"}, status_code=403)
+    return row, None
+
+
 def _validation_payload(issues):
     return {
         "issues": issues,
@@ -1485,8 +1925,9 @@ def _validation_payload(issues):
 @app.post("/api/log-upload/analyze")
 def log_upload_analyze(request: Request, file: UploadFile = File(...), x_tweak_token: str = Header(None)):
     """Store the zip, split every station's Log_All.txt in memory and report facts. No module_test writes."""
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
     zip_name = os.path.basename(file.filename or "upload.zip")
     if not zip_name.lower().endswith(".zip"):
         return JSONResponse({"error": "請選擇 .zip 壓縮檔"}, status_code=400)
@@ -1525,29 +1966,30 @@ def log_upload_analyze(request: Request, file: UploadFile = File(...), x_tweak_t
         cur = conn.cursor()
         facts["existing_by_wo"] = _existing_by_wo(cur, hashes)
         cur.execute("""
-            INSERT INTO upload_log (id, client_ip, tweak_user, zip_name, zip_size, inferred_wo,
+            INSERT INTO upload_log (id, client_ip, username, user_role, zip_name, zip_size, inferred_wo,
                                     unique_mac1, total_records, facts, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'analyzed')
-        """, (upload_id, _client_ip(request), _tweak_user(x_tweak_token), zip_name, zip_size,
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'analyzed')
+        """, (upload_id, _client_ip(request), identity["username"], identity["role"], zip_name, zip_size,
               facts["inferred_wo"], facts["unique_mac1"], facts["total_records"],
               psycopg2.extras.Json(facts)))
         conn.commit()
     finally:
         conn.close()
-    return {"upload_id": upload_id, "facts": facts}
+    return {"upload_id": upload_id, "facts": facts, "chat_opening": upload_chat.opening_message(facts)}
 
 
 @app.post("/api/log-upload/validate")
 def log_upload_validate(body: dict = Body(...), x_tweak_token: str = Header(None)):
     """Run the upload rules (R1–R8) for the entered work order / planned quantity."""
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
     work_order = (body.get("work_order") or "").strip()
     conn = get_conn()
     try:
-        row = _fetch_upload(conn, body.get("upload_id"))
-        if not row:
-            return JSONResponse({"error": "找不到這個上傳批次，請重新選擇 zip"}, status_code=404)
+        row, denied = _owned_upload(conn, body.get("upload_id"), identity, "找不到這個上傳批次，請重新選擇 zip")
+        if denied:
+            return denied
         cur = conn.cursor()
         facts = row["facts"]
         issues = log_splitter.validate_upload(facts, work_order, body.get("planned_qty"),
@@ -1557,12 +1999,141 @@ def log_upload_validate(body: dict = Body(...), x_tweak_token: str = Header(None
     return _validation_payload(issues)
 
 
+def _llm_request(payload, stream=False):
+    data = {"model": LLM_MODEL, "chat_template_kwargs": {"enable_thinking": False}, "stream": stream, **payload}
+    req = urllib.request.Request(
+        f"{LLM_API_BASE}/chat/completions",
+        data=json.dumps(data).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {LLM_API_KEY}"},
+    )
+    return urllib.request.urlopen(req, timeout=LLM_CHAT_TIMEOUT)
+
+
+def _llm_stream_text(payload):
+    """Yield content deltas from an OpenAI-compatible SSE stream."""
+    with _llm_request(payload, stream=True) as resp:
+        for raw in resp:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue
+            chunk = line[5:].strip()
+            if chunk == "[DONE]":
+                break
+            choices = json.loads(chunk).get("choices") or []
+            delta = (choices[0].get("delta") or {}).get("content") if choices else None
+            if delta:
+                yield delta
+
+
+def _chat_extract(messages):
+    """(work_order, planned_qty, status) from the latest user message; status: ok | bad_output | unreachable."""
+    try:
+        with _llm_request({
+            "messages": upload_chat.build_extract_messages(messages),
+            "temperature": 0,
+            "max_tokens": upload_chat.EXTRACT_MAX_TOKENS,
+            "response_format": {"type": "json_schema",
+                                "json_schema": {"name": "upload_fields", "schema": upload_chat.EXTRACT_SCHEMA}},
+        }) as resp:
+            content = json.loads(resp.read().decode("utf-8"))["choices"][0]["message"]["content"]
+    except Exception as exc:
+        print(f"Upload chat extract: LLM unreachable: {exc}")
+        return None, None, "unreachable"
+    try:
+        wo, qty = upload_chat.parse_extract(content)
+    except (ValueError, TypeError) as exc:
+        print(f"Upload chat extract: unusable output {content!r}: {exc}")
+        return None, None, "bad_output"
+    return wo, qty, "ok"
+
+
+@app.post("/api/log-upload/chat")
+def log_upload_chat(body: dict = Body(...), x_tweak_token: str = Header(None)):
+    """One AI-assistant turn → NDJSON: extract, validation, delta…, done | fallback.
+
+    The rules (R1–R8) decide; the LLM only phrases their result. `known` carries the values
+    already confirmed in the form or earlier turns, so switching modes keeps them."""
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
+    try:
+        messages = upload_chat.normalize_messages(body.get("messages"))
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc)}, status_code=400)
+    upload_id = body.get("upload_id")
+    conn = get_conn()
+    try:
+        row, denied = _owned_upload(conn, upload_id, identity, "找不到這個上傳批次，請重新選擇 zip")
+        if denied:
+            return denied
+        if row["status"] not in ("analyzed", "failed"):
+            return JSONResponse({"error": f"這個批次已經處理過（狀態：{row['status']}）"}, status_code=409)
+        facts = row["facts"]
+        llm_wo, llm_qty, status = _chat_extract(messages)
+        fields = upload_chat.merge_fields(body.get("known"), messages[-1]["content"], llm_wo, llm_qty,
+                                          llm_ok=(status == "ok"))
+        cur = conn.cursor()
+        issues = log_splitter.validate_upload(facts, fields["work_order"] or "", fields["planned_qty"],
+                                              facts.get("existing_by_wo"), _current_target(cur, fields["work_order"]))
+    finally:
+        conn.close()
+
+    def events():
+        yield _ndjson({"type": "extract", **fields, "extract_ok": status == "ok"})
+        yield _ndjson({"type": "validation", **_validation_payload(issues)})
+        if status == "unreachable":
+            yield _ndjson({"type": "fallback", "reason": "AI 助理目前無法連線"})
+            return
+        parts = []
+        try:
+            for text in _llm_stream_text({
+                "messages": upload_chat.build_reply_messages(facts, fields, issues, messages),
+                "temperature": 0.3,
+                "max_tokens": upload_chat.REPLY_MAX_TOKENS,
+            }):
+                parts.append(text)
+                yield _ndjson({"type": "delta", "text": text})
+        except Exception as exc:
+            print(f"Upload chat reply failed: {exc}")
+            yield _ndjson({"type": "fallback", "reason": "AI 助理回覆逾時或中斷"})
+            return
+        reply = "".join(parts).strip()
+        if not reply:
+            reply = upload_chat.fallback_reply(fields)
+            yield _ndjson({"type": "delta", "text": reply})
+        _save_chat_transcript(upload_id, messages + [{"role": "assistant", "content": reply}])
+        yield _ndjson({"type": "done", "reply": reply})
+
+    return StreamingResponse(events(), media_type="application/x-ndjson")
+
+
+def _ndjson(event):
+    return json.dumps(event, ensure_ascii=False, default=str) + "\n"
+
+
+def _save_chat_transcript(upload_id, transcript):
+    """Keep the server's copy of the conversation even if the batch is never committed."""
+    conn = get_conn()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE upload_log SET chat_transcript = %s
+            WHERE id = %s AND status IN ('analyzed', 'failed')
+        """, (psycopg2.extras.Json(transcript), upload_id))
+        conn.commit()
+    except Exception as exc:
+        print(f"Upload chat transcript not saved: {exc}")
+    finally:
+        conn.close()
+
+
 @app.post("/api/log-upload/commit")
 def log_upload_commit(body: dict = Body(...), x_tweak_token: str = Header(None)):
     """Re-validate against the current DB, then ingest in a background thread and stream progress as NDJSON.
     The ingest keeps running if the browser disconnects; the outcome is recorded in upload_log."""
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
     upload_id = body.get("upload_id")
     work_order = (body.get("work_order") or "").strip()
     planned_qty = body.get("planned_qty")
@@ -1571,9 +2142,9 @@ def log_upload_commit(body: dict = Body(...), x_tweak_token: str = Header(None))
     conn = get_conn()
     handed_off = False
     try:
-        row = _fetch_upload(conn, upload_id)
-        if not row:
-            return JSONResponse({"error": "找不到這個上傳批次，請重新選擇 zip"}, status_code=404)
+        row, denied = _owned_upload(conn, upload_id, identity, "找不到這個上傳批次，請重新選擇 zip")
+        if denied:
+            return denied
         if row["status"] not in ("analyzed", "failed"):
             return JSONResponse({"error": f"這個批次已經處理過（狀態：{row['status']}）"}, status_code=409)
         zip_path, hashes_path = _upload_paths(upload_id)
@@ -1599,13 +2170,13 @@ def log_upload_commit(body: dict = Body(...), x_tweak_token: str = Header(None))
             return JSONResponse({**payload, "error": "有警告尚未確認"}, status_code=400)
 
         qty = log_splitter.parse_quantity(planned_qty)
+        # chat_transcript is already stored turn by turn by /chat (server copy, not the client's).
         cur.execute("""
             UPDATE upload_log
             SET work_order = %s, planned_qty = %s, prev_target = %s, facts = %s, validation = %s,
-                chat_transcript = %s, mode = %s, status = 'running', error = NULL
+                mode = %s, status = 'running', error = NULL
             WHERE id = %s
         """, (work_order, qty, prev_target, psycopg2.extras.Json(facts), psycopg2.extras.Json(issues),
-              psycopg2.extras.Json(body.get("chat_transcript")) if body.get("chat_transcript") else None,
               mode, upload_id))
         conn.commit()
 
@@ -1627,9 +2198,9 @@ def _ndjson_events(events):
         try:
             event = events.get(timeout=15)
         except queue.Empty:
-            yield json.dumps({"type": "heartbeat"}) + "\n"
+            yield _ndjson({"type": "heartbeat"})
             continue
-        yield json.dumps(event, ensure_ascii=False, default=str) + "\n"
+        yield _ndjson(event)
         if event["type"] in ("done", "error"):
             break
 
@@ -1712,22 +2283,32 @@ def _run_ingest(conn, events, upload_id, zip_path, work_order, planned_qty, tota
 
 
 @app.get("/api/log-upload/history")
-def log_upload_history(limit: int = 20, x_tweak_token: str = Header(None)):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+def log_upload_history(limit: int = 20, username: str = None, x_tweak_token: str = Header(None)):
+    """Recent batches. Uploaders always get only their own; the administrator may filter by uploader."""
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
     limit = min(max(int(limit or 20), 1), 200)
+    if identity["role"] != "admin":
+        username = identity["username"]
+    where, params = "WHERE l.status <> 'analyzed'", []
+    if username:
+        where += " AND l.username = %s"
+        params.append(username)
     conn = get_conn()
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
-            SELECT id, created_at, finished_at, tweak_user, client_ip, zip_name, work_order, planned_qty,
-                   unique_mac1, total_records, mode, status, uploaded, skipped, failed, reverted,
-                   elapsed_sec, error
-            FROM upload_log
-            WHERE status <> 'analyzed'
-            ORDER BY created_at DESC
+        cur.execute(f"""
+            SELECT l.id, l.created_at, l.finished_at, l.username, l.user_role,
+                   COALESCE(u.display_name, l.username) AS display_name, l.client_ip, l.zip_name,
+                   l.work_order, l.planned_qty, l.unique_mac1, l.total_records, l.mode, l.status,
+                   l.uploaded, l.skipped, l.failed, l.reverted, l.reverted_by, l.reverted_at,
+                   l.elapsed_sec, l.error
+            FROM upload_log l LEFT JOIN app_users u ON u.username = l.username
+            {where}
+            ORDER BY l.created_at DESC
             LIMIT %s
-        """, (limit,))
+        """, params + [limit])
         rows = [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
@@ -1736,28 +2317,28 @@ def log_upload_history(limit: int = 20, x_tweak_token: str = Header(None)):
 
 @app.get("/api/log-upload/{upload_id}")
 def log_upload_detail(upload_id: str, x_tweak_token: str = Header(None)):
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
     conn = get_conn()
     try:
-        row = _fetch_upload(conn, upload_id)
+        row, denied = _owned_upload(conn, upload_id, identity)
     finally:
         conn.close()
-    if not row:
-        return JSONResponse({"error": "找不到這個上傳批次"}, status_code=404)
-    return dict(row)
+    return denied or dict(row)
 
 
 @app.delete("/api/log-upload/{upload_id}")
 def log_upload_revert(upload_id: str, x_tweak_token: str = Header(None)):
     """Undo one web upload: delete only the rows it inserted and restore the alignment target it set."""
-    if not x_tweak_token or not _check_tweak_auth(x_tweak_token):
-        return JSONResponse({"error": "Unauthorized"}, status_code=401)
+    identity, denied = _authenticate(x_tweak_token)
+    if denied:
+        return denied
     conn = get_conn()
     try:
-        row = _fetch_upload(conn, upload_id)
-        if not row:
-            return JSONResponse({"error": "找不到這個上傳批次"}, status_code=404)
+        row, denied = _owned_upload(conn, upload_id, identity)
+        if denied:
+            return denied
         if row["status"] not in ("done", "failed"):
             return JSONResponse({"error": f"只有已完成或失敗的批次可以撤銷（目前狀態：{row['status']}）"}, status_code=400)
         cur = conn.cursor()
@@ -1770,7 +2351,10 @@ def log_upload_revert(upload_id: str, x_tweak_token: str = Header(None)):
             else:
                 cur.execute("UPDATE alignment_targets SET target_total = %s, updated_at = NOW() WHERE work_order = %s",
                             (row["prev_target"], wo))
-        cur.execute("UPDATE upload_log SET status = 'reverted', reverted = %s WHERE id = %s", (reverted, upload_id))
+        cur.execute("""
+            UPDATE upload_log SET status = 'reverted', reverted = %s, reverted_by = %s, reverted_at = NOW()
+            WHERE id = %s
+        """, (reverted, identity["username"], upload_id))
         conn.commit()
     finally:
         conn.close()
