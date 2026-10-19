@@ -41,7 +41,7 @@ async function load(app) {
     } catch (err) {
         if (mine !== seq) return;
         rows = [];
-        tableState(tbody, 10, 'error', `${t('common.loadFailed')}：${err.message}`, () => load(app));
+        tableState(tbody, 10, 'error', t('common.loadFailedMsg', { error: err.message }), () => load(app));
     }
 }
 

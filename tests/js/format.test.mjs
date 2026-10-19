@@ -1,7 +1,7 @@
 // node --test tests/js — browser modules that do not touch the DOM.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { esc, fmtDate, fmtInt, fmtPct, fmtSigned, isoDate, retryLevel, setThresholds, THRESHOLDS, toDate, yieldLevel } from '../../solo-pixi-essential/web/js/core/format.js';
+import { esc, fmtClockDate, fmtDate, fmtInt, fmtPct, fmtSigned, isoDate, retryLevel, setThresholds, THRESHOLDS, toDate, yieldLevel } from '../../solo-pixi-essential/web/js/core/format.js';
 
 test('yield colour levels use the shared thresholds (98 / 95)', () => {
     assert.equal(yieldLevel(99.97), 'good');
@@ -47,4 +47,11 @@ test('dates: API strings and ISO parameters', () => {
 test('esc() is safe inside attributes', () => {
     assert.equal(esc(`<b title="x">'&`), '&lt;b title=&quot;x&quot;&gt;&#39;&amp;');
     assert.equal(esc(null), '');
+});
+
+test('sidebar clock date stays numeric in both languages', () => {
+    const d = new Date(2026, 9, 20);
+    assert.equal(fmtClockDate(d, 'en'), '2026/10/20 (Tue)');
+    assert.equal(fmtClockDate(d, 'zh'), '2026/10/20（週二）');
+    assert.equal(fmtClockDate(null, 'en'), '—');
 });

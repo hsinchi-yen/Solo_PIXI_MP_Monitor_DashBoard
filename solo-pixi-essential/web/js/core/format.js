@@ -67,6 +67,14 @@ export function fmtTime(value) {
     return d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '—';
 }
 
+/** Sidebar clock date, numeric in both languages: 2026/10/20（週二） or 2026/10/20 (Tue). */
+export function fmtClockDate(value, lang = 'zh') {
+    const d = toDate(value);
+    if (!d) return '—';
+    if (lang !== 'en') return d.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
+    return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} (${d.toLocaleDateString('en-US', { weekday: 'short' })})`;
+}
+
 export function fmtDateTime(value) {
     const d = toDate(value);
     return d ? `${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}` : '—';

@@ -15,7 +15,7 @@ import psycopg2.extras
 import config
 import db
 import log_splitter
-from errors import ApiError
+from errors import ApiError, Msg
 from services import auth_utils, reparse, reports, stats
 
 log = logging.getLogger("pixi.upload")
@@ -75,13 +75,13 @@ def fetch_upload(conn, upload_id):
     return db.fetch_one(conn, "SELECT * FROM upload_log WHERE id = %s", (upload_id,))
 
 
-def owned_upload(conn, upload_id, identity, not_found="找不到這個上傳批次"):
+def owned_upload(conn, upload_id, identity, not_found=Msg("找不到這個上傳批次", "Upload batch not found.")):
     """The upload_log row; 404 if missing, 403 if an uploader asks for someone else's batch."""
     row = fetch_upload(conn, upload_id)
     if not row:
         raise ApiError(404, not_found, "no_upload")
     if not auth_utils.can_access_upload(identity, row["username"]):
-        raise ApiError(403, "這不是你的上傳批次", "not_owner")
+        raise ApiError(403, Msg("這不是你的上傳批次", "This upload batch belongs to another user."), "not_owner")
     return row
 
 
@@ -177,7 +177,8 @@ def run_ingest(conn, events, upload_id, zip_path, work_order, planned_qty, total
         except Exception:
             pass
         _after_change(work_order, queue_report=False)
-        events.put({"type": "error", "message": "上傳中斷，已寫入的資料可撤銷或重新上傳", **st})
+        events.put({"type": "error", "message": "上傳中斷，已寫入的資料可撤銷或重新上傳",
+                    "message_en": "Upload interrupted. Rows already written can be undone or uploaded again.", **st})
     finally:
         try:
             conn.close()

@@ -61,7 +61,7 @@ async function load(app) {
         </tr>`).join('');
     } catch (err) {
         if (mine !== seq) return;
-        const msg = `${t('common.loadFailed')}：${err.message}`;
+        const msg = t('common.loadFailedMsg', { error: err.message });
         charts.chartMessage('chFaSteps', msg, 'error');
         charts.chartMessage('chFaConfig', msg, 'error');
         tableState(tbody, 4, 'error', msg, () => load(app));

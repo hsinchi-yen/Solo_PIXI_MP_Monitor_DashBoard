@@ -47,6 +47,8 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; 
 .auth-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .auth-role { font-size: 11px; color: var(--text-3); }
 .auth-actions { display: flex; gap: 6px; margin-top: 8px; }
+.prefs { display: flex; gap: 6px; }
+.prefs .btn { flex: 1 1 0; }
 .status-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-3); flex: none; }
 .dot.ok { background: var(--good); }
@@ -170,7 +172,8 @@ td.nowrap, th.nowrap { white-space: nowrap; }
 }
 .modal-panel.wide { width: min(100%, 1040px); }
 .modal-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 2; flex-wrap: wrap; }
-.modal-title { font-size: 17px; font-weight: 700; flex: 1; min-width: 160px; }
+/* Do not shrink below the text (an English title would break inside the work order); wrap the buttons instead. */
+.modal-title { font-size: 17px; font-weight: 700; flex: 1 0 auto; max-width: 100%; }
 .modal-body { padding: 18px; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 0 18px 18px; }
 .icon-btn { border: 0; background: none; color: var(--text-2); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
@@ -187,6 +190,7 @@ td.nowrap, th.nowrap { white-space: nowrap; }
     .nav { display: flex; flex-wrap: wrap; gap: 4px; }
     .nav-label { width: 100%; padding: 8px 6px 2px; }
     .nav-item { width: auto; }
+    .seg button { padding: 6px 8px; white-space: nowrap; }
     .clock { display: none; }
     .grid.cols-2, .grid.cols-3, .grid.cols-4 { grid-template-columns: minmax(0, 1fr); }
     .topbar { position: static; padding: 12px 16px; }

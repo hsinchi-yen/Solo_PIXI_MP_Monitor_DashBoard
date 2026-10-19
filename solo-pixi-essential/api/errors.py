@@ -1,11 +1,27 @@
-"""One error shape for every endpoint: {"error": <message for people>, "code": <machine code>}.
+"""One error shape for every endpoint:
+{"error": <中文 message>, "error_en": <English message>, "code": <machine code>}.
 
+Messages are written as Msg("中文", "English"); the web UI shows the one matching its language.
 ApiError and its helpers are plain Python (services raise them and unit tests import them
 without FastAPI installed); install() wires the handlers into the app.
 """
 import logging
 
 log = logging.getLogger("pixi.api")
+
+
+class Msg(str):
+    """A user-facing message: the str value is Traditional Chinese, `.en` is English."""
+
+    def __new__(cls, zh, en):
+        obj = super().__new__(cls, zh)
+        obj.en = en
+        return obj
+
+
+def english(message):
+    """The English version of a message (a plain str has none)."""
+    return getattr(message, "en", None)
 
 
 class ApiError(Exception):
@@ -21,7 +37,7 @@ def bad_request(message, code="bad_request", **extra):
     return ApiError(400, message, code, **extra)
 
 
-def not_found(message="找不到資料", code="not_found"):
+def not_found(message=Msg("找不到資料", "Not found"), code="not_found"):
     return ApiError(404, message, code)
 
 
@@ -31,7 +47,10 @@ def conflict(message, code="conflict", **extra):
 
 def error_response(status, message, code="error", **extra):
     from fastapi.responses import JSONResponse
-    return JSONResponse({"error": message, "code": code, **extra}, status_code=status)
+    body = {"error": str(message), "code": code, **extra}
+    if english(message):
+        body["error_en"] = english(message)
+    return JSONResponse(body, status_code=status)
 
 
 def install(app):
@@ -54,10 +73,11 @@ def install(app):
     @app.exception_handler(RequestValidationError)
     async def _validation_error(_request: Request, exc: RequestValidationError):
         fields = [".".join(str(p) for p in e.get("loc", [])[1:]) or "body" for e in exc.errors()]
-        return error_response(400, f"參數格式不正確：{', '.join(fields)}", "validation")
+        return error_response(400, Msg(f"參數格式不正確：{', '.join(fields)}", f"Invalid parameters: {', '.join(fields)}"),
+                              "validation")
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception):
         # Never echo exception text (it can carry DB host/user); the log has the details.
         log.exception("unhandled error on %s %s", request.method, request.url.path)
-        return error_response(500, "伺服器發生錯誤，請稍後再試", "internal")
+        return error_response(500, Msg("伺服器發生錯誤，請稍後再試", "Server error. Please try again later."), "internal")

@@ -57,7 +57,7 @@ async function load(app = appRef) {
         renderPager($('#failPager'), data, p => { state.page = p; load(); });
     } catch (err) {
         if (mine !== seq) return;
-        tableState(tbody, 9, 'error', `${t('common.loadFailed')}：${err.message}`, () => load());
+        tableState(tbody, 9, 'error', t('common.loadFailedMsg', { error: err.message }), () => load());
         $('#failPager').innerHTML = '';
     }
 }

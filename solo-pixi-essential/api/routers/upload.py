@@ -17,11 +17,13 @@ from fastapi.responses import StreamingResponse
 import config
 import db
 import log_splitter
-from errors import ApiError, bad_request, conflict
+from errors import ApiError, Msg, bad_request, conflict
 from schemas import ChatBody, CommitBody, ValidateBody
 from services import auth, ingest, llm, stats, upload_chat
 
 router = APIRouter(prefix="/api/log-upload", tags=["log-upload"])
+
+NOT_FOUND_RETRY = Msg("找不到這個上傳批次，請重新選擇 zip", "Upload batch not found. Please choose the zip again.")
 
 
 @router.post("/analyze")
@@ -29,7 +31,7 @@ def analyze(request: Request, file: UploadFile = File(...), user=Depends(auth.cu
     """Store the zip, split every station's Log_All.txt in memory and report facts. No module_test writes."""
     zip_name = os.path.basename(file.filename or "upload.zip")
     if not zip_name.lower().endswith(".zip"):
-        raise bad_request("請選擇 .zip 壓縮檔", "not_zip")
+        raise bad_request(Msg("請選擇 .zip 壓縮檔", "Please choose a .zip file."), "not_zip")
 
     ingest.cleanup_stale_uploads()
     os.makedirs(config.UPLOAD_TMP_DIR, exist_ok=True)
@@ -43,19 +45,20 @@ def analyze(request: Request, file: UploadFile = File(...), user=Depends(auth.cu
         with zipfile.ZipFile(zip_path) as zf:
             entries = log_splitter.find_log_all_entries(zf)
             if not entries:
-                raise ValueError("壓縮檔內找不到站別資料夾（例如 10/20/30/40）下的 Log_All.txt")
+                raise ValueError(Msg("壓縮檔內找不到站別資料夾（例如 10/20/30/40）下的 Log_All.txt",
+                                     "No Log_All.txt found under a station folder (such as 10/20/30/40) in the zip."))
             if sum(info.file_size for _, info in entries) > config.UPLOAD_MAX_LOG_ALL_BYTES:
-                raise ValueError("Log_All.txt 解壓後總大小超過 500 MB 上限")
+                raise ValueError(Msg("Log_All.txt 解壓後總大小超過 500 MB 上限", "The Log_All.txt files exceed 500 MB in total."))
             facts, hashes = log_splitter.analyze_zip(zf, zip_name)
     except zipfile.BadZipFile:
         ingest.remove_upload_files(upload_id)
-        raise bad_request("檔案不是有效的 zip 壓縮檔", "bad_zip")
+        raise bad_request(Msg("檔案不是有效的 zip 壓縮檔", "The file is not a valid zip."), "bad_zip")
     except ValueError as exc:
         ingest.remove_upload_files(upload_id)
-        raise bad_request(str(exc), "no_log_all")
+        raise bad_request(exc.args[0], "no_log_all")
     except Exception:  # corrupt member, unsupported compression, ...
         ingest.remove_upload_files(upload_id)
-        raise bad_request("無法讀取壓縮檔內容，檔案可能已損壞", "bad_zip")
+        raise bad_request(Msg("無法讀取壓縮檔內容，檔案可能已損壞", "Cannot read the zip; the file may be damaged."), "bad_zip")
 
     with open(hashes_path, "w") as f:
         json.dump(hashes, f)
@@ -68,7 +71,8 @@ def analyze(request: Request, file: UploadFile = File(...), user=Depends(auth.cu
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'analyzed')
         """, (upload_id, auth.client_ip(request), user["username"], user["role"], zip_name, zip_size,
               facts["inferred_wo"], facts["unique_mac1"], facts["total_records"], psycopg2.extras.Json(facts)))
-    return {"upload_id": upload_id, "facts": facts, "chat_opening": upload_chat.opening_message(facts)}
+    return {"upload_id": upload_id, "facts": facts, "chat_opening": upload_chat.opening_message(facts),
+            "chat_opening_en": upload_chat.opening_message(facts, "en")}
 
 
 @router.post("/validate")
@@ -76,7 +80,7 @@ def validate(body: ValidateBody, user=Depends(auth.current_user)):
     """Run the upload rules (R1–R8) for the entered work order / planned quantity."""
     work_order = (body.work_order or "").strip()
     with db.db() as conn:
-        row = ingest.owned_upload(conn, body.upload_id, user, "找不到這個上傳批次，請重新選擇 zip")
+        row = ingest.owned_upload(conn, body.upload_id, user, NOT_FOUND_RETRY)
         facts = row["facts"]
         issues = log_splitter.validate_upload(facts, work_order, body.planned_qty,
                                               facts.get("existing_by_wo"), ingest.current_target(conn, work_order))
@@ -98,19 +102,21 @@ def _chat_extract(messages):
 
 @router.post("/chat")
 def chat(body: ChatBody, user=Depends(auth.current_user)):
-    """One AI-assistant turn → NDJSON: extract, validation, delta…, done | fallback.
+    """One AI-assistant turn → NDJSON: extract, validation, delta…, done | fallback. Replies in `lang` (zh | en).
 
     The rules (R1–R8) decide; the LLM only phrases their result. `known` carries the values
     already confirmed in the form or earlier turns, so switching modes keeps them."""
     try:
         messages = upload_chat.normalize_messages(body.messages)
     except ValueError as exc:
-        raise bad_request(str(exc), "bad_messages")
+        raise bad_request(exc.args[0], "bad_messages")
     upload_id = body.upload_id
+    lang = upload_chat.ui_lang(body.lang)
     with db.db() as conn:
-        row = ingest.owned_upload(conn, upload_id, user, "找不到這個上傳批次，請重新選擇 zip")
+        row = ingest.owned_upload(conn, upload_id, user, NOT_FOUND_RETRY)
         if row["status"] not in ("analyzed", "failed"):
-            raise conflict(f"這個批次已經處理過（狀態：{row['status']}）", "already_processed")
+            raise conflict(Msg(f"這個批次已經處理過（狀態：{row['status']}）",
+                               f"This batch has already been processed (status: {row['status']})."), "already_processed")
         facts = row["facts"]
         llm_wo, llm_qty, status = _chat_extract(messages)
         fields = upload_chat.merge_fields(body.known, messages[-1]["content"], llm_wo, llm_qty, llm_ok=(status == "ok"))
@@ -122,20 +128,20 @@ def chat(body: ChatBody, user=Depends(auth.current_user)):
         yield ingest.ndjson({"type": "extract", **fields, "extract_ok": status == "ok"})
         yield ingest.ndjson({"type": "validation", **ingest.validation_payload(issues)})
         if status == "unreachable":
-            yield ingest.ndjson({"type": "fallback", "reason": "AI 助理目前無法連線"})
+            yield ingest.ndjson({"type": "fallback", "reason": "AI 助理目前無法連線", "reason_en": "The AI assistant is unreachable"})
             return
         parts = []
         try:
-            for text in llm.stream_text(upload_chat.build_reply_messages(facts, fields, issues, messages),
+            for text in llm.stream_text(upload_chat.build_reply_messages(facts, fields, issues, messages, lang),
                                         temperature=0.3, max_tokens=upload_chat.REPLY_MAX_TOKENS):
                 parts.append(text)
                 yield ingest.ndjson({"type": "delta", "text": text})
         except Exception:
-            yield ingest.ndjson({"type": "fallback", "reason": "AI 助理回覆逾時或中斷"})
+            yield ingest.ndjson({"type": "fallback", "reason": "AI 助理回覆逾時或中斷", "reason_en": "The AI assistant timed out"})
             return
         reply = "".join(parts).strip()
         if not reply:
-            reply = upload_chat.fallback_reply(fields)
+            reply = upload_chat.fallback_reply(fields, lang)
             yield ingest.ndjson({"type": "delta", "text": reply})
         _save_chat_transcript(upload_id, messages + [{"role": "assistant", "content": reply}])
         yield ingest.ndjson({"type": "done", "reply": reply})
@@ -163,16 +169,17 @@ def commit(body: CommitBody, user=Depends(auth.current_user)):
     conn = db.connect()
     handed_off = False
     try:
-        row = ingest.owned_upload(conn, upload_id, user, "找不到這個上傳批次，請重新選擇 zip")
+        row = ingest.owned_upload(conn, upload_id, user, NOT_FOUND_RETRY)
         if row["status"] not in ("analyzed", "failed"):
-            raise conflict(f"這個批次已經處理過（狀態：{row['status']}）", "already_processed")
+            raise conflict(Msg(f"這個批次已經處理過（狀態：{row['status']}）",
+                               f"This batch has already been processed (status: {row['status']})."), "already_processed")
         zip_path, hashes_path = ingest.upload_paths(upload_id)
         if not (os.path.exists(zip_path) and os.path.exists(hashes_path)):
-            raise ApiError(410, "暫存檔已過期，請重新選擇 zip", "expired")
+            raise ApiError(410, Msg("暫存檔已過期，請重新選擇 zip", "The uploaded file has expired. Please choose the zip again."), "expired")
 
         # Session-level lock; released when this connection closes (early return or ingest end).
         if not db.fetch_one(conn, "SELECT pg_try_advisory_lock(%s) AS ok", (config.UPLOAD_LOCK_KEY,))["ok"]:
-            raise conflict("已有其他上傳正在進行，請稍後再試", "upload_running")
+            raise conflict(Msg("已有其他上傳正在進行，請稍後再試", "Another upload is in progress. Please try again later."), "upload_running")
 
         with open(hashes_path) as f:
             hashes = json.load(f)
@@ -182,9 +189,9 @@ def commit(body: CommitBody, user=Depends(auth.current_user)):
         issues = log_splitter.validate_upload(facts, work_order, body.planned_qty, facts["existing_by_wo"], prev_target)
         payload = ingest.validation_payload(issues)
         if not payload["can_upload"]:
-            raise bad_request("輸入資料有誤，請修正後再上傳", "invalid", **payload)
+            raise bad_request(Msg("輸入資料有誤，請修正後再上傳", "Please fix the errors before uploading."), "invalid", **payload)
         if payload["needs_ack"] and not body.ack_warnings:
-            raise bad_request("有警告尚未確認", "needs_ack", **payload)
+            raise bad_request(Msg("有警告尚未確認", "Please confirm the warnings first."), "needs_ack", **payload)
 
         qty = log_splitter.parse_quantity(body.planned_qty)
         # chat_transcript is already stored turn by turn by /chat (server copy, not the client's).
@@ -244,7 +251,8 @@ def revert(upload_id: str, user=Depends(auth.current_user)):
     with db.db() as conn:
         row = ingest.owned_upload(conn, upload_id, user)
         if row["status"] not in ("done", "failed"):
-            raise bad_request(f"只有已完成或失敗的批次可以撤銷（目前狀態：{row['status']}）", "not_revertible")
+            raise bad_request(Msg(f"只有已完成或失敗的批次可以撤銷（目前狀態：{row['status']}）",
+                                  f"Only finished or failed batches can be undone (current status: {row['status']})."), "not_revertible")
         reverted = db.execute(conn, "DELETE FROM module_test WHERE upload_id = %s", (upload_id,))
         wo, qty = row["work_order"], row["planned_qty"]
         if wo and qty and ingest.current_target(conn, wo) == qty:

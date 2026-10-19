@@ -83,8 +83,8 @@ def infer_work_order(*names):
     return None
 
 
-def _missing_fields(parsed):
-    labels = [('mac1', 'MAC1'), ('mac2', 'MAC2'), ('date', 'Start'), ('result', '測試結果')]
+def _missing_fields(parsed, lang='zh'):
+    labels = [('mac1', 'MAC1'), ('mac2', 'MAC2'), ('date', 'Start'), ('result', 'Result' if lang == 'en' else '測試結果')]
     return [label for key, label in labels if not parsed[key]]
 
 
@@ -93,7 +93,7 @@ def split_to_records(content, work_order):
 
     Returns (records, invalid_items):
       records       — [{filename, content, result, mac1, start}]
-      invalid_items — [{mac1, mac2, start, result, reason}] for segments that the
+      invalid_items — [{mac1, mac2, start, result, reason, reason_en}] for segments that the
                       desktop tools would also never upload.
     """
     records, invalid_items = [], []
@@ -102,11 +102,13 @@ def split_to_records(content, work_order):
         start = f"{parsed['date']}_{parsed['time']}" if parsed['date'] and parsed['time'] else None
         missing = _missing_fields(parsed)
         if missing:
-            invalid_items.append({**_brief(parsed, start), 'reason': '缺少欄位：' + '、'.join(missing)})
+            invalid_items.append({**_brief(parsed, start), 'reason': '缺少欄位：' + '、'.join(missing),
+                                  'reason_en': 'Missing fields: ' + ', '.join(_missing_fields(parsed, 'en'))})
             continue
         filename = f"{work_order}_{parsed['date']}_{parsed['time']}_{parsed['mac1']}_{parsed['mac2']}_{parsed['result']}.txt"
         if not SPLIT_FILENAME_RE.match(filename):
-            invalid_items.append({**_brief(parsed, start), 'reason': 'MAC 格式無效（非十六進位）'})
+            invalid_items.append({**_brief(parsed, start), 'reason': 'MAC 格式無效（非十六進位）',
+                                  'reason_en': 'Invalid MAC (not hexadecimal)'})
             continue
         records.append({
             'filename': filename,
@@ -212,7 +214,7 @@ def _fmt_start(start):
 
 # ─── Validation rules (shared by form mode and the AI assistant) ─────────────
 def validate_upload(facts, work_order, planned_qty, existing_by_wo=None, current_target=None):
-    """Return [{code, level, message}] with level 'error' | 'warn' | 'info'.
+    """Return [{code, level, message, message_en}] with level 'error' | 'warn' | 'info'.
 
     error — must be fixed before upload; warn — user must acknowledge;
     info  — shown only.
@@ -222,43 +224,57 @@ def validate_upload(facts, work_order, planned_qty, existing_by_wo=None, current
     work_order = (work_order or '').strip()
 
     if not work_order:
-        issues.append(_issue('R1', 'error', '請輸入工單號。'))
+        issues.append(_issue('R1', 'error', '請輸入工單號。', 'Please enter the work order.'))
     elif not is_valid_work_order(work_order):
-        issues.append(_issue('R1', 'error', f'工單號「{work_order}」格式不正確，應為 4 碼-8 碼以上數字，例如 5101-260630005。'))
+        issues.append(_issue('R1', 'error', f'工單號「{work_order}」格式不正確，應為 4 碼-8 碼以上數字，例如 5101-260630005。',
+                             f'Work order "{work_order}" has the wrong format: 4 digits, a hyphen and 8 or more digits, '
+                             'for example 5101-260630005.'))
 
     qty = parse_quantity(planned_qty)
     if planned_qty in (None, ''):
-        issues.append(_issue('R2', 'error', '請輸入工單計畫生產數。'))
+        issues.append(_issue('R2', 'error', '請輸入工單計畫生產數。', 'Please enter the planned quantity.'))
     elif qty is None or qty <= 0:
-        issues.append(_issue('R2', 'error', f'計畫生產數「{planned_qty}」必須是正整數。'))
+        issues.append(_issue('R2', 'error', f'計畫生產數「{planned_qty}」必須是正整數。',
+                             f'Planned quantity "{planned_qty}" must be a positive whole number.'))
 
     wo_ok = is_valid_work_order(work_order)
     inferred = facts.get('inferred_wo')
     if wo_ok and inferred and inferred != work_order:
-        issues.append(_issue('R3', 'warn', f'輸入的工單號 {work_order} 與壓縮檔推斷的 {inferred} 不一致。'))
+        issues.append(_issue('R3', 'warn', f'輸入的工單號 {work_order} 與壓縮檔推斷的 {inferred} 不一致。',
+                             f'The work order {work_order} differs from {inferred} found in the zip.'))
 
     other = {wo: n for wo, n in existing_by_wo.items() if wo != work_order}
     if wo_ok and other:
-        detail = '、'.join(f'{wo or "(無工單)"} {n:,} 筆' for wo, n in sorted(other.items(), key=lambda kv: str(kv[0])))
-        issues.append(_issue('R4', 'warn', f'有資料已存在於其他工單（{detail}），這些資料將略過，不會改掛到 {work_order}。'))
+        ordered = sorted(other.items(), key=lambda kv: str(kv[0]))
+        detail = '、'.join(f'{wo or "(無工單)"} {n:,} 筆' for wo, n in ordered)
+        detail_en = ', '.join(f'{wo or "(no work order)"}: {n:,} records' for wo, n in ordered)
+        issues.append(_issue('R4', 'warn', f'有資料已存在於其他工單（{detail}），這些資料將略過，不會改掛到 {work_order}。',
+                             f'Some records already belong to other work orders ({detail_en}); '
+                             f'they will be skipped, not moved to {work_order}.'))
 
     if qty and qty > 0:
         unique = facts.get('unique_mac1', 0)
         diff = qty - unique
-        issues.append(_issue('R5', 'info', f'計畫 {qty:,} 台，log 實測不重複 MAC1 {unique:,} 台，差 {diff:+,} 台（僅供參考）。'))
+        issues.append(_issue('R5', 'info', f'計畫 {qty:,} 台，log 實測不重複 MAC1 {unique:,} 台，差 {diff:+,} 台（僅供參考）。',
+                             f'Planned {qty:,} units; the logs have {unique:,} unique MAC1, a difference of {diff:+,} '
+                             '(for reference).'))
 
     same = existing_by_wo.get(work_order, 0) if wo_ok else 0
     if same:
-        issues.append(_issue('R6', 'info', f'{same:,} 筆已存在於工單 {work_order}，將略過（視同重傳）。'))
+        issues.append(_issue('R6', 'info', f'{same:,} 筆已存在於工單 {work_order}，將略過（視同重傳）。',
+                             f'{same:,} records already exist in work order {work_order} and will be skipped (re-upload).'))
 
     if wo_ok and qty and qty > 0:
         if current_target is None:
-            issues.append(_issue('R7', 'info', f'上傳成功後，Data Alignment 目標數將設為 {qty:,}。'))
+            issues.append(_issue('R7', 'info', f'上傳成功後，Data Alignment 目標數將設為 {qty:,}。',
+                                 f'After the upload, the Data Alignment target will be set to {qty:,}.'))
         elif int(current_target) != qty:
-            issues.append(_issue('R7', 'info', f'Data Alignment 目標數將由 {int(current_target):,} 更新為 {qty:,}。'))
+            issues.append(_issue('R7', 'info', f'Data Alignment 目標數將由 {int(current_target):,} 更新為 {qty:,}。',
+                                 f'The Data Alignment target will change from {int(current_target):,} to {qty:,}.'))
 
     if facts.get('invalid'):
-        issues.append(_issue('R8', 'info', f'{facts["invalid"]} 筆無效段落將略過（見明細）。'))
+        issues.append(_issue('R8', 'info', f'{facts["invalid"]} 筆無效段落將略過（見明細）。',
+                             f'{facts["invalid"]} invalid segments will be skipped (see details).'))
 
     return issues
 
@@ -271,8 +287,8 @@ def has_warnings(issues):
     return any(i['level'] == 'warn' for i in issues)
 
 
-def _issue(code, level, message):
-    return {'code': code, 'level': level, 'message': message}
+def _issue(code, level, message, message_en):
+    return {'code': code, 'level': level, 'message': message, 'message_en': message_en}
 
 
 def parse_quantity(value):

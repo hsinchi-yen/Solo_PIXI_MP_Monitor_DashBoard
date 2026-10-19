@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request
 
 import config
 import db
-from errors import ApiError, bad_request
+from errors import ApiError, Msg, bad_request
 from schemas import ChangePasswordBody, Identity, LoginBody, LoginResult
 from services import auth, auth_utils
 
@@ -41,8 +41,8 @@ def login(request: Request, body: LoginBody):
             auth.auth_log(conn, request, raw_user, "login", False, reason)
             conn.commit()
             if reason == "disabled":
-                raise ApiError(403, "此帳號已停用，請聯絡管理者", "disabled")
-            raise ApiError(401, "帳號或密碼錯誤", "bad_credentials")
+                raise ApiError(403, Msg("此帳號已停用，請聯絡管理者", "This account is disabled. Please contact the administrator."), "disabled")
+            raise ApiError(401, Msg("帳號或密碼錯誤", "Wrong username or password."), "bad_credentials")
 
         db.execute(conn, "DELETE FROM app_sessions WHERE expires_at < NOW() - INTERVAL '7 days'")
         token = auth_utils.new_session_token()
@@ -86,19 +86,20 @@ def me(user=Depends(auth.current_user)):
 def change_password(request: Request, body: ChangePasswordBody, user=Depends(auth.current_user)):
     """Uploaders change their own password; their other sessions are signed out, this one stays."""
     if user["role"] != "uploader":
-        raise bad_request("管理者密碼由伺服器環境變數設定，無法在網頁上修改", "admin_password")
+        raise bad_request(Msg("管理者密碼由伺服器環境變數設定，無法在網頁上修改",
+                              "The administrator password is set on the server and cannot be changed here."), "admin_password")
     error = auth_utils.password_error(body.new_password)
     if error:
         raise bad_request(error, "weak_password")
     if body.new_password == body.old_password:
-        raise bad_request("新密碼不可以和舊密碼相同。", "same_password")
+        raise bad_request(Msg("新密碼不可以和舊密碼相同。", "The new password must differ from the current one."), "same_password")
     username = user["username"]
     with db.db() as conn:
         row = db.fetch_one(conn, "SELECT password_hash FROM app_users WHERE username = %s", (username,))
         if not row or not auth_utils.verify_password(body.old_password, row["password_hash"]):
             auth.auth_log(conn, request, username, "change_password", False, "bad_password")
             conn.commit()
-            raise bad_request("舊密碼不正確。", "bad_password")
+            raise bad_request(Msg("舊密碼不正確。", "The current password is incorrect."), "bad_password")
         db.execute(conn, """
             UPDATE app_users SET password_hash = %s, password_changed_at = NOW(), updated_at = NOW()
             WHERE username = %s

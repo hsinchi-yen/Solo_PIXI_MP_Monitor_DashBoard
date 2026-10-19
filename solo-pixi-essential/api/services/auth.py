@@ -16,7 +16,7 @@ from fastapi.security import APIKeyHeader
 
 import config
 import db
-from errors import ApiError
+from errors import ApiError, Msg
 from services import auth_utils
 
 token_header = APIKeyHeader(name="X-Tweak-Token", auto_error=False,
@@ -62,13 +62,13 @@ def optional_user(token: str = Depends(token_header)):
 def current_user(token: str = Depends(token_header)):
     identity = session_identity(token)
     if not identity:
-        raise ApiError(401, "請先登入，或登入已失效", "unauthorized")
+        raise ApiError(401, Msg("請先登入，或登入已失效", "Please sign in (or your session has expired)."), "unauthorized")
     return identity
 
 
 def require_admin(user=Depends(current_user)):
     if user["role"] != "admin":
-        raise ApiError(403, "此功能僅限管理者使用", "forbidden")
+        raise ApiError(403, Msg("此功能僅限管理者使用", "Administrators only."), "forbidden")
     return user
 
 

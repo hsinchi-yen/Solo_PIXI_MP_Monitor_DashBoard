@@ -15,4 +15,5 @@ sample work orders already exist in the database.
 
 Environment: `PIXI_BASE_URL` (default `http://localhost:8001`), `TWEAK_USER` / `TWEAK_PASS`,
 `PIXI_DB_CONTAINER` (default `pixi-test-db`), `PIXI_BROWSER_CHANNEL` (default `chrome`),
-`PIXI_SHOTS` (screenshot folder, default `docs/test-report/screenshots`).
+`PIXI_SHOTS` (screenshot folder, default `docs/test-report/v3.1.0/screenshots`; the v3.0.0 set in
+`docs/test-report/screenshots` is kept as that release's record).

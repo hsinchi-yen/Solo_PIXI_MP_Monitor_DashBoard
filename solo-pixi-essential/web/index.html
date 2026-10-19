@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="zh-Hant-TW" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Solo PIXI MP 測試看板</title>
+<title>Solo PIXI MP Test Dashboard</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a84ff'/%3E%3Ctext x='16' y='21' font-size='13' font-family='Arial' font-weight='700' fill='white' text-anchor='middle'%3ETN%3C/text%3E%3C/svg%3E">
 <script>
     // Apply the saved theme before first paint (no flash). Dark is the default.
@@ -55,7 +55,10 @@
                 <button class="btn small" type="button" id="btnLogout" data-i18n="auth.logout"></button>
             </div>
         </div>
-        <button class="btn small" type="button" id="btnTheme" data-i18n-aria="theme.aria"></button>
+        <div class="prefs">
+            <button class="btn small" type="button" id="btnTheme" data-i18n-aria="theme.aria"></button>
+            <button class="btn small" type="button" id="btnLang" data-i18n="lang.switch" data-i18n-aria="lang.aria"></button>
+        </div>
         <div class="status-row"><span class="dot wait" id="apiDot"></span><span id="apiText" data-i18n="status.api"></span></div>
         <div class="status-row"><span class="dot wait" id="llmDot"></span><span id="llmText" data-i18n="status.llm"></span></div>
     </div>

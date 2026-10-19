@@ -7,8 +7,10 @@ used in docs/test-report/.
 
 Uses Chrome if installed (PIXI_BROWSER_CHANNEL=chrome, default), else bundled Chromium.
 Upload steps use rawlogs/log5101-260630007.zip and revert their batch at the end.
+The UI opens in English (the default); test_12/13 switch to 中文 and back.
 """
 import os
+import re
 import subprocess
 import sys
 import time
@@ -29,7 +31,17 @@ DB_CONTAINER = os.environ.get('PIXI_DB_CONTAINER', 'pixi-test-db')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ZIP_007 = os.path.join(ROOT, 'rawlogs', 'log5101-260630007.zip')
 WO_007 = '5101-260630007'
-SHOTS = os.environ.get('PIXI_SHOTS', os.path.join(ROOT, 'docs', 'test-report', 'screenshots'))
+SHOTS = os.environ.get('PIXI_SHOTS', os.path.join(ROOT, 'docs', 'test-report', 'v3.1.0', 'screenshots'))
+CJK = re.compile(r'[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]')
+PAGES = ['overview', 'workorders', 'fails', 'measurements', 'failanalysis', 'dbtweak', 'dataalign', 'logupload', 'accounts']
+# UI text of the sidebar, top bar and visible page — without data (table bodies, names, chat, selects)
+# and without the language button, whose label 中文 is Chinese on purpose.
+UI_TEXT_JS = """() => [document.querySelector('.sidebar'), document.querySelector('.topbar'),
+    document.querySelector('.page:not([hidden])')].map(el => {
+        const c = el.cloneNode(true);
+        c.querySelectorAll('tbody, select, .msg, #authName, #btnLang, #pageScope, #luFileInfo').forEach(x => x.remove());
+        return c.textContent;
+    }).join(' ')"""
 E2E_USER, E2E_PASS = 'e2e-uploader', 'e2e-pass-123'
 
 
@@ -105,7 +117,8 @@ class E2E(unittest.TestCase):
         self.assertEqual(pg.locator('.ov-numbers > div').count(), 6, 'A1 seven numbers in six boxes (yield + aligned share one)')
         self.assertEqual(pg.locator('#page-overview canvas').count(), 4, 'Q2 four charts')
         self.assertIn('ok', pg.get_attribute('#apiDot', 'class'), 'B6 API light reflects requests')
-        self.assertIn('資料更新於', pg.inner_text('#freshText'))
+        self.assertIn('Updated', pg.inner_text('#freshText'))
+        self.assertEqual(pg.get_attribute('html', 'lang'), 'en', 'English by default')
         self.shot(pg, '01_overview_dark')
         print(f'      overview first load {load_s:.2f}s')
 
@@ -124,19 +137,25 @@ class E2E(unittest.TestCase):
         if pg.locator('#rpBody .rp-summary').count():
             pg.dblclick('#rpBody .rp-summary')
             self.assertTrue(pg.evaluate('window.getSelection().toString().length > 0'), 'B2 text selectable')
-            self.shot(pg, '02_ai_report_zh')
-            pg.click('#rpLang button[data-lang="en"]')
+            self.assertEqual(pg.get_attribute('#rpLang button[data-lang="en"]', 'aria-pressed'), 'true',
+                             'Q49 the report opens in the UI language')
+            self.assertIsNone(CJK.search(pg.inner_text('#rpBody')), 'English report text')
+            self.shot(pg, '02_ai_report_en')
+            pg.click('#rpLang button[data-lang="zh"]')
             pg.wait_for_timeout(300)
-            self.shot(pg, '03_ai_report_en')
+            self.shot(pg, '03_ai_report_zh')
             with pg.expect_download() as dl:
                 pg.click('#btnRpDownload')
-            self.assertTrue(dl.value.suggested_filename.endswith('_en.md'))
+            self.assertTrue(dl.value.suggested_filename.endswith('_zh.md'))
+            pg.click('#rpLang button[data-lang="en"]')
             pg.click('#btnRpCompare')
             pg.wait_for_selector('#rpCompareBox:not([hidden]) h4, #rpCompareBox:not([hidden]) .muted')
-            pg.fill('#rpAskInput', 'ERR_5 主要發生在哪個步驟？')
+            pg.fill('#rpAskInput', 'Which step does ERR_5 mostly happen in?')
             pg.click('#btnRpAsk')
             pg.wait_for_function("document.querySelectorAll('#rpAskLog .msg.assistant:not(.typing)').length >= 1", timeout=90000)
-            self.assertTrue(pg.inner_text('#rpAskLog .msg.assistant').strip())
+            answer = pg.inner_text('#rpAskLog .msg.assistant').strip()
+            self.assertTrue(answer)
+            self.assertIsNone(CJK.search(answer), f'English question, English answer: {answer}')
             pg.locator('#rpAskLog').scroll_into_view_if_needed()
             self.shot(pg, '04_ai_report_compare_ask')
         pg.keyboard.press('Escape')
@@ -201,9 +220,9 @@ class E2E(unittest.TestCase):
         self.goto(pg, 'fails')
         pg.wait_for_selector('#failPager button')
         first = pg.inner_text('#failRows tr:first-child td:first-child')
-        pg.click('#failPager button:has-text("下一頁")')
+        pg.click('#failPager button:has-text("Next")')
         pg.wait_for_timeout(600)
-        self.assertIn('第 2 /', pg.inner_text('#failPager'), 'server-side paging works')
+        self.assertIn('Page 2 /', pg.inner_text('#failPager'), 'server-side paging works')
         self.assertNotEqual(first, pg.inner_text('#failRows tr:first-child td:first-child'))
         self.shot(pg, '09_fails')
         self.goto(pg, 'failanalysis')
@@ -218,7 +237,7 @@ class E2E(unittest.TestCase):
         self.goto(pg, 'accounts')
         pg.click('#btnAcctNew')
         pg.fill('#fm_username', E2E_USER)
-        pg.fill('#fm_display_name', 'E2E 測試')
+        pg.fill('#fm_display_name', 'E2E Tester')
         pg.fill('#fm_password', E2E_PASS)
         pg.fill('#fm_password2', E2E_PASS)
         pg.click('#btnFormModalSubmit')
@@ -241,9 +260,13 @@ class E2E(unittest.TestCase):
         pg.set_input_files('#luFile', ZIP_007)
         pg.wait_for_selector('#luStepConfirm:not([hidden])', timeout=120000)
         if pg.locator('#luChatPanel').is_visible():
-            pg.fill('#luChatInput', f'工單是 {WO_007}，2000 台')
+            self.assertIn('Read 4 stations', pg.inner_text('#luChatLog'), 'opening in the UI language')
+            pg.fill('#luChatInput', f'Work order {WO_007}, 2000 units')
             pg.press('#luChatInput', 'Enter')
             pg.wait_for_function("!document.getElementById('btnLuUpload').disabled", timeout=90000)
+            reply = pg.inner_text('#luChatLog .msg.assistant:last-child')
+            self.assertIsNone(CJK.search(reply), f'Q49 the assistant answers in English: {reply}')
+            self.assertIsNone(CJK.search(pg.inner_text('#luIssues')), 'checks R1–R8 in English')
             self.shot(pg, '12_upload_ai_chat')
             pg.click('#btnLuMode')
             self.assertEqual(pg.input_value('#luWo'), WO_007, 'chat → form keeps values')
@@ -253,7 +276,7 @@ class E2E(unittest.TestCase):
             pg.fill('#luQty', '2000')
             pg.wait_for_function("!document.getElementById('btnLuUpload').disabled")
         pg.click('#btnLuUpload')
-        pg.wait_for_function("document.getElementById('luProgressText').textContent.includes('上傳完成')", timeout=180000)
+        pg.wait_for_function("document.getElementById('luProgressText').textContent.includes('Upload complete')", timeout=180000)
         self.assertIn('2,041', pg.inner_text('#luResultGrid'))
         self.shot(pg, '13_upload_done', full=True)
         # The new work order is on the dashboard right away (view refreshed after upload).
@@ -304,7 +327,7 @@ class E2E(unittest.TestCase):
         pg.route('**/api/overview*', lambda route: route.abort())
         pg.goto(BASE + '/', wait_until='networkidle')
         pg.wait_for_selector('#page-overview .state-msg.error')
-        self.assertIn('讀取失敗', pg.inner_text('#page-overview .ov-charts'), 'B4 failure shown in place')
+        self.assertIn('Failed to load', pg.inner_text('#page-overview .ov-charts'), 'B4 failure shown in place')
         self.assertIn('err', pg.get_attribute('#apiDot', 'class'), 'B4/B6 API light turns red')
         self.shot(pg, '18_api_error')
         # B5: after 5 idle minutes the rotation moves on although the overview failed …
@@ -317,6 +340,70 @@ class E2E(unittest.TestCase):
         pg.wait_for_function("document.getElementById('ovYield').textContent !== '—'")
         self.assertIn('ok', pg.get_attribute('#apiDot', 'class'))
         ctx.close()
+
+    # ── Q45–Q50: English by default, one button to 中文, remembered, ?lang= wins ──
+    def test_12_language_switch_keeps_numbers_and_is_remembered(self):
+        pg = self.page()
+        pg.goto(BASE + '/', wait_until='networkidle')
+        pg.wait_for_function("document.getElementById('ovYield').textContent !== '—'")
+        self.assertEqual(pg.inner_text('#btnLang'), '中文')
+        self.assertEqual(pg.inner_text('#pageTitle'), 'Dashboard')
+        numbers = {i: pg.inner_text(i) for i in ('#ovYield', '#ovUnits', '#ovPass', '#ovFail', '#ovStop', '#ovRetry')}
+        wo = pg.input_value('#woSelect')
+        pg.locator('.prefs').screenshot(path=os.path.join(SHOTS, '19_lang_button_en.png'))
+        pg.click('#btnLang')
+        pg.wait_for_function("document.documentElement.lang === 'zh-Hant-TW'")
+        pg.wait_for_function("document.getElementById('pageTitle').textContent === '儀表板'")
+        pg.wait_for_timeout(800)
+        self.assertEqual(pg.inner_text('#btnLang'), 'EN')
+        self.assertIn('資料更新於', pg.inner_text('#freshText'))
+        self.assertIn('良率', pg.inner_text('#page-overview'))
+        self.assertEqual({i: pg.inner_text(i) for i in numbers}, numbers, 'same numbers in both languages')
+        self.assertEqual(pg.input_value('#woSelect'), wo, 'filters kept')
+        pg.locator('.prefs').screenshot(path=os.path.join(SHOTS, '19_lang_button_zh.png'))
+        self.shot(pg, '20_overview_zh')
+        pg.reload(wait_until='networkidle')
+        pg.wait_for_function("document.getElementById('ovYield').textContent !== '—'")
+        self.assertEqual(pg.get_attribute('html', 'lang'), 'zh-Hant-TW', 'Q47 choice remembered')
+        pg.goto(BASE + '/?lang=en#overview', wait_until='networkidle')
+        self.assertEqual(pg.inner_text('#pageTitle'), 'Dashboard', 'Q47 ?lang=en wins over the saved choice')
+        pg.click('#btnLang')
+        pg.click('#btnLang')                     # back to English for the other tests (saved per browser context)
+        self.assertEqual(pg.get_attribute('html', 'lang'), 'en')
+
+    def test_13_every_page_english_then_chinese(self):
+        pg = self.page()
+        pg.goto(BASE + '/', wait_until='networkidle')
+        self.login(pg, ADMIN_USER, ADMIN_PASS)
+        found = {}
+        for page_id in PAGES:
+            self.goto(pg, page_id)
+            text = pg.evaluate(UI_TEXT_JS)
+            hits = sorted(set(CJK.findall(text)))
+            if hits:
+                found[page_id] = ''.join(hits)
+        self.assertEqual(found, {}, 'Q48 no Chinese UI text in English mode')
+        pg.click('#btnLang')
+        pg.wait_for_function("document.documentElement.lang === 'zh-Hant-TW'")
+        for page_id in PAGES:
+            self.goto(pg, page_id)
+            self.assertIsNotNone(CJK.search(pg.inner_text('#pageTitle')), page_id)
+            self.shot(pg, f'21_zh_{PAGES.index(page_id) + 1:02d}_{page_id}')
+        pg.click('#btnLang')
+
+    def test_14_language_switch_with_report_open(self):
+        pg = self.page()
+        pg.goto(BASE + '/', wait_until='networkidle')
+        pg.click('#navAiReport')
+        pg.wait_for_selector('#reportModal:not([hidden])')
+        pg.wait_for_function("document.querySelector('#rpBody .rp-summary') || document.querySelector('#rpBody .state-msg')",
+                             timeout=120000)
+        self.assertIn('AI Quality Report', pg.inner_text('#rpTitle'))
+        pg.evaluate("document.getElementById('btnLang').click()")   # the modal covers the sidebar
+        pg.wait_for_function("document.getElementById('rpTitle').textContent.includes('AI 品質報告')")
+        self.assertEqual(pg.get_attribute('#rpLang button[data-lang="zh"]', 'aria-pressed'), 'true')
+        pg.keyboard.press('Escape')
+        pg.click('#btnLang')
 
     def test_99_no_console_errors(self):
         self.assertEqual([e for e in self.errors if 'favicon' not in e], [])

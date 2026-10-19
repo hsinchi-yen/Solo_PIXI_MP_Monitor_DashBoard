@@ -1,5 +1,7 @@
 // HTTP helpers: JSON calls with one error shape, NDJSON streams, authenticated downloads.
-// Every response updates the sidebar's API status light.
+// Every response updates the sidebar's API status light. Server messages come in both
+// languages ({error, error_en}); errors carry the one for the current UI language.
+import { localized, t } from './i18n.js';
 
 let token = null;
 let onUnauthorized = () => {};
@@ -38,7 +40,7 @@ export async function request(path, { method = 'GET', body, headers = {}, signal
     } catch (err) {
         if (err.name === 'AbortError') throw err;
         report(false, 'network');
-        throw new ApiError('無法連線到伺服器', 0, 'network');
+        throw new ApiError(t('err.network'), 0, 'network');
     }
     report(res.status < 500, res.status);
     if (res.status === 401 && token) onUnauthorized();
@@ -48,10 +50,20 @@ export async function request(path, { method = 'GET', body, headers = {}, signal
     return res.json();
 }
 
+/** The message of an error body ({error, error_en}) in the UI language. */
+export function errorText(data, status) {
+    return localized(data?.error, data?.error_en) || t('err.http', { status });
+}
+
+/** The message of an NDJSON event ({message, message_en}) in the UI language. */
+export function eventText(ev) {
+    return localized(ev?.message, ev?.message_en);
+}
+
 export async function toError(res) {
     let data = {};
     try { data = await res.json(); } catch { /* not JSON */ }
-    return new ApiError(data.error || `伺服器回應錯誤（HTTP ${res.status}）`, res.status, data.code || 'error', data);
+    return new ApiError(errorText(data, res.status), res.status, data.code || 'error', data);
 }
 
 export const apiGet = (path, opts) => request(path, { ...opts, method: 'GET' });

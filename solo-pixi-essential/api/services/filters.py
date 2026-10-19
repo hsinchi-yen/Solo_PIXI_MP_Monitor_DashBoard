@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
 
-from errors import bad_request
+from errors import Msg, bad_request
 
 EFF_DATE = "COALESCE(unit_date, start_time::date)"
 
@@ -56,7 +56,7 @@ def _parse_date(value, name):
     try:
         return date.fromisoformat(str(value).strip()[:10])
     except (TypeError, ValueError):
-        raise bad_request(f"{name} 日期格式不正確（應為 YYYY-MM-DD）", "bad_date")
+        raise bad_request(Msg(f"{name} 日期格式不正確（應為 YYYY-MM-DD）", f"Invalid {name} date (use YYYY-MM-DD)."), "bad_date")
 
 
 def _intersect(a_from, a_to, b_from, b_to):
@@ -71,7 +71,7 @@ def parse_scope(date_from=None, date_to=None, work_order=None,
     lo = _parse_date(date_from, "date_from") if date_from else None
     hi = _parse_date(date_to, "date_to") + timedelta(days=1) if date_to else None
     if lo and hi and lo >= hi:
-        raise bad_request("起始日期不可晚於結束日期", "bad_range")
+        raise bad_request(Msg("起始日期不可晚於結束日期", "The start date is after the end date."), "bad_range")
 
     single = day or unit_date
     if single:
@@ -79,18 +79,18 @@ def parse_scope(date_from=None, date_to=None, work_order=None,
         lo, hi = _intersect(lo, hi, d, d + timedelta(days=1))
     if year or month or week:
         if not year:
-            raise bad_request("month / week 需要同時指定 year", "bad_range")
+            raise bad_request(Msg("month / week 需要同時指定 year", "month / week need year as well."), "bad_range")
         y = int(year)
         if week:
             try:
                 start = date.fromisocalendar(y, int(week), 1)
             except ValueError:
-                raise bad_request("week 超出範圍", "bad_range")
+                raise bad_request(Msg("week 超出範圍", "week is out of range."), "bad_range")
             r_lo, r_hi = start, start + timedelta(days=7)
         elif month:
             m = int(month)
             if not 1 <= m <= 12:
-                raise bad_request("month 超出範圍", "bad_range")
+                raise bad_request(Msg("month 超出範圍", "month is out of range."), "bad_range")
             r_lo, r_hi = date(y, m, 1), date(y, m, calendar.monthrange(y, m)[1]) + timedelta(days=1)
         else:
             r_lo, r_hi = date(y, 1, 1), date(y + 1, 1, 1)
@@ -98,7 +98,7 @@ def parse_scope(date_from=None, date_to=None, work_order=None,
 
     wo = (work_order or "").strip() or None
     if wo and len(wo) > 64:
-        raise bad_request("工單號太長", "bad_work_order")
+        raise bad_request(Msg("工單號太長", "The work order is too long."), "bad_work_order")
     if lo and hi and lo >= hi:
         # Empty intersection (e.g. day outside the year): keep it empty rather than widening it.
         hi = lo

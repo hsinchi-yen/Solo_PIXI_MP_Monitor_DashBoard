@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 
 import db
-from errors import bad_request, not_found
+from errors import Msg, bad_request, not_found
 from routers.analytics import scope_params
 from services import auth, reparse, stats
 from services.filters import Scope, raw_where
@@ -40,7 +40,8 @@ def records(scope: Scope = Depends(scope_params), page: int = Query(1, ge=1),
 def delete_scope(scope: Scope = Depends(scope_params), _admin=Depends(auth.require_admin)):
     """Delete every record in the scope (needs a date range or a work order)."""
     if scope.is_empty:
-        raise bad_request("請至少指定日期範圍或工單，才能批次刪除", "scope_required")
+        raise bad_request(Msg("請至少指定日期範圍或工單，才能批次刪除",
+                              "Choose a date range or a work order before deleting in bulk."), "scope_required")
     where, params = raw_where(scope)
     with db.db() as conn:
         deleted = db.execute(conn, f"DELETE FROM module_test {where}", params)
@@ -53,7 +54,7 @@ def delete_record(record_id: int, _admin=Depends(auth.require_admin)):
     with db.db() as conn:
         deleted = db.execute(conn, "DELETE FROM module_test WHERE id = %s", (record_id,))
     if not deleted:
-        raise not_found("找不到這筆紀錄", "no_record")
+        raise not_found(Msg("找不到這筆紀錄", "Record not found."), "no_record")
     stats.refresh(wait=True)
     return {"deleted": deleted, "id": record_id}
 
@@ -64,7 +65,7 @@ def raw_log(record_id: int, _admin=Depends(auth.require_admin)):
     with db.db() as conn:
         row = db.fetch_one(conn, "SELECT raw_log, source_file FROM module_test WHERE id = %s", (record_id,))
     if not row or not row["raw_log"]:
-        raise not_found("這筆紀錄沒有原始 log", "no_raw_log")
+        raise not_found(Msg("這筆紀錄沒有原始 log", "This record has no raw log."), "no_raw_log")
     filename = (row["source_file"] or f"record_{record_id}.txt").replace('"', "")
     return PlainTextResponse(row["raw_log"], headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
@@ -84,5 +85,5 @@ def reparse_status(_admin=Depends(auth.require_admin)):
 @jobs.post("/{job_id}/cancel")
 def cancel_reparse(job_id: int, _admin=Depends(auth.require_admin)):
     if not reparse.cancel(job_id):
-        raise not_found("這個工作沒有在執行", "no_job")
+        raise not_found(Msg("這個工作沒有在執行", "This job is not running."), "no_job")
     return {"ok": True}

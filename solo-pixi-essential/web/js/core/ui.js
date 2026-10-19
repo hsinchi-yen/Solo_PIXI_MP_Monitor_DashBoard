@@ -1,5 +1,5 @@
 // Small DOM helpers shared by every page: state messages, form dialog, toast, debounce.
-import { t } from './i18n.js';
+import { joinList, t } from './i18n.js';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
@@ -115,7 +115,7 @@ export function initFormModal() {
             .filter(l => l.dataset.required && !values[l.htmlFor.slice(3)].trim())
             .map(l => l.textContent.replace(/ \*$/, ''));
         const msg = $('#formModalMsg');
-        if (missing.length) { msg.textContent = t('common.required', { fields: missing.join('、') }); return; }
+        if (missing.length) { msg.textContent = t('common.required', { fields: joinList(missing) }); return; }
         const submit = $('#btnFormModalSubmit');
         submit.disabled = true;
         msg.textContent = '';

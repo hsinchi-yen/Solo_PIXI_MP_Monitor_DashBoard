@@ -1,14 +1,14 @@
 // AI 品質報告 window (one for the whole app).
 // Numbers come from the server's facts table; the AI writes only the sentences, in both
-// languages. Opening shows the stored report; it is generated when missing (streamed:
+// languages. Opening shows the stored report in the UI language; it is generated when missing (streamed:
 // numbers first, then each language as it finishes). Text is rendered as text, never HTML.
-import { ApiError, apiGet, download, streamPost } from './core/api.js';
+import { ApiError, apiGet, download, eventText, streamPost } from './core/api.js';
 import { esc, fmtDateTime, fmtInt, fmtPct, fmtSigned, retryLevel, yieldLevel } from './core/format.js';
-import { t } from './core/i18n.js';
+import { getLang, joinList, t, tLang } from './core/i18n.js';
 import { $, $$, toast } from './core/ui.js';
 
 const st = {
-    wo: null, session: 0, lang: 'zh', row: null, facts: null, reports: {}, checks: {}, langErrors: {},
+    wo: null, session: 0, lang: 'en', extra: [], row: null, facts: null, reports: {}, checks: {}, langErrors: {},
     generating: false, llm: false, ask: [], asking: false, pollTimer: null,
 };
 
@@ -30,7 +30,7 @@ function renderHeader() {
         badge.textContent = t(`rp.risk.${risk}`);
     }
     const at = st.row?.finished_at;
-    $('#rpGenerated').textContent = at ? `${t('rp.generated', { time: fmtDateTime(at) })}・${t(`rp.trigger.${st.row.trigger || 'manual'}`)}` : '';
+    $('#rpGenerated').textContent = at ? `${t('rp.generated', { time: fmtDateTime(at) })}${t('common.dot')}${t(`rp.trigger.${st.row.trigger || 'manual'}`)}` : '';
     $$('#rpLang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === st.lang)));
     const has = !!st.reports[st.lang];
     $('#btnRpCopy').disabled = !has;
@@ -45,15 +45,17 @@ function renderHeader() {
 function banner(messages) {
     const box = $('#rpBanner');
     box.innerHTML = '';
+    // text may be a function, so a language switch re-renders the banner in the new language
     messages.filter(Boolean).forEach(([kind, text]) => {
-        const n = el('div', `notice ${kind} mb`, text);
+        const n = el('div', `notice ${kind} mb`, typeof text === 'function' ? text() : text);
         box.appendChild(n);
     });
 }
 
-function factTile(label, value, cls = '') {
+function factTile(label, value, cls = '', sub = '') {
     const d = el('div', 'rp-fact');
     d.append(el('div', 'k', label), el('div', `v ${cls}`, value));
+    if (sub) d.append(el('div', 'sub', sub));
     return d;
 }
 
@@ -73,11 +75,15 @@ function renderFacts() {
                    factTile(t('rp.f.aligned'), fmtPct(f.planned.aligned_yield_pct), `v-${yieldLevel(f.planned.aligned_yield_pct)}`));
     }
     if (f.previous_avg?.yield_pct != null) {
-        box.append(factTile(t('rp.f.prev'), `${fmtPct(f.previous_avg.yield_pct)}（${fmtSigned(f.previous_avg.yield_change)}）`));
+        box.append(factTile(t('rp.f.prev'), fmtPct(f.previous_avg.yield_pct), '',
+                            t('rp.prevDelta', { delta: fmtSigned(f.previous_avg.yield_change) })));
     }
     const p = f.period || {};
     box.append(factTile(t('rp.f.period'), `${fmtDateTime(p.first_test)} ~ ${fmtDateTime(p.last_test)}`, 'small-value'));
 }
+
+// The facts name an empty fail category 未分類 (kept as is: it is part of the stored data hash).
+const categoryName = c => (c === '未分類' ? t('common.uncategorized') : c);
 
 function renderCauses() {
     const box = $('#rpCauses');
@@ -88,7 +94,7 @@ function renderCauses() {
     sec.appendChild(el('h4', '', t('rp.causes')));
     const wrap = el('div', 'table-wrap');
     wrap.innerHTML = `<table><thead><tr><th>${esc(t('rp.col.code'))}</th><th>${esc(t('rp.col.step'))}</th><th>${esc(t('rp.col.category'))}</th><th class="num">${esc(t('rp.col.count'))}</th></tr></thead><tbody>${
-        causes.map(c => `<tr><td>${esc(c.error_code)}</td><td>${esc(c.step)}</td><td>${esc(c.category)}</td><td class="num">${fmtInt(c.count)}</td></tr>`).join('')}</tbody></table>`;
+        causes.map(c => `<tr><td>${esc(c.error_code)}</td><td>${esc(c.step)}</td><td>${esc(categoryName(c.category))}</td><td class="num">${fmtInt(c.count)}</td></tr>`).join('')}</tbody></table>`;
     sec.appendChild(wrap);
     box.appendChild(sec);
 }
@@ -131,13 +137,18 @@ function renderBanners(extra = []) {
     banner([
         ...extra,
         !st.llm && ['warn', t('rp.llmOff')],
-        check && check.ok === false && ['warn', t('rp.numberWarn', { nums: check.unknown.join('、') })],
+        check && check.ok === false && ['warn', t('rp.numberWarn', { nums: joinList(check.unknown) })],
     ]);
 }
 
-function renderAll(extra) {
+function renderAll(extra = []) {
+    st.extra = extra;
+    paint();
+}
+
+function paint() {
     renderHeader();
-    renderBanners(extra);
+    renderBanners(st.extra);
     renderFacts();
     renderBody();
     renderCauses();
@@ -163,7 +174,7 @@ async function loadLatest(session) {
 async function open(wo) {
     const session = ++st.session;
     clearTimeout(st.pollTimer);
-    Object.assign(st, { wo, row: null, facts: null, reports: {}, checks: {}, langErrors: {}, generating: false, ask: [], asking: false });
+    Object.assign(st, { wo, lang: getLang(), row: null, facts: null, reports: {}, checks: {}, langErrors: {}, generating: false, ask: [], asking: false });
     $('#rpAskLog').innerHTML = '';
     $('#rpCompareBox').hidden = true;
     $('#reportModal').hidden = false;
@@ -172,10 +183,10 @@ async function open(wo) {
     try {
         const data = await loadLatest(session);
         if (!data) return;
-        if (!data.has_data && !data.report) { renderAll([['bad', t('rp.noData')]]); return; }
-        if (data.pending && !data.report) { renderAll([['', t('rp.queued')]]); poll(session); return; }
+        if (!data.has_data && !data.report) { renderAll([['bad', () => t('rp.noData')]]); return; }
+        if (data.pending && !data.report) { renderAll([['', () => t('rp.queued')]]); poll(session); return; }
         if (!data.report && st.llm) { generate(false); return; }
-        renderAll([data.stale && ['warn', t('rp.stale')], data.pending && ['', t('rp.queued')]]);
+        renderAll([data.stale && ['warn', () => t('rp.stale')], data.pending && ['', () => t('rp.queued')]]);
         if (data.pending) poll(session);
     } catch (err) {
         if (session === st.session) renderAll([['bad', err.message]]);
@@ -188,8 +199,8 @@ function poll(session) {
         try {
             const data = await loadLatest(session);
             if (!data) return;
-            if (data.pending) { renderAll([['', t('rp.queued')]]); poll(session); }
-            else renderAll([data.stale && ['warn', t('rp.stale')]]);
+            if (data.pending) { renderAll([['', () => t('rp.queued')]]); poll(session); }
+            else renderAll([data.stale && ['warn', () => t('rp.stale')]]);
         } catch { poll(session); }
     }, 5000);
 }
@@ -217,7 +228,7 @@ async function generate(force) {
     if (session !== st.session) return;
     st.generating = false;
     if (failure) {
-        renderAll([['bad', failure.code === 'busy' ? t('rp.queued') : t('rp.failed', { error: failure.message })]]);
+        renderAll([['bad', () => (failure.code === 'busy' ? t('rp.queued') : t('rp.failed', { error: eventText(failure) }))]]);
         if (failure.code === 'busy') poll(session);
         return;
     }
@@ -229,11 +240,11 @@ async function generate(force) {
 function plainText() {
     const r = st.reports[st.lang];
     if (!r) return '';
-    const zh = st.lang === 'zh';
-    return [t('rp.title', { wo: st.wo }), '',
-        `${zh ? '總評' : 'Summary'}: ${r.summary}`, '',
-        `${zh ? '發現' : 'Findings'}:`, ...r.findings.map((x, i) => `${i + 1}. ${x}`), '',
-        `${zh ? '建議' : 'Recommendations'}:`, ...r.recommendations.map((x, i) => `${i + 1}. ${x}`)].join('\n');
+    const tr = key => tLang(st.lang, key);      // copied text follows the report's language
+    return [tLang(st.lang, 'rp.title', { wo: st.wo }), '',
+        `${tr('rp.summary')}: ${r.summary}`, '',
+        `${tr('rp.findings')}:`, ...r.findings.map((x, i) => `${i + 1}. ${x}`), '',
+        `${tr('rp.recs')}:`, ...r.recommendations.map((x, i) => `${i + 1}. ${x}`)].join('\n');
 }
 
 async function copy() {
@@ -272,8 +283,8 @@ async function compare() {
                 d.changes.map(c => `<tr><td>${esc(t(`rp.cmp.${c.field}`))}</td><td class="num">${esc(c.before ?? '—')}</td><td class="num">${esc(c.after ?? '—')}</td><td class="num ${c.delta > 0 ? 'up' : c.delta < 0 ? 'down' : ''}">${c.delta != null ? esc(fmtSigned(c.delta)) : '—'}</td></tr>`).join('')}</tbody></table>`;
             box.appendChild(wrap);
         }
-        if (d.causes_added.length) box.appendChild(el('div', 'mt-s', t('rp.cmp.added', { codes: d.causes_added.join('、') })));
-        if (d.causes_removed.length) box.appendChild(el('div', 'mt-s', t('rp.cmp.removed', { codes: d.causes_removed.join('、') })));
+        if (d.causes_added.length) box.appendChild(el('div', 'mt-s', t('rp.cmp.added', { codes: joinList(d.causes_added) })));
+        if (d.causes_removed.length) box.appendChild(el('div', 'mt-s', t('rp.cmp.removed', { codes: joinList(d.causes_removed) })));
     } catch (err) {
         box.appendChild(el('div', 'muted', err instanceof ApiError && err.code === 'not_enough_reports' ? t('rp.cmp.need2') : err.message));
     }
@@ -295,11 +306,11 @@ async function ask() {
     renderHeader();
     let reply = '';
     try {
-        await streamPost(`/api/reports/${encodeURIComponent(st.wo)}/ask`, { messages: st.ask.slice(-10) }, ev => {
+        await streamPost(`/api/reports/${encodeURIComponent(st.wo)}/ask`, { messages: st.ask.slice(-10), lang: getLang() }, ev => {
             if (session !== st.session) return;
             if (ev.type === 'delta') { answer.textContent += ev.text; log.scrollTop = log.scrollHeight; }
             else if (ev.type === 'done') reply = ev.reply;
-            else if (ev.type === 'error') throw new Error(ev.message);
+            else if (ev.type === 'error') throw new Error(eventText(ev));
         });
     } catch (err) {
         answer.textContent = err.message || t('rp.askFailed');
@@ -337,4 +348,13 @@ function setLlm(ok) {
     if (!$('#reportModal').hidden) renderHeader();
 }
 
-export default { init, open, close, setLlm };
+/** UI language switched: show the report in the new language too. */
+function onLangChange() {
+    setLlm(st.llm);
+    if ($('#reportModal').hidden) return;
+    st.lang = getLang();
+    paint();
+    if (!$('#rpCompareBox').hidden) compare();
+}
+
+export default { init, open, close, setLlm, onLangChange };

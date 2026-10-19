@@ -9,7 +9,7 @@ import threading
 
 import config
 import db
-from errors import conflict
+from errors import Msg, conflict
 
 log = logging.getLogger("pixi.reparse")
 
@@ -40,7 +40,7 @@ def start(username):
         """)
         running = db.fetch_one(conn, "SELECT id FROM job_runs WHERE kind = 'reparse' AND status = 'running'")
         if running:
-            raise conflict("已有重新解析正在進行", "reparse_running", job_id=running["id"])
+            raise conflict(Msg("已有重新解析正在進行", "A reparse is already running."), "reparse_running", job_id=running["id"])
         total = db.fetch_one(conn, "SELECT COUNT(*) AS n FROM module_test WHERE raw_log IS NOT NULL AND raw_log <> ''")["n"]
         job = db.fetch_one(conn, """
             INSERT INTO job_runs (kind, status, total, requested_by) VALUES ('reparse', 'running', %s, %s)

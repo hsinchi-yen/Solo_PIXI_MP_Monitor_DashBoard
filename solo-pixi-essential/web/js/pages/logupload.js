@@ -1,23 +1,26 @@
 // 上傳 Log (Log Uploader): zip → /api/log-upload/analyze → confirm work order + planned quantity
 // (AI chat via /chat, or the form via /validate — same rules R1–R8, same hidden inputs)
 // → /commit (NDJSON progress stream). Uploaders see and undo only their own batches.
-import { apiDelete, apiGet, apiPost, getToken, readNdjson, request, streamPost, toError } from '../core/api.js';
+// Server texts (checks, chat opening, errors) come in both languages; the AI replies in the UI language.
+import { apiDelete, apiGet, apiPost, errorText, eventText, getToken, readNdjson, request, streamPost, toError } from '../core/api.js';
 import * as auth from '../core/auth.js';
 import { esc, fmtDateTime, fmtInt } from '../core/format.js';
-import { t } from '../core/i18n.js';
+import { getLang, localized, t } from '../core/i18n.js';
 import { $, debounce } from '../core/ui.js';
 
 const st = {
     uploadId: null, owner: null, facts: null, committedId: null, busy: false,
     validation: null, validateSeq: 0, mode: 'form', aiAvailable: false,
-    chat: [], chatBusy: false, extractFails: 0, opening: '',
+    chat: [], chatBusy: false, extractFails: 0, openings: {}, fileLabel: null, result: null,
 };
+const statusText = {};          // id → [text or () => text, kind], re-rendered on a language switch
 let appRef;
 let pendingHistoryUser = null;   // set by 帳號管理 →「看紀錄」before the options exist
 
 function setStatus(id, text, kind = '') {
+    statusText[id] = [text, kind];
     const el = $(id);
-    el.textContent = text;
+    el.textContent = typeof text === 'function' ? text() : text;
     el.className = `status-line ${kind}`;
 }
 
@@ -35,7 +38,8 @@ function renderAccess() {
 
 /* ─── Step 1: choose + analyze ─── */
 function resetFlow() {
-    Object.assign(st, { uploadId: null, owner: null, facts: null, committedId: null, validation: null, chat: [], extractFails: 0, opening: '' });
+    Object.assign(st, { uploadId: null, owner: null, facts: null, committedId: null, validation: null, chat: [], extractFails: 0,
+                        openings: {}, fileLabel: null, result: null });
     st.validateSeq += 1;
     renderChat();
     $('#luChatInput').value = '';
@@ -79,27 +83,28 @@ function uploadWithProgress(url, formData, onProgress) {
 
 async function analyze(file) {
     resetFlow();
-    $('#luFileInfo').textContent = `${file.name}・${(file.size / 1048576).toFixed(1)} MB`;
-    if (!/\.zip$/i.test(file.name)) { setStatus('#luAnalyzeStatus', t('lu.notZip'), 'error'); return; }
+    st.fileLabel = `${file.name}${t('common.dot')}${(file.size / 1048576).toFixed(1)} MB`;
+    $('#luFileInfo').textContent = st.fileLabel;
+    if (!/\.zip$/i.test(file.name)) { setStatus('#luAnalyzeStatus', () => t('lu.notZip'), 'error'); return; }
     st.busy = true;
     setInputsDisabled(true);
-    setStatus('#luAnalyzeStatus', t('lu.uploading', { pct: 0 }));
+    setStatus('#luAnalyzeStatus', () => t('lu.uploading', { pct: 0 }));
     try {
         const fd = new FormData();
         fd.append('file', file);
         const { status, body } = await uploadWithProgress('/api/log-upload/analyze', fd, pct => {
-            setStatus('#luAnalyzeStatus', pct < 100 ? t('lu.uploading', { pct }) : t('lu.analyzing'));
+            setStatus('#luAnalyzeStatus', () => (pct < 100 ? t('lu.uploading', { pct }) : t('lu.analyzing')));
         });
         if (status === 401) { auth.logout(); return; }
-        if (status !== 200) { setStatus('#luAnalyzeStatus', body.error || `HTTP ${status}`, 'error'); return; }
+        if (status !== 200) { setStatus('#luAnalyzeStatus', () => errorText(body, status), 'error'); return; }
         st.uploadId = body.upload_id;
         st.owner = auth.currentUser()?.username;
         st.facts = body.facts;
-        st.opening = body.chat_opening || '';
+        st.openings = { zh: body.chat_opening || '', en: body.chat_opening_en || '' };
         renderFacts(body.facts);
-        setStatus('#luAnalyzeStatus', t('lu.analyzed'), 'ok');
+        setStatus('#luAnalyzeStatus', () => t('lu.analyzed'), 'ok');
         $('#luStepConfirm').hidden = false;
-        $('#luWo').placeholder = body.facts.inferred_wo ? t('lu.woPhInferred', { wo: body.facts.inferred_wo }) : t('lu.woPh');
+        renderWoPlaceholder();
         st.aiAvailable = await checkAi();
         setMode(st.aiAvailable ? 'chat' : 'form');
     } catch (err) {
@@ -110,6 +115,11 @@ async function analyze(file) {
         updateUploadButton();
         if (st.uploadId) focusInput();
     }
+}
+
+function renderWoPlaceholder() {
+    const inferred = st.facts?.inferred_wo;
+    $('#luWo').placeholder = inferred ? t('lu.woPhInferred', { wo: inferred }) : t('lu.woPh');
 }
 
 function renderFacts(f) {
@@ -133,7 +143,7 @@ function renderFacts(f) {
     $('#luInvalidSummary').textContent = t('lu.invalidSummary', { n: invalid.length });
     $('#luInvalidRows').innerHTML = invalid.map(i => {
         const start = i.start ? i.start.replace(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6') : '—';
-        return `<tr><td>${esc(i.station)}</td><td>${esc(start)}</td><td>${esc(i.mac1 || '—')}</td><td>${esc(i.result || '—')}</td><td>${esc(i.reason)}</td></tr>`;
+        return `<tr><td>${esc(i.station)}</td><td>${esc(start)}</td><td>${esc(i.mac1 || '—')}</td><td>${esc(i.result || '—')}</td><td>${esc(localized(i.reason, i.reason_en))}</td></tr>`;
     }).join('');
     $('#luFacts').hidden = false;
 }
@@ -165,7 +175,7 @@ function renderIssues(issues) {
     $('#luIssues').innerHTML = issues
         .filter(i => !(st.mode === 'chat' && missing[i.code]))
         .sort((a, b) => order[a.level] - order[b.level])
-        .map(i => `<li class="${esc(i.level)}">${icon[i.level] || ''} ${esc(i.message)}</li>`).join('');
+        .map(i => `<li class="${esc(i.level)}">${icon[i.level] || ''} ${esc(localized(i.message, i.message_en))}</li>`).join('');
     const needsAck = issues.some(i => i.level === 'warn');
     $('#luAckRow').hidden = !needsAck;
     if (!needsAck) $('#luAck').checked = false;
@@ -188,14 +198,10 @@ function setMode(mode, note = '') {
     const chat = mode === 'chat';
     $('#luChatPanel').hidden = !chat;
     $('#luFormPanel').hidden = chat;
-    $('#luModeLabel').textContent = chat ? t('lu.modeChat') : t('lu.modeForm');
-    $('#luModeHint').textContent = chat ? t('lu.chatHint') : (st.aiAvailable ? '' : t('lu.aiOffline'));
-    const btn = $('#btnLuMode');
-    btn.textContent = chat ? t('lu.toForm') : t('lu.toChat');
-    btn.hidden = !(st.aiAvailable || chat);
+    renderModeLabels();
     if (note) st.chat.push({ role: 'note', content: note });
     if (chat) {
-        if (!st.chat.some(m => m.role === 'assistant')) st.chat.unshift({ role: 'assistant', content: st.opening || t('lu.woPh') });
+        if (!st.chat.some(m => m.role === 'assistant')) st.chat.unshift({ role: 'assistant', content: localized(st.openings.zh, st.openings.en) || t('lu.woPh') });
         const wo = $('#luWo').value.trim(), qty = $('#luQty').value.trim();
         if (prev === 'form' && (wo || qty)) st.chat.push({ role: 'note', content: t('lu.formValues', { wo: wo || '—', qty: qty || '—' }) });
     }
@@ -206,6 +212,15 @@ function setMode(mode, note = '') {
     else $('#luIssues').innerHTML = '';
     updateUploadButton();
     if (!st.busy) focusInput();
+}
+
+function renderModeLabels() {
+    const chat = st.mode === 'chat';
+    $('#luModeLabel').textContent = chat ? t('lu.modeChat') : t('lu.modeForm');
+    $('#luModeHint').textContent = chat ? t('lu.chatHint') : (st.aiAvailable ? '' : t('lu.aiOffline'));
+    const btn = $('#btnLuMode');
+    btn.textContent = chat ? t('lu.toForm') : t('lu.toChat');
+    btn.hidden = !(st.aiAvailable || chat);
 }
 
 function focusInput() {
@@ -260,6 +275,7 @@ async function chatSend() {
             upload_id: st.uploadId,
             messages: st.chat.filter(m => m.role !== 'note'),
             known: { work_order: $('#luWo').value.trim(), planned_qty: $('#luQty').value.trim() },
+            lang: getLang(),
         }, ev => {
             if (ev.type === 'extract') {
                 $('#luWo').value = ev.work_order || '';
@@ -276,7 +292,7 @@ async function chatSend() {
             } else if (ev.type === 'done') {
                 reply = ev.reply;
             } else if (ev.type === 'fallback') {
-                fallback = ev.reason;
+                fallback = localized(ev.reason, ev.reason_en);
             }
         });
         if (!reply && !fallback) fallback = t('lu.fallbackDefault');
@@ -318,7 +334,7 @@ async function commit() {
     const fill = $('#luProgressFill');
     fill.className = '';
     fill.style.width = '0%';
-    setStatus('#luProgressText', t('lu.prepare'));
+    setStatus('#luProgressText', () => t('lu.prepare'));
     $('#luStepProgress').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     let finished = false;
     try {
@@ -330,11 +346,11 @@ async function commit() {
             const err = await toError(res);
             if (err.data.issues) { st.validation = err.data; renderIssues(err.data.issues); }
             fill.className = 'error';
-            setStatus('#luProgressText', err.message, 'error');
+            setStatus('#luProgressText', () => errorText(err.data, err.status), 'error');
             return;
         }
         await readNdjson(res, ev => { if (handleEvent(ev)) finished = true; });
-        if (!finished) setStatus('#luProgressText', t('lu.disconnected'), 'error');
+        if (!finished) setStatus('#luProgressText', () => t('lu.disconnected'), 'error');
     } catch (err) {
         setStatus('#luProgressText', err.message, 'error');
     } finally {
@@ -349,22 +365,22 @@ async function commit() {
 function handleEvent(ev) {
     const fill = $('#luProgressFill');
     if (ev.type === 'start') {
-        setStatus('#luProgressText', t('lu.start', { wo: ev.work_order, stations: ev.stations.length, total: fmtInt(ev.total) }));
+        setStatus('#luProgressText', () => t('lu.start', { wo: ev.work_order, stations: ev.stations.length, total: fmtInt(ev.total) }));
     } else if (ev.type === 'split') {
-        setStatus('#luProgressText', t('lu.split', { station: ev.station, records: fmtInt(ev.records) }));
+        setStatus('#luProgressText', () => t('lu.split', { station: ev.station, records: fmtInt(ev.records) }));
     } else if (ev.type === 'progress') {
         fill.style.width = `${Math.round(ev.done * 100 / Math.max(ev.total, 1))}%`;
-        setStatus('#luProgressText', t('lu.progress', { done: fmtInt(ev.done), total: fmtInt(ev.total), uploaded: fmtInt(ev.uploaded), skipped: fmtInt(ev.skipped), failed: fmtInt(ev.failed) }));
+        setStatus('#luProgressText', () => t('lu.progress', { done: fmtInt(ev.done), total: fmtInt(ev.total), uploaded: fmtInt(ev.uploaded), skipped: fmtInt(ev.skipped), failed: fmtInt(ev.failed) }));
     } else if (ev.type === 'done' || ev.type === 'error') {
         st.committedId = st.uploadId;
         if (ev.type === 'done') {
             fill.style.width = '100%';
             fill.className = 'done';
-            setStatus('#luProgressText', t('lu.done', { sec: ev.elapsed_sec }), 'ok');
+            setStatus('#luProgressText', () => t('lu.done', { sec: ev.elapsed_sec }), 'ok');
             appRef.refreshOptions();
         } else {
             fill.className = 'error';
-            setStatus('#luProgressText', t('lu.error', { message: ev.message }), 'error');
+            setStatus('#luProgressText', () => t('lu.error', { message: eventText(ev) }), 'error');
         }
         renderResults(ev);
         $('#btnLuRevert').hidden = !(ev.uploaded > 0);
@@ -375,6 +391,7 @@ function handleEvent(ev) {
 }
 
 function renderResults(ev) {
+    st.result = ev;
     const cards = [[t('lu.res.new'), ev.uploaded, 'good-text'], [t('lu.res.skipped'), ev.skipped, ''],
                    [t('lu.res.invalid'), ev.invalid, 'warn-text'], [t('lu.res.failed'), ev.failed, ev.failed ? 'bad-text' : '']];
     $('#luResultGrid').innerHTML = cards.map(([k, v, cls]) =>
@@ -387,10 +404,10 @@ function renderResults(ev) {
 }
 
 async function revert(uploadId, label = '') {
-    if (!uploadId || !confirm(t('lu.revertConfirm', { label: label ? `（${label}）` : '' }))) return false;
+    if (!uploadId || !confirm(t('lu.revertConfirm', { label: label ? t('common.paren', { text: label }) : '' }))) return false;
     try {
         const data = await apiDelete(`/api/log-upload/${uploadId}`);
-        if (uploadId === st.committedId) setStatus('#luProgressText', t('lu.reverted', { n: fmtInt(data.reverted) }), 'ok');
+        if (uploadId === st.committedId) setStatus('#luProgressText', () => t('lu.reverted', { n: fmtInt(data.reverted) }), 'ok');
         appRef.refreshOptions();
         loadHistory();
         return true;
@@ -428,7 +445,7 @@ async function loadHistory() {
         const me = auth.currentUser();
         tbody.innerHTML = data.items.map(r => {
             const canRevert = (r.status === 'done' || r.status === 'failed') && r.uploaded > 0 && (auth.isAdmin() || r.username === me.username);
-            const who = r.display_name && r.display_name !== r.username ? `${r.display_name}（${r.username}）` : (r.username || '—');
+            const who = r.display_name && r.display_name !== r.username ? t('common.nameWithId', { name: r.display_name, id: r.username }) : (r.username || '—');
             const tip = r.status === 'reverted' && r.reverted_by ? t('lu.revertedBy', { user: r.reverted_by, time: fmtDateTime(r.reverted_at) }) : (r.error || '');
             return `<tr>
                 <td class="nowrap">${esc(fmtDateTime(r.created_at))}</td>
@@ -490,8 +507,21 @@ async function load() {
     await loadHistory();
 }
 
+/** Language switched: re-render what this page drew (the conversation so far stays as written). */
+function onLangChange() {
+    renderAccess();
+    $('#luFileInfo').textContent = st.fileLabel || t('lu.noFile');
+    for (const [id, [text, kind]] of Object.entries(statusText)) setStatus(id, text, kind);
+    if (st.facts) { renderFacts(st.facts); renderWoPlaceholder(); }
+    renderModeLabels();
+    renderExtract();
+    if (st.validation) renderIssues(st.validation.issues);
+    if (st.result) renderResults(st.result);
+    if (appRef?.page?.id === 'logupload' && st.uploadId && !st.committedId) loadHistory();   // load() is skipped while busy
+}
+
 export default {
-    id: 'logupload', scoped: false, init, load,
+    id: 'logupload', scoped: false, init, load, onLangChange,
     onAuthChange: () => { renderAccess(); if (appRef?.page?.id === 'logupload') load(); },
     isBusy: () => st.busy || st.chatBusy || (!!st.uploadId && !st.committedId),
     /** Used by 帳號管理 →「看紀錄」. */

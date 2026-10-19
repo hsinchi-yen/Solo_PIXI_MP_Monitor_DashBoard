@@ -114,9 +114,11 @@ class ChatBody(BaseModel):
     upload_id: str = Field("", max_length=64)
     messages: list = Field(default_factory=list)
     known: Optional[dict] = None
+    lang: str = Field("zh", max_length=8)      # UI language for the reply
 
 
 # ─── AI reports ──────────────────────────────────────────────────────────────
 
 class AskBody(BaseModel):
     messages: list = Field(default_factory=list)
+    lang: str = Field("zh", max_length=8)      # UI language: the default answer language

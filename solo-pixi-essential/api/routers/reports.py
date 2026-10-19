@@ -7,7 +7,7 @@ from fastapi.responses import Response, StreamingResponse
 
 import config
 import db
-from errors import ApiError, bad_request, conflict, not_found
+from errors import ApiError, Msg, bad_request, conflict, not_found
 from schemas import AskBody
 from services import auth, llm, reports, upload_chat
 from services.ingest import ndjson
@@ -25,7 +25,7 @@ def _row(row):
 def _get_row(conn, work_order, report_id):
     row = db.fetch_one(conn, "SELECT * FROM ai_reports WHERE id = %s AND work_order = %s", (report_id, work_order))
     if not row:
-        raise not_found("找不到這份報告", "no_report")
+        raise not_found(Msg("找不到這份報告", "Report not found."), "no_report")
     return row
 
 
@@ -62,11 +62,13 @@ def generate(work_order: str, force: bool = Query(True), user=Depends(auth.optio
                                       on_event=events.put, force=force)
             events.put({"type": "done", "id": row_id})
         except RuntimeError:
-            events.put({"type": "error", "code": "busy", "message": "這張工單的報告正在產生中，請稍候再開啟"})
+            events.put({"type": "error", "code": "busy", "message": "這張工單的報告正在產生中，請稍候再開啟",
+                        "message_en": "A report for this work order is being generated. Please open it again shortly."})
         except ApiError as exc:
             events.put({"type": "error", "code": exc.code, "message": exc.message})
         except Exception:
-            events.put({"type": "error", "code": "llm", "message": "AI 報告產生失敗，請確認 LLM 狀態後重試"})
+            events.put({"type": "error", "code": "llm", "message": "AI 報告產生失敗，請確認 LLM 狀態後重試",
+                        "message_en": "AI report generation failed. Check the LLM status and try again."})
 
     threading.Thread(target=run, daemon=True, name=f"report-{work_order}").start()
 
@@ -106,7 +108,7 @@ def compare(work_order: str, base: int = Query(None), target: int = Query(None))
                 SELECT * FROM ai_reports WHERE work_order = %s AND status = 'done' ORDER BY id DESC LIMIT 2
             """, (work_order,))
             if len(rows) < 2:
-                raise bad_request("需要至少兩份報告才能比較", "not_enough_reports")
+                raise bad_request(Msg("需要至少兩份報告才能比較", "At least two reports are needed to compare."), "not_enough_reports")
             t_row, b_row = rows[0], rows[1]
         else:
             b_row, t_row = _get_row(conn, work_order, base), _get_row(conn, work_order, target)
@@ -120,7 +122,7 @@ def markdown(work_order: str, lang: str = Query("zh", pattern="^(zh|en)$"), id: 
     with db.db() as conn:
         row = _get_row(conn, work_order, id) if id else reports.latest_done(conn, work_order)
     if not row:
-        raise not_found("這張工單還沒有報告", "no_report")
+        raise not_found(Msg("這張工單還沒有報告", "This work order has no report yet."), "no_report")
     body = reports.to_markdown(row, lang, config.APP_TZ)
     filename = f"AI_Report_{work_order}_{lang}.md"
     return Response(body, media_type="text/markdown; charset=utf-8",
@@ -133,12 +135,12 @@ def ask(work_order: str, body: AskBody):
     try:
         messages = upload_chat.normalize_messages(body.messages)
     except ValueError as exc:
-        raise bad_request(str(exc), "bad_messages")
+        raise bad_request(exc.args[0], "bad_messages")
     with db.db() as conn:
         row = reports.latest_done(conn, work_order)
     if not row:
-        raise conflict("請先產生這張工單的報告", "no_report")
-    prompt = reports.ask_messages(row, messages)
+        raise conflict(Msg("請先產生這張工單的報告", "Generate a report for this work order first."), "no_report")
+    prompt = reports.ask_messages(row, messages, upload_chat.ui_lang(body.lang))
 
     def stream():
         parts = []
@@ -148,7 +150,8 @@ def ask(work_order: str, body: AskBody):
                 yield ndjson({"type": "delta", "text": text})
             yield ndjson({"type": "done", "reply": "".join(parts).strip()})
         except Exception:
-            yield ndjson({"type": "error", "message": "AI 助理目前無法回覆，請稍後再試"})
+            yield ndjson({"type": "error", "code": "llm", "message": "AI 助理目前無法回覆，請稍後再試",
+                          "message_en": "The AI assistant cannot reply right now. Please try again later."})
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
 

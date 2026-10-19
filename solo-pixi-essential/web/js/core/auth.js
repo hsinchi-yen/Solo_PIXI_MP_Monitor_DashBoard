@@ -70,7 +70,7 @@ setUnauthorizedHandler(() => clear('expired'));
 
 export function displayName(u = user) {
     if (!u) return '';
-    return u.display_name && u.display_name !== u.username ? `${u.display_name}（${u.username}）` : u.username;
+    return u.display_name && u.display_name !== u.username ? t('common.nameWithId', { name: u.display_name, id: u.username }) : u.username;
 }
 
 export function openChangePassword() {

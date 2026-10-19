@@ -15,6 +15,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -153,7 +154,7 @@ class T1System(Base):
     def test_error_shape_and_no_exception_text(self):
         st, body = call('GET', '/api/summary?date_from=nope')
         self.assertEqual(st, 400)
-        self.assertEqual(set(body), {'error', 'code'})
+        self.assertEqual(set(body), {'error', 'code', 'error_en'})
 
     def test_b8_bad_requests_do_not_leak_connections(self):
         before = int(psql("SELECT COUNT(*) FROM pg_stat_activity WHERE datname = 'pixi_test'"))
@@ -389,6 +390,72 @@ class T5Reports(Base):
         st, r = call('POST', '/api/reports/run-daily', self.admin)
         self.assertEqual(st, 200)
         self.assertIn('queued', r)
+
+
+# ═══ English / Chinese (bilingual_ui_plan.md) ═════════════════════════════════
+
+CJK = re.compile(r'[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]')
+
+
+class T8Language(Base):
+    """Every message the UI shows from the server exists in English; the AI answers in the UI language."""
+
+    def assertEnglish(self, text):
+        self.assertTrue(text)
+        self.assertIsNone(CJK.search(text), text)
+
+    def test_errors_carry_english(self):
+        cases = [
+            ('GET', '/api/summary?date_from=nope', None, None, 400),
+            ('GET', '/api/summary?date_from=2026-10-10&date_to=2026-10-01', None, None, 400),
+            ('POST', '/api/auth/login', None, {'username': ADMIN_USER, 'password': 'wrong'}, 401),
+            ('GET', '/api/admin/users', None, None, 401),
+            ('GET', '/api/reports/5101-999999999/markdown?lang=en', None, None, 404),
+            ('POST', '/api/alignment-targets', self.admin, {'5101-260630006': 0}, 400),
+            ('DELETE', '/api/tweak/delete-scope', self.admin, None, 400),
+        ]
+        for method, path, token, body, status in cases:
+            st, resp = call(method, path, token, body)
+            self.assertEqual(st, status, (path, resp))
+            self.assertTrue(CJK.search(resp['error']), resp)
+            self.assertEnglish(resp['error_en'])
+
+    @unittest.skipUnless(os.path.isfile(ZIP_007), 'rawlogs/log5101-260630007.zip missing')
+    def test_upload_checks_and_chat_in_english(self):
+        st, a = upload_zip(ZIP_007, self.admin)
+        self.assertEqual(st, 200, a)
+        try:
+            self.assertIn('Read 4 stations', a['chat_opening_en'])
+            self.assertEnglish(a['chat_opening_en'])
+            st, v = call('POST', '/api/log-upload/validate', self.admin,
+                         {'upload_id': a['upload_id'], 'work_order': '5101-260630099', 'planned_qty': '2000'})
+            self.assertEqual({i['code'] for i in v['issues']} >= {'R3', 'R5'}, True, v)
+            for issue in v['issues']:
+                self.assertEnglish(issue['message_en'])
+            for item in a['facts']['invalid_items']:
+                self.assertEnglish(item['reason_en'])
+            if not llm_online():
+                return
+            st, events = ndjson('/api/log-upload/chat', self.admin, {
+                'upload_id': a['upload_id'], 'lang': 'en',
+                'messages': [{'role': 'assistant', 'content': a['chat_opening_en']},
+                             {'role': 'user', 'content': 'Work order 5101-260630007, 2000 units'}]})
+            done = [e for e in events if e['type'] == 'done']
+            self.assertTrue(done, events)
+            self.assertEnglish(done[0]['reply'])
+        finally:
+            psql(f"DELETE FROM upload_log WHERE id = '{a['upload_id']}'")
+
+    def test_report_follow_up_in_english(self):
+        if not llm_online():
+            self.skipTest('LLM offline')
+        wo = call('GET', '/api/filter-options')[1]['work_orders'][0]['work_order']
+        if call('GET', f'/api/reports/{wo}')[1].get('report') is None:
+            self.skipTest('no report for the latest work order')
+        st, events = ndjson(f'/api/reports/{wo}/ask', body={'lang': 'en', 'messages': [
+            {'role': 'user', 'content': 'What is the yield?'}]})
+        self.assertEqual(events[-1]['type'], 'done', events[-3:])
+        self.assertEnglish(events[-1]['reply'])
 
 
 # ═══ Desktop uploader path (direct DB writes) ════════════════════════════════

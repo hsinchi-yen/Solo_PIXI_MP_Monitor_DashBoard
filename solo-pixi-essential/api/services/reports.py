@@ -20,7 +20,7 @@ from datetime import datetime
 
 import config
 import db
-from errors import not_found
+from errors import Msg, not_found
 from services import llm, stats
 from services.filters import Scope
 from services.report_text import (ASK_PROMPT, LANGS, REPORT_SCHEMA, SYSTEM_PROMPT, check_numbers,  # noqa: F401
@@ -34,7 +34,7 @@ def build_facts(conn, work_order):
     scope = Scope(work_order=work_order)
     s = stats.summary(conn, scope)
     if not s["total"]:
-        raise not_found(f"找不到工單 {work_order} 的測試資料", "no_data")
+        raise not_found(Msg(f"找不到工單 {work_order} 的測試資料", f"No test data for work order {work_order}."), "no_data")
     days = db.fetch_one(conn, "SELECT COUNT(DISTINCT eff_date) AS n FROM mv_unit_day WHERE wo_key = %s",
                         (work_order,))["n"]
     dur = db.fetch_one(conn, """
@@ -198,7 +198,8 @@ def generate(work_order, trigger="manual", requested_by=None, on_event=None, row
                         emit({"type": "report", "lang": lang, "report": report, "check": check})
                     except Exception as exc:
                         errors[lang] = str(exc)[:300]
-                        emit({"type": "lang_error", "lang": lang, "message": "AI 無法產生這個語言的報告"})
+                        emit({"type": "lang_error", "lang": lang, "message": "AI 無法產生這個語言的報告",
+                              "message_en": "The AI could not write the report in this language."})
             status = "done" if results else "failed"
             cur.execute("""
                 UPDATE ai_reports SET status = %s, report_zh = %s, report_en = %s, checks = %s, error = %s,
@@ -326,7 +327,9 @@ def daily_due(now=None):
     return (now.hour, now.minute) >= (hh, mm)
 
 
-def ask_messages(row, messages):
-    context = {"facts": row["facts"], "report_zh": row.get("report_zh")}
-    system = ASK_PROMPT + "\n事實表與報告（JSON）：\n" + json.dumps(context, ensure_ascii=False)
+def ask_messages(row, messages, lang="zh"):
+    report = row.get("report_en" if lang == "en" else "report_zh") or row.get("report_zh") or row.get("report_en")
+    context = {"facts": row["facts"], "report": report}
+    system = (ASK_PROMPT.format(default="English" if lang == "en" else "繁體中文")
+              + "\n事實表與報告（JSON）：\n" + json.dumps(context, ensure_ascii=False))
     return [{"role": "system", "content": system}] + messages[-10:]

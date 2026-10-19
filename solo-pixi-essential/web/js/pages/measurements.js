@@ -141,7 +141,7 @@ function renderTab() {
 }
 
 function showError(err) {
-    const msg = `${t('common.loadFailed')}：${err.message}`;
+    const msg = t('common.loadFailedMsg', { error: err.message });
     ['chMsBdr', 'chMsEdr', 'chMsEvm24', 'chMsEvm5', 'chMsEvmTail', 'chMsXtalCap', 'chMsXtalPpm', 'chMsRetry', 'chMsDuration', 'chMsPpm']
         .forEach(id => charts.chartMessage(id, msg, 'error'));
     $('#msBtTiles').innerHTML = '';

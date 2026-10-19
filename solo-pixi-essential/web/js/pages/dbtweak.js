@@ -51,7 +51,7 @@ async function loadRecords() {
         renderPager($('#twPager'), data, p => { state.page = p; loadRecords(); });
     } catch (err) {
         if (mine !== seq) return;
-        tableState(tbody, 10, 'error', `${t('common.loadFailed')}：${err.message}`, loadRecords);
+        tableState(tbody, 10, 'error', t('common.loadFailedMsg', { error: err.message }), loadRecords);
     }
 }
 

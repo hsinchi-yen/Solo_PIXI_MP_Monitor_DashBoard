@@ -6,7 +6,7 @@ from fastapi.responses import PlainTextResponse
 
 import config
 import db
-from errors import bad_request, not_found
+from errors import Msg, bad_request, not_found
 from schemas import Summary, Trend
 from services import auth, measurements, stats
 from services.filters import Scope, parse_scope
@@ -163,16 +163,17 @@ def set_alignment_targets(targets: Dict[str, Optional[int]] = Body(..., examples
                           _user=Depends(auth.current_user)):
     """Set planned quantities ({work order: number}; null clears). Requires sign-in."""
     if len(targets) > 500:
-        raise bad_request("一次最多 500 張工單", "too_many")
+        raise bad_request(Msg("一次最多 500 張工單", "At most 500 work orders at a time."), "too_many")
     with db.db() as conn:
         for wo, target in targets.items():
             wo = (wo or "").strip()
             if not wo or len(wo) > 64:
-                raise bad_request("工單號不正確", "bad_work_order")
+                raise bad_request(Msg("工單號不正確", "Invalid work order."), "bad_work_order")
             if target is None:
                 db.execute(conn, "DELETE FROM alignment_targets WHERE work_order = %s", (wo,))
             elif not 0 < target <= 1_000_000:
-                raise bad_request(f"{wo} 的計畫數必須是 1 到 1,000,000 的整數", "bad_target")
+                raise bad_request(Msg(f"{wo} 的計畫數必須是 1 到 1,000,000 的整數",
+                                      f"The planned quantity for {wo} must be a whole number from 1 to 1,000,000."), "bad_target")
             else:
                 db.execute(conn, """
                     INSERT INTO alignment_targets (work_order, target_total, updated_at) VALUES (%s, %s, NOW())
@@ -187,7 +188,7 @@ def raw_log(record_id: int):
     with db.db() as conn:
         row = db.fetch_one(conn, "SELECT raw_log, source_file FROM module_test WHERE id = %s", (record_id,))
     if not row or not row["raw_log"]:
-        raise not_found("這筆紀錄沒有原始 log", "no_raw_log")
+        raise not_found(Msg("這筆紀錄沒有原始 log", "This record has no raw log."), "no_raw_log")
     filename = (row["source_file"] or f"record_{record_id}.txt").replace('"', "")
     return PlainTextResponse(row["raw_log"], headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 

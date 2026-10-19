@@ -10,6 +10,8 @@ import hmac
 import re
 import secrets
 
+from errors import Msg
+
 PBKDF2_ITERATIONS = 600_000
 PASSWORD_MIN_LEN = 8
 PASSWORD_MAX_LEN = 128
@@ -63,17 +65,18 @@ def normalize_username(name):
 def username_error(username, reserved=()):
     """username must already be normalized. Returns a message, or None when valid."""
     if not USERNAME_RE.fullmatch(username or ''):
-        return '帳號只能使用英文、數字和 . _ -，長度 3 到 32 字（不分大小寫）。'
+        return Msg('帳號只能使用英文、數字和 . _ -，長度 3 到 32 字（不分大小寫）。',
+                   'Usernames use letters, digits and . _ - only, 3 to 32 characters (not case-sensitive).')
     if username in {normalize_username(r) for r in reserved}:
-        return '這個帳號名稱保留給管理者，請換一個。'
+        return Msg('這個帳號名稱保留給管理者，請換一個。', 'This username is reserved for the administrator. Please choose another.')
     return None
 
 
 def password_error(password):
     if not isinstance(password, str) or len(password) < PASSWORD_MIN_LEN:
-        return f'密碼至少需要 {PASSWORD_MIN_LEN} 碼。'
+        return Msg(f'密碼至少需要 {PASSWORD_MIN_LEN} 碼。', f'Passwords need at least {PASSWORD_MIN_LEN} characters.')
     if len(password) > PASSWORD_MAX_LEN:
-        return f'密碼最多 {PASSWORD_MAX_LEN} 碼。'
+        return Msg(f'密碼最多 {PASSWORD_MAX_LEN} 碼。', f'Passwords can have at most {PASSWORD_MAX_LEN} characters.')
     return None
 
 
@@ -85,11 +88,11 @@ def clean_profile(display_name, department, email):
         'email': str(email or '').strip() or None,
     }
     if not profile['display_name']:
-        return profile, '請輸入顯示名稱（姓名）。'
+        return profile, Msg('請輸入顯示名稱（姓名）。', 'Please enter a display name.')
     if len(profile['display_name']) > PROFILE_MAX_LEN or len(profile['department'] or '') > PROFILE_MAX_LEN:
-        return profile, f'姓名和部門最多 {PROFILE_MAX_LEN} 字。'
+        return profile, Msg(f'姓名和部門最多 {PROFILE_MAX_LEN} 字。', f'Name and department can have at most {PROFILE_MAX_LEN} characters.')
     if profile['email'] and (len(profile['email']) > EMAIL_MAX_LEN or not EMAIL_RE.fullmatch(profile['email'])):
-        return profile, 'Email 格式不正確。'
+        return profile, Msg('Email 格式不正確。', 'Invalid email address.')
     return profile, None
 
 

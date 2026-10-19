@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 
 import config
 import db
-from errors import ApiError
+from errors import ApiError, Msg
 from services import llm, stats
 
 router = APIRouter(tags=["system"])
@@ -45,7 +45,7 @@ _last_manual_refresh = {"at": 0.0}
 def refresh_stats():
     """「立即更新」: refresh the statistics view now (at most once every 10 seconds)."""
     if time.time() - _last_manual_refresh["at"] < 10:
-        raise ApiError(429, "剛剛才更新過，請稍候再試", "too_soon")
+        raise ApiError(429, Msg("剛剛才更新過，請稍候再試", "Just refreshed. Please try again in a few seconds."), "too_soon")
     _last_manual_refresh["at"] = time.time()
     at = stats.refresh(wait=True)
     return {"stats_refreshed_at": at}

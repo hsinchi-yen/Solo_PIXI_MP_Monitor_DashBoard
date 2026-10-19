@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query, Request
 
 import config
 import db
-from errors import bad_request, not_found
+from errors import Msg, bad_request, not_found
 from schemas import PasswordBody, UserCreate, UserUpdate
 from services import auth, auth_utils
 
@@ -62,7 +62,7 @@ def create_user(request: Request, body: UserCreate, admin=Depends(auth.require_a
         """, (username, profile["display_name"], profile["department"], profile["email"],
               auth_utils.hash_password(body.password), admin["username"]))
         if n == 0:
-            raise bad_request(f"帳號 {username} 已存在。", "duplicate_user")
+            raise bad_request(Msg(f"帳號 {username} 已存在。", f"Username {username} already exists."), "duplicate_user")
         auth.audit(conn, request, admin["username"], "create", username, profile)
     return {"ok": True, "username": username}
 
@@ -76,7 +76,7 @@ def update_user(username: str, request: Request, body: UserUpdate, admin=Depends
         before = db.fetch_one(conn, "SELECT display_name, department, email, enabled FROM app_users WHERE username = %s",
                               (username,))
         if not before:
-            raise not_found("找不到這個帳號。", "no_user")
+            raise not_found(Msg("找不到這個帳號。", "Account not found."), "no_user")
         merged = {k: sent.get(k, before[k]) for k in ("display_name", "department", "email")}
         profile, error = auth_utils.clean_profile(merged["display_name"], merged["department"], merged["email"])
         if error:
@@ -109,7 +109,7 @@ def reset_password(username: str, request: Request, body: PasswordBody, admin=De
             WHERE username = %s
         """, (auth_utils.hash_password(body.password), username))
         if n == 0:
-            raise not_found("找不到這個帳號。", "no_user")
+            raise not_found(Msg("找不到這個帳號。", "Account not found."), "no_user")
         auth.revoke_sessions(conn, username)
         auth.audit(conn, request, admin["username"], "reset_password", username)
     return {"ok": True}

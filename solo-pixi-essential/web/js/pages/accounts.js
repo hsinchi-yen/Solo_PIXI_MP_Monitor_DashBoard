@@ -58,7 +58,7 @@ async function loadUsers() {
             </td></tr>`).join('');
         tbody.innerHTML = adminRow + (rows || `<tr><td colspan="11" class="muted">${esc(t('acct.empty'))}</td></tr>`);
     } catch (err) {
-        tableState(tbody, 11, 'error', `${t('common.loadFailed')}：${err.message}`, loadUsers);
+        tableState(tbody, 11, 'error', t('common.loadFailedMsg', { error: err.message }), loadUsers);
     }
 }
 
@@ -79,9 +79,10 @@ function auditDetail(r) {
     const d = r.detail || {};
     const label = k => ({ display_name: t('acct.f.name'), department: t('acct.f.dept'), email: t('acct.f.email') }[k] || k);
     if (r.action === 'update' && d.before) {
-        return Object.keys(d.after || {}).map(k => `${label(k)}：${d.before[k] || t('acct.blank')} → ${d.after[k] || t('acct.blank')}`).join('；');
+        return Object.keys(d.after || {}).map(k => t('acct.change', { field: label(k), before: d.before[k] || t('acct.blank'), after: d.after[k] || t('acct.blank') }))
+            .join(t('common.itemSep'));
     }
-    if (r.action === 'create') return Object.entries(d).filter(([, v]) => v).map(([k, v]) => `${label(k)}：${v}`).join('；');
+    if (r.action === 'create') return Object.entries(d).filter(([, v]) => v).map(([k, v]) => t('acct.value', { field: label(k), value: v })).join(t('common.itemSep'));
     return '';
 }
 
@@ -97,7 +98,7 @@ async function loadAudit() {
             || `<tr><td colspan="6" class="muted">${esc(t('acct.empty2'))}</td></tr>`;
         rangePager($('#acctAuditPager'), data, off => { st.auditOffset = off; loadAudit(); });
     } catch (err) {
-        tableState(tbody, 6, 'error', `${t('common.loadFailed')}：${err.message}`, loadAudit);
+        tableState(tbody, 6, 'error', t('common.loadFailedMsg', { error: err.message }), loadAudit);
     }
 }
 
@@ -117,7 +118,7 @@ async function loadLogins() {
             || `<tr><td colspan="7" class="muted">${esc(t('acct.empty2'))}</td></tr>`;
         rangePager($('#acctLoginPager'), data, off => { st.loginOffset = off; loadLogins(); });
     } catch (err) {
-        tableState(tbody, 7, 'error', `${t('common.loadFailed')}：${err.message}`, loadLogins);
+        tableState(tbody, 7, 'error', t('common.loadFailedMsg', { error: err.message }), loadLogins);
     }
 }
 

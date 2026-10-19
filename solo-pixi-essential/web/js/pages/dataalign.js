@@ -58,7 +58,7 @@ async function load(app = appRef) {
     } catch (err) {
         if (mine !== seq) return;
         $('#alTiles').innerHTML = '';
-        tableState(tbody, 12, 'error', `${t('common.loadFailed')}：${err.message}`, () => load());
+        tableState(tbody, 12, 'error', t('common.loadFailedMsg', { error: err.message }), () => load());
     }
 }
 
@@ -100,4 +100,5 @@ export default {
     id: 'dataalign', scoped: true, init, load: app => load(app),
     onAuthChange: () => { if (appRef?.page?.id === 'dataalign') renderStatus(); },
     isBusy: () => dirtyCount() > 0,
+    onLangChange: () => { if (appRef?.page?.id === 'dataalign') renderStatus(); },
 };

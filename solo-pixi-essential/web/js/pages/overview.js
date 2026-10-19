@@ -82,7 +82,8 @@ function renderSplit(split) {
     charts.render('chOvSplit', c => ({
         type: 'doughnut',
         data: {
-            labels: ['PASS', 'FAIL', 'STOP'].map((l, i) => `${l}  ${fmtInt(values[i])}（${(values[i] * 100 / total).toFixed(2)}%）`),
+            labels: ['PASS', 'FAIL', 'STOP'].map((label, i) =>
+                t('ov.splitLabel', { label, n: fmtInt(values[i]), pct: (values[i] * 100 / total).toFixed(2) })),
             datasets: [{ data: values, backgroundColor: [c.pass, c.fail, c.stop], borderWidth: 0 }],
         },
         options: { cutout: '62%', plugins: { legend: { position: window.innerWidth < 900 ? 'bottom' : 'right', labels: { font: { size: 15 } } } } },
@@ -99,7 +100,7 @@ function renderMonthly(monthly) {
         charts.chartMessage('chOvMonthlyFail', t('common.empty'));
         return;
     }
-    const labels = months.map(m => t('ov.month', { m: m.month }));
+    const labels = months.map(m => t(`ov.m${m.month}`));
     charts.render('chOvMonthly', c => ({
         type: 'bar',
         data: { labels, datasets: [
@@ -136,7 +137,7 @@ async function load(app) {
         ['#ovYield', '#ovUnits', '#ovPass', '#ovFail', '#ovStop', '#ovRetry'].forEach(id => { $(id).textContent = '—'; });
         $('#ovAligned').textContent = err.message;
         ['chOvTrend', 'chOvSplit', 'chOvMonthly', 'chOvMonthlyFail'].forEach(id =>
-            charts.chartMessage(id, `${t('common.loadFailed')}：${err.message}`, 'error'));
+            charts.chartMessage(id, t('common.loadFailedMsg', { error: err.message }), 'error'));
     }
 }
 

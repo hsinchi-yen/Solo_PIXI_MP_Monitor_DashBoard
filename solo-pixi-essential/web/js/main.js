@@ -1,9 +1,9 @@
-// App shell: hash routing, the filter bar, data freshness, theme, clock, idle rotation.
+// App shell: hash routing, the filter bar, data freshness, theme, language, clock, idle rotation.
 import { apiGet, apiPost, onApiStatus } from './core/api.js';
 import * as auth from './core/auth.js';
 import * as charts from './core/charts.js';
-import { fmtDate, fmtShortDate, fmtTime, setThresholds } from './core/format.js';
-import { applyI18n, t } from './core/i18n.js';
+import { fmtClockDate, fmtDate, fmtShortDate, fmtTime, setThresholds } from './core/format.js';
+import { applyI18n, getLang, initLang, onLangChange, setLang, t } from './core/i18n.js';
 import { presetRange, scopeKey, scopeParams } from './core/scope.js';
 import { $, $$, initEscapeClose, initFormModal, toast, closeFormModal } from './core/ui.js';
 import report from './report.js';
@@ -75,7 +75,7 @@ function updateScopeLabel() {
     if (app.scope.workOrder) parts.push(`${t('filter.woAria')} ${app.scope.workOrder}`);
     const { from, to } = app.scope.range === 'custom' ? app.scope : presetRange(app.scope.range);
     if (from || to) parts.push(from === to ? from : `${from || '…'} ~ ${to || '…'}`);
-    el.textContent = parts.join('・') || t('filter.scopeAll');
+    el.textContent = parts.join(t('common.dot')) || t('filter.scopeAll');
 }
 
 function renderRange() {
@@ -89,7 +89,8 @@ function renderWoOptions() {
     const all = new Option(t('filter.allWo'), '');
     sel.appendChild(all);
     app.options.work_orders.forEach((w, i) => {
-        const label = `${w.work_order}${i === 0 ? t('filter.latest') : ''}　${fmtShortDate(w.first_date)}–${fmtShortDate(w.last_date)}`;
+        const label = t('filter.woOption', { wo: w.work_order, latest: i === 0 ? t('filter.latest') : '',
+                                             from: fmtShortDate(w.first_date), to: fmtShortDate(w.last_date) });
         sel.appendChild(new Option(label, w.work_order));
     });
     sel.value = app.scope.workOrder;
@@ -148,16 +149,25 @@ function renderFreshness() {
     $('#freshText').textContent = at ? t('fresh.label', { time: `${fmtShortDate(at)} ${fmtTime(at)}` }) : t('fresh.unknown');
 }
 
+const lights = { api: null, llm: null };
+
+function renderLights() {
+    if (lights.api !== null) $('#apiText').textContent = lights.api ? t('status.apiOk') : t('status.apiErr');
+    if (lights.llm !== null) $('#llmText').textContent = lights.llm ? t('status.llmOk') : t('status.llmErr');
+}
+
 function setLlm(ok) {
+    lights.llm = !!ok;
     $('#llmDot').className = `dot ${ok ? 'ok' : 'err'}`;
-    $('#llmText').textContent = ok ? t('status.llmOk') : t('status.llmErr');
+    renderLights();
     report.setLlm(!!ok);
 }
 
 function initStatus() {
     onApiStatus(ok => {
+        lights.api = !!ok;
         $('#apiDot').className = `dot ${ok ? 'ok' : 'err'}`;
-        $('#apiText').textContent = ok ? t('status.apiOk') : t('status.apiErr');
+        renderLights();
     });
     $('#btnRefresh').addEventListener('click', async () => {
         const btn = $('#btnRefresh');
@@ -202,18 +212,42 @@ function initTheme() {
     });
 }
 
+function tickClock() {
+    const now = new Date();
+    $('#clockTime').textContent = now.toTimeString().slice(0, 5);
+    $('#clockDate').textContent = fmtClockDate(now, getLang());
+}
+
 function initClock() {
-    const tick = () => {
-        const now = new Date();
-        $('#clockTime').textContent = now.toTimeString().slice(0, 5);
-        $('#clockDate').textContent = now.toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' });
-    };
-    tick();
-    setInterval(tick, 10 * 1000);
+    tickClock();
+    setInterval(tickClock, 10 * 1000);
+}
+
+/* ─── Language: English (default) / 中文; switching keeps the page, filters and sign-in ─── */
+function initLanguage() {
+    $('#btnLang').addEventListener('click', () => setLang(getLang() === 'en' ? 'zh' : 'en'));
+    onLangChange(() => {
+        applyI18n();
+        renderThemeButton();
+        tickClock();
+        renderFreshness();
+        renderLights();
+        renderWoOptions();
+        renderAuthBox(auth.currentUser());
+        if (app.page) {
+            $('#pageTitle').textContent = t(`page.${app.page.id}`);
+            document.title = `${t(`page.${app.page.id}`)} · ${t('app.title')}`;
+        }
+        updateScopeLabel();
+        report.onLangChange();
+        PAGES.forEach(p => p.onLangChange?.(app));
+        // Re-render the visible page (charts, tables) unless it holds unsaved input.
+        if (app.page && !app.page.isBusy?.()) loadPage();
+    });
 }
 
 /* ─── Signed-in user box ─── */
-function renderAuth(user, reason) {
+function renderAuthBox(user) {
     $('#authBox').hidden = !user;
     $('#navAccounts').hidden = !auth.isAdmin();
     if (user) {
@@ -222,6 +256,10 @@ function renderAuth(user, reason) {
         $('#authRole').textContent = auth.isAdmin() ? t('auth.admin') : t('auth.uploader');
         $('#btnChangePw').hidden = auth.isAdmin();
     }
+}
+
+function renderAuth(user, reason) {
+    renderAuthBox(user);
     if (reason === 'expired') toast(t('auth.expired'), 'bad');
     PAGES.forEach(p => p.onAuthChange?.(user, reason, app));
 }
@@ -248,11 +286,13 @@ function initIdleRotation() {
 
 /* ─── Start ─── */
 async function start() {
+    initLang();
     applyI18n();
     initFormModal();
     initEscapeClose([['formModal', closeFormModal], ['reportModal', () => report.close()]]);
     charts.applyDefaults();
     initTheme();
+    initLanguage();
     initClock();
     initStatus();
     initFilters();

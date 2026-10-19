@@ -8,6 +8,7 @@ report number check, the static web app (structure, i18n coverage, themes) and �
 Node.js is installed — the browser modules via `node --test "tests/js/*.test.mjs"`. Tests that need
 FastAPI run only where it is installed (CI, the api container).
 """
+import ast
 import importlib
 import importlib.util
 import io
@@ -376,6 +377,115 @@ class TestAccountsAndChat(unittest.TestCase):
         self.assertIn('還沒有取得工單名稱', system)
 
 
+class TestEnglishMessages(unittest.TestCase):
+    """Server messages shown in the UI exist in English too (Msg / message_en); no DB, no LLM."""
+
+    CJK = re.compile(r'[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]')
+    ERROR_CALLS = {'ApiError': 1, 'bad_request': 0, 'not_found': 0, 'conflict': 0}   # index of the message arg
+
+    @classmethod
+    def setUpClass(cls):
+        cls.errors = importlib.import_module('errors')
+        cls.auth = _service('auth_utils')
+        cls.chat = _service('upload_chat')
+        cls.ls = _load_module('_log_splitter_en', 'log_splitter.py')
+        cls.facts = {'zip_name': 'log5101-260630007.zip', 'inferred_wo': '5101-260630007',
+                     'stations': [{'station': s} for s in ('10', '20', '30', '40')],
+                     'total_records': 2041, 'unique_mac1': 1893, 'invalid': 3,
+                     'first_test': '2026-09-30 08:00:00', 'last_test': '2026-10-01 13:07:58'}
+
+    def assertEnglish(self, text):
+        self.assertTrue(text, 'empty English text')
+        self.assertIsNone(self.CJK.search(text), text)
+
+    def test_every_raised_error_has_english(self):
+        missing = []
+        for root, _, files in os.walk(API_DIR):
+            for name in files:
+                if not name.endswith('.py'):
+                    continue
+                path = os.path.join(root, name)
+                with open(path, encoding='utf-8') as f:
+                    tree = ast.parse(f.read())
+                for node in ast.walk(tree):
+                    if not isinstance(node, ast.Call):
+                        continue
+                    fn = getattr(node.func, 'id', None) or getattr(node.func, 'attr', None)
+                    if fn == 'ValueError' and node.args and isinstance(node.args[0], (ast.Constant, ast.JoinedStr)) \
+                            and self.CJK.search(ast.unparse(node.args[0])):
+                        missing.append(f'{os.path.relpath(path, API_DIR)}:{node.lineno}')
+                    if fn not in self.ERROR_CALLS or len(node.args) <= self.ERROR_CALLS[fn]:
+                        continue
+                    arg = node.args[self.ERROR_CALLS[fn]]
+                    # a Msg(…) literal, or a variable holding one (checked by the tests below)
+                    if isinstance(arg, (ast.Constant, ast.JoinedStr)):
+                        missing.append(f'{os.path.relpath(path, API_DIR)}:{node.lineno}')
+        self.assertEqual(missing, [])
+
+    def test_error_response_carries_both_languages(self):
+        err = self.errors.bad_request(self.errors.Msg('工單號太長', 'The work order is too long.'), 'bad_work_order')
+        self.assertEqual(str(err.message), '工單號太長')
+        self.assertEqual(self.errors.english(err.message), 'The work order is too long.')
+        self.assertEqual(self.errors.english(self.errors.not_found().message), 'Not found')
+        if HAVE_FASTAPI:
+            body = json.loads(self.errors.error_response(400, err.message, err.code).body)
+            self.assertEqual(body, {'error': '工單號太長', 'error_en': 'The work order is too long.', 'code': 'bad_work_order'})
+
+    def test_account_rule_messages(self):
+        for msg in (self.auth.username_error('a'), self.auth.username_error('pixi', reserved=['pixi']),
+                    self.auth.password_error('1'), self.auth.password_error('x' * 500),
+                    self.auth.clean_profile(' ', None, None)[1], self.auth.clean_profile('x' * 200, None, None)[1],
+                    self.auth.clean_profile('x', None, 'bad')[1]):
+            self.assertTrue(self.CJK.search(msg))
+            self.assertEnglish(self.errors.english(msg))
+
+    def test_chat_input_errors(self):
+        for bad in ([], [{'role': 'system', 'content': 'x'}], [{'role': 'user', 'content': 'x' * 501}],
+                    [{'role': 'user', 'content': ''}], [{'role': 'user', 'content': 'x'}] * 41):
+            with self.assertRaises(ValueError) as ctx:
+                self.chat.normalize_messages(bad)
+            self.assertEnglish(self.errors.english(ctx.exception.args[0]))
+
+    def test_upload_rules_in_english(self):
+        cases = [('', None, {}, None), ('5101-26', 'abc', {}, None),
+                 ('5101-260630099', 2000, {'5101-260630001': 5, None: 2, '5101-260630099': 7}, 1990)]
+        codes = set()
+        for wo, qty, existing, target in cases:
+            for issue in self.ls.validate_upload(self.facts, wo, qty, existing, target):
+                codes.add(issue['code'])
+                self.assertTrue(self.CJK.search(issue['message']))
+                self.assertEnglish(issue['message_en'])
+        self.assertEqual(codes, {f'R{i}' for i in range(1, 9)})
+
+    def test_invalid_segment_reasons_in_english(self):
+        content = _segment(mac1='^%') + _segment(result='')
+        _, invalid = self.ls.split_to_records(content, '5101-260630005')
+        self.assertEqual(len(invalid), 2)
+        for item in invalid:
+            self.assertTrue(self.CJK.search(item['reason']))
+            self.assertEnglish(item['reason_en'])
+
+    def test_chat_texts_follow_ui_language(self):
+        self.assertEqual(self.chat.ui_lang('en'), 'en')
+        self.assertEqual(self.chat.ui_lang('xx'), 'zh')
+        opening = self.chat.opening_message(self.facts, 'en')
+        self.assertEnglish(opening)
+        for part in ('4 stations', '2,041', '1,893', '3 invalid'):
+            self.assertIn(part, opening)
+        for fields in ({'work_order': None, 'planned_qty': None}, {'work_order': '5101-260630007', 'planned_qty': None},
+                       {'work_order': '5101-260630007', 'planned_qty': 2000}):
+            self.assertEnglish(self.chat.fallback_reply(fields, 'en'))
+            issues = self.ls.validate_upload(self.facts, fields['work_order'] or '', fields['planned_qty'], {}, None)
+            system = self.chat.build_reply_messages(self.facts, fields, issues, [{'role': 'user', 'content': 'x'}], 'en')[0]['content']
+            self.assertIn('Always reply in English', system)
+            self.assertEnglish(system)
+        warn = self.ls.validate_upload(self.facts, '5101-260630099', 2000, {}, None)
+        system = self.chat.build_reply_messages(self.facts, {'work_order': '5101-260630099', 'planned_qty': 2000},
+                                                warn, [{'role': 'user', 'content': 'x'}], 'en')[0]['content']
+        self.assertIn('tick "I have checked"', system)
+        self.assertIn('a difference of +107', system)
+
+
 class TestFilters(unittest.TestCase):
     """services/filters.py — date-range scope (B2) and the legacy parameters it replaces."""
 
@@ -587,8 +697,9 @@ class TestWebApp(unittest.TestCase):
         self.assertEqual(missing, [])
 
     def test_every_i18n_key_defined(self):
-        dict_src = self.js['js/core/i18n.js']
-        defined = set(re.findall(r"^\s+'([\w.]+)':", dict_src, re.M))
+        # strings.en.js and strings.zh.js have the same keys (checked in tests/js/i18n.test.mjs)
+        defined = set(re.findall(r"^\s+'([\w.]+)':", self.js['js/core/strings.en.js'], re.M))
+        self.assertEqual(defined, set(re.findall(r"^\s+'([\w.]+)':", self.js['js/core/strings.zh.js'], re.M)))
         used = set(self.doc.i18n_keys)
         for src in self.js.values():
             code = re.sub(r'^\s*//.*$', '', src, flags=re.M)      # ignore usage examples in comments
@@ -627,6 +738,27 @@ class TestWebApp(unittest.TestCase):
 
     def test_idle_rotation_only_overview_and_workorders(self):
         self.assertIn("const ROTATION = ['overview', 'workorders'];", self.js['js/main.js'])
+
+    def test_english_is_the_default_language(self):
+        self.assertIn('<html lang="en"', self.html)
+        self.assertIn('id="btnLang"', self.html)
+        self.assertIn("LANGS.includes(stored) ? stored : 'en'", self.js['js/core/i18n.js'])
+
+    def test_no_chinese_text_outside_the_dictionary(self):
+        # Every visible string comes from strings.*.js; comments may stay Chinese.
+        cjk = re.compile(r'[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]')
+        found = []
+        for name, src in self.js.items():
+            if name.startswith('js/core/strings.'):
+                continue
+            for n, line in enumerate(src.splitlines(), 1):
+                code = re.sub(r'//.*$|^\s*\*.*$|/\*.*?\*/', '', line)
+                if cjk.search(code) and "'未分類'" not in code:      # data value from the AI facts
+                    found.append(f'{name}:{n}')
+        body = re.sub(r'<!--.*?-->', '', self.html, flags=re.S)
+        if cjk.search(re.sub(r'<script>.*?</script>', '', body, flags=re.S)):
+            found.append('index.html')
+        self.assertEqual(found, [])
 
 
 @unittest.skipUnless(shutil.which('node'), 'Node.js not installed')
