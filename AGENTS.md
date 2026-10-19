@@ -12,7 +12,7 @@
 - Deploy: `scripts/deploy.sh` (backup → rsync → build → health → automatic rollback); rehearse with `scripts/deploy.sh --local DIR`. Production deploys need the user's explicit approval.
 
 ### Tests
-- `python tests/test_unit.py` — no DB; also runs `node --test tests/js/` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image: `docker run --rm -v "$PWD":/repo:ro pixi-dashboard-api:3.0.0 sh -c "pip install -q httpx && python /repo/tests/test_unit.py"`)
+- `python tests/test_unit.py` — no DB; also runs `node --test "tests/js/*.test.mjs"` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image: `docker run --rm -v "$PWD":/repo:ro pixi-dashboard-api:3.0.0 sh -c "pip install -q httpx && python /repo/tests/test_unit.py"`)
 - `python tests/test_integration.py` — needs the running stack + `docker` (direct DB checks); uploads use `rawlogs/*.zip`
 - `python tests/test_e2e.py [--shots DIR]` — Playwright; screenshots for docs/test-report
 - CI: `.github/workflows/tests.yml` runs the unit suites

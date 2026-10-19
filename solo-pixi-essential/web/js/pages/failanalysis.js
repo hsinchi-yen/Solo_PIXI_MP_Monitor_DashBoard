@@ -7,6 +7,17 @@ import { queryString } from '../core/scope.js';
 import { $, tableState } from '../core/ui.js';
 
 let seq = 0;
+const CHART_TOP = 10;
+
+// The detail rows are per (code, step, message); the chart merges messages so each bar has its own label.
+function chartRows(steps) {
+    const byLabel = new Map();
+    for (const r of steps) {
+        const label = `${r.fail_error_code ? `${r.fail_error_code}: ` : ''}${r.fail_step}`;
+        byLabel.set(label, (byLabel.get(label) || 0) + r.count);
+    }
+    return [...byLabel].sort((a, b) => b[1] - a[1]).slice(0, CHART_TOP);
+}
 
 async function load(app) {
     const mine = ++seq;
@@ -19,14 +30,18 @@ async function load(app) {
         ]);
         if (mine !== seq) return;
         if (!steps.length) charts.chartMessage('chFaSteps', t('common.empty'));
-        else charts.render('chFaSteps', c => ({
-            type: 'bar',
-            data: {
-                labels: steps.map(r => `${r.fail_error_code ? `${r.fail_error_code}: ` : ''}${r.fail_step}`),
-                datasets: [{ label: t('fa.occurrences'), data: steps.map(r => r.count), backgroundColor: c.fail, borderRadius: 4 }],
-            },
-            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } },
-        }));
+        else {
+            const rows = chartRows(steps);
+            charts.render('chFaSteps', c => ({
+                type: 'bar',
+                data: {
+                    labels: rows.map(r => r[0]),
+                    datasets: [{ label: t('fa.occurrences'), data: rows.map(r => r[1]), backgroundColor: c.fail, borderRadius: 4 }],
+                },
+                options: { indexAxis: 'y', plugins: { legend: { display: false } },
+                           scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { ticks: { autoSkip: false } } } },
+            }));
+        }
         if (!config.length) charts.chartMessage('chFaConfig', t('common.empty'));
         else charts.render('chFaConfig', c => ({
             type: 'bar',

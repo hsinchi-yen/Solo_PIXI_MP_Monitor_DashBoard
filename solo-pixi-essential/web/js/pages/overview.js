@@ -31,7 +31,12 @@ function renderNumbers(s, aligned) {
         b.textContent = fmtPct(aligned.yield_pct);
         b.className = `v-${yieldLevel(aligned.yield_pct)}`;
         al.append(t('ov.aligned'), ' ', b);
-        if (aligned.gap > 0) al.append(`　${t('ov.alignedGap', { gap: fmtInt(aligned.gap) })}`);
+        if (aligned.gap > 0) {
+            const gap = document.createElement('span');
+            gap.className = 'gap';
+            gap.textContent = t('ov.alignedGap', { gap: fmtInt(aligned.gap) });
+            al.append(gap);
+        }
     } else {
         al.textContent = t('ov.alignedNoTarget');
     }
@@ -80,7 +85,7 @@ function renderSplit(split) {
             labels: ['PASS', 'FAIL', 'STOP'].map((l, i) => `${l}  ${fmtInt(values[i])}（${(values[i] * 100 / total).toFixed(2)}%）`),
             datasets: [{ data: values, backgroundColor: [c.pass, c.fail, c.stop], borderWidth: 0 }],
         },
-        options: { cutout: '62%', plugins: { legend: { position: 'right', labels: { font: { size: 15 } } } } },
+        options: { cutout: '62%', plugins: { legend: { position: window.innerWidth < 900 ? 'bottom' : 'right', labels: { font: { size: 15 } } } } },
     }));
 }
 

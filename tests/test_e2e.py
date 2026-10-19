@@ -70,6 +70,10 @@ class E2E(unittest.TestCase):
         return pg
 
     def shot(self, pg, name, full=False):
+        if full:
+            # Full-page captures draw sticky elements (sidebar, header) at the current scroll position
+            pg.evaluate('window.scrollTo(0, 0)')
+        pg.wait_for_timeout(600)  # chart transitions (300 ms) finish
         pg.screenshot(path=os.path.join(SHOTS, f'{name}.png'), full_page=full)
 
     def goto(self, pg, page_id):
@@ -290,6 +294,29 @@ class E2E(unittest.TestCase):
             self.assertLessEqual(overflow, 1, page_id)
         self.goto(pg, 'overview')
         self.shot(pg, '17_phone_overview', full=True)
+
+    # ── B4 / B5: a failed request shows a message; idle rotation keeps going ───
+    def test_11_api_failure_message_and_rotation_b4_b5(self):
+        # Own context without the console hook: the aborted requests log errors on purpose.
+        ctx = self.browser.new_context(viewport={'width': 1920, 'height': 1080})
+        pg = ctx.new_page()
+        pg.clock.install()
+        pg.route('**/api/overview*', lambda route: route.abort())
+        pg.goto(BASE + '/', wait_until='networkidle')
+        pg.wait_for_selector('#page-overview .state-msg.error')
+        self.assertIn('讀取失敗', pg.inner_text('#page-overview .ov-charts'), 'B4 failure shown in place')
+        self.assertIn('err', pg.get_attribute('#apiDot', 'class'), 'B4/B6 API light turns red')
+        self.shot(pg, '18_api_error')
+        # B5: after 5 idle minutes the rotation moves on although the overview failed …
+        pg.clock.fast_forward('05:31')
+        pg.wait_for_function("location.hash === '#workorders'")
+        # … and comes back to a working overview once the API answers again.
+        pg.unroute('**/api/overview*')
+        pg.clock.fast_forward('00:31')
+        pg.wait_for_function("location.hash === '#overview'")
+        pg.wait_for_function("document.getElementById('ovYield').textContent !== '—'")
+        self.assertIn('ok', pg.get_attribute('#apiDot', 'class'))
+        ctx.close()
 
     def test_99_no_console_errors(self):
         self.assertEqual([e for e in self.errors if 'favicon' not in e], [])

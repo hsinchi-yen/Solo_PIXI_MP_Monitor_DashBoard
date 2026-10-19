@@ -134,7 +134,7 @@ export const STRINGS = {
     'fails.col.log': '原始 log',
     'fails.download': '下載',
 
-    'fa.steps': '失敗步驟與錯誤碼（前 20 名）',
+    'fa.steps': '失敗步驟與錯誤碼（前 10 名）',
     'fa.config': '未識別原因的 FAIL / STOP',
     'fa.configLabel': '{result}（未識別原因）',
     'fa.table': '失敗原因明細',

@@ -3,7 +3,7 @@
 | Suite | Needs | Command |
 |---|---|---|
 | Unit (Python) | Python 3.10+. FastAPI tests run only where `api/requirements.txt` is installed | `python tests/test_unit.py` |
-| Unit (JavaScript) | Node.js 22+ | `node --test tests/js/` (also run by `test_unit.py` when Node is present) |
+| Unit (JavaScript) | Node.js 22+ | `node --test "tests/js/*.test.mjs"` (also run by `test_unit.py` when Node is present) |
 | Integration | Running stack, `docker` on PATH, admin credentials; `rawlogs/*.zip` for upload tests; LLM for AI tests | `PIXI_BASE_URL=http://localhost:8001 python tests/test_integration.py` |
 | Browser E2E | Running stack + `pip install playwright` (Chrome, or `python -m playwright install chromium`) | `python tests/test_e2e.py [--shots DIR]` |
 

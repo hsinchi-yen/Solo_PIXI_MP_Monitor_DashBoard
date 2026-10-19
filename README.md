@@ -50,7 +50,7 @@ docs/                       操作手冊、測試報告、archive/（舊計畫�
 ## 測試
 
 ```bash
-python tests/test_unit.py                       # 單元測試（含 node --test tests/js/）
+python tests/test_unit.py                       # 單元測試（含 node --test "tests/js/*.test.mjs"）
 python tests/test_integration.py                # 需要啟動中的 stack
 python tests/test_e2e.py                        # 需要 playwright
 ```

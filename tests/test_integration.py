@@ -254,6 +254,17 @@ class T3Accounts(Base):
                              ('POST', '/api/reports/run-daily')):
             self.assertEqual(call(method, path, U)[0], 403, f'A4 {path}')
         self.assertEqual(call('POST', '/api/alignment-targets', U, {'IT-WO': None})[0], 200, 'uploader may save targets')
+        # A5 / A6: an uploader can neither see nor undo someone else's batch (only analyzed: nothing is written).
+        uid = upload_zip(ZIP_007, A)[1]['upload_id']
+        try:
+            psql(f"UPDATE upload_log SET status = 'reverted' WHERE id = '{uid}'")   # listed in history from now on
+            self.assertEqual(call('GET', f'/api/log-upload/{uid}', U)[0], 403, 'A5 detail')
+            self.assertEqual(call('DELETE', f'/api/log-upload/{uid}', U)[0], 403, 'A6 undo')
+            ids = lambda tok: {h['id'] for h in call('GET', f'/api/log-upload/history?username={ADMIN_USER}', tok)[1]['items']}
+            self.assertIn(uid, ids(A), 'administrator sees every batch')
+            self.assertNotIn(uid, ids(U), 'A5 uploader history is their own only')
+        finally:
+            psql(f"DELETE FROM upload_log WHERE id = '{uid}'")
         st, r = call('PATCH', f'/api/admin/users/{TEST_USER}', A, {'enabled': False})
         self.assertEqual(r['enabled'], False)
         self.assertEqual(call('GET', '/api/auth/me', U)[0], 401, 'A7 disabled → session revoked')

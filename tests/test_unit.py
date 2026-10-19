@@ -5,7 +5,7 @@ Solo PIXI MP Monitor Dashboard — unit tests (no database, no network).
 
 Covers the shared splitter/parser, account + chat helpers, date-range filters, the AI
 report number check, the static web app (structure, i18n coverage, themes) and — when
-Node.js is installed — the browser modules via `node --test tests/js`. Tests that need
+Node.js is installed — the browser modules via `node --test "tests/js/*.test.mjs"`. Tests that need
 FastAPI run only where it is installed (CI, the api container).
 """
 import importlib
