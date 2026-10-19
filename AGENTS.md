@@ -12,9 +12,9 @@
 - Deploy: `scripts/deploy.sh` (backup → rsync → build → health → automatic rollback); rehearse with `scripts/deploy.sh --local DIR`. Production deploys need the user's explicit approval.
 
 ### Tests
-- `python tests/test_unit.py` — no DB; also runs `node --test "tests/js/*.test.mjs"` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image: `docker run --rm -v "$PWD":/repo:ro pixi-dashboard-api:3.0.0 sh -c "pip install -q httpx && python /repo/tests/test_unit.py"`)
+- `python tests/test_unit.py` — no DB; also runs `node --test "tests/js/*.test.mjs"` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image as root, since the image user cannot install packages: `docker run --rm --user root -v "$PWD":/repo:ro pixi-dashboard-api:3.1.0 sh -c "pip install -q --root-user-action=ignore httpx && python /repo/tests/test_unit.py"`)
 - `python tests/test_integration.py` — needs the running stack + `docker` (direct DB checks); uploads use `rawlogs/*.zip`
-- `python tests/test_e2e.py [--shots DIR]` — Playwright; screenshots for docs/test-report
+- `python tests/test_e2e.py [--shots DIR]` — Playwright; screenshots for docs/test-report/v3.1.0 (English by default, test_12–14 switch to 中文)
 - CI: `.github/workflows/tests.yml` runs the unit suites
 
 ## Architecture
@@ -25,7 +25,7 @@
 ### API (`solo-pixi-essential/api/`)
 - `app.py` entry (lifespan: migrations + scheduler; request timing log; StaticFiles fallback when run without nginx)
 - `config.py` env settings + shared thresholds (yield ≥98 green, ≥95 amber; retry ≤3 green, ≤5 amber); `db.py` per-worker pool (`with db.db() as conn`), dedicated `db.connect()` for work that holds advisory locks; slow statements (>500 ms) logged
-- `errors.py` — every error is `{"error", "code"}`; raise `ApiError` / `bad_request` / `not_found` / `conflict`
+- `errors.py` — every error is `{"error", "error_en", "code"}`; raise `ApiError` / `bad_request` / `not_found` / `conflict` with `Msg("中文", "English")` (a unit test rejects plain-string messages). Other texts the UI shows carry both languages too: NDJSON `message` / `message_en`, upload checks `message` / `message_en`, invalid segments `reason` / `reason_en`, analyze `chat_opening` / `chat_opening_en`
 - `routers/`: `analytics` (public dashboard data), `auth`, `admin` (accounts), `tweak` (DB Tweak + `/api/reparse` jobs), `upload` (Log Uploader), `reports` (AI), `system` (health, llm-status, stats refresh)
 - `services/`: `filters` (date-range scope), `stats` (unit statistics from the views + result cache), `measurements` (SQL histograms), `reports` + `report_text` (AI report facts / prompt / number check / Markdown), `llm`, `ingest` (web upload thread), `reparse` (background job), `migrations`, `scheduler`, `auth`, `auth_utils`, `upload_chat`
 - Shared with the desktop tools, one level up: `module_log_parser.py`, `log_splitter.py`
@@ -49,10 +49,11 @@
 ### Web (`solo-pixi-essential/web/`, no build step)
 - `index.html` shell; `css/theme.css` (Dark default / Light — the only two themes; all colours incl. charts are variables), `css/base.css`, `css/pages.css`
 - `js/main.js` routing (`#overview` …), filter bar (全部/今天/本週/本月/自訂 + 工單; default = latest work order), freshness + 立即更新, theme, idle rotation (overview ↔ workorders every 30 s after 5 min idle; filters untouched; paused while busy)
-- `js/core/`: `api.js` (errors, NDJSON, authenticated downloads), `auth.js`, `charts.js`, `format.js`, `scope.js`, `i18n.js` (every UI string; `data-i18n*` attributes in HTML), `ui.js`
+- `js/core/`: `api.js` (errors in the UI language, NDJSON, authenticated downloads), `auth.js`, `charts.js`, `format.js`, `scope.js`, `i18n.js` (language state, `t()`, `localized(zh, en)`; `data-i18n*` attributes in HTML), `strings.en.js` / `strings.zh.js` (every UI string; same keys and `{variables}`, English has no Chinese — checked by tests), `ui.js`
 - `js/pages/*.js` one module per page: `{id, scoped, init(app), load(app), onAuthChange?, isBusy?}`; `js/report.js` the single AI report window
 - Chart.js is vendored (`vendor/chart.umd-4.4.1.min.js`); no CDN at runtime
-- Unit tests check: every `t('key')` / `data-i18n` key exists, ids used by JS exist, no inline styles, no hex colours outside `theme.css`
+- Language: English is the default; the sidebar button switches to 中文 (`localStorage` `pixi-lang`; `?lang=en|zh` wins). Switching re-renders the shell and the visible page (pages may add `onLangChange`). Dates stay numeric in both languages; only month labels differ (Jan / 1 月). The AI report opens in the UI language; the upload assistant and report follow-ups get `lang` in the request body
+- Unit tests check: every `t('key')` / `data-i18n` key exists in both dictionaries, no Chinese text in JS outside the dictionaries, ids used by JS exist, no inline styles, no hex colours outside `theme.css`
 
 ## Dashboard Pages
 | Page key | Nav label | Auth |
@@ -86,4 +87,4 @@
 - `module_log_parser._plain_sum` keeps a left-to-right float sum on purpose (matches the Python 3.11 desktop uploader).
 - Log Uploader: `file_hash` ignores the work order, so a wrong work order cannot be fixed by re-uploading — undo the batch first. Rows from the web uploader carry `module_test.upload_id`.
 - Desktop tools (`log_splitter_app.py`, `log_uploader_app.py`, `log_concatenate_app.py`) are unchanged and keep working against the same database.
-- Design records: `improve_plan.md` (this round), `log_uploader_web_plan.md` (uploader / accounts); superseded plans in `docs/archive/`.
+- Design records: `bilingual_ui_plan.md` (English / 中文, v3.1.0), `improve_plan.md` (v3.0.0), `log_uploader_web_plan.md` (uploader / accounts); superseded plans in `docs/archive/`.

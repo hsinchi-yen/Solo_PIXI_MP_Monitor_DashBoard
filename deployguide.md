@@ -28,7 +28,7 @@ scripts/deploy.sh                  # 正式部署
 
 本機演練（不會用到 SSH）：準備一個目錄放 `.env`（例如 `PIXI_PREFIX=pixi-rehearsal`、`PIXI_HTTP_PORT=8002`、`PIXI_DB_PORT=5434`），再執行 `scripts/deploy.sh --local <目錄>`。
 
-### 第一次部署 v3.0.0 要注意
+### 第一次部署 v3.x（v3.0.0 起）要注意
 - API 啟動時會自動建立新物件：`mv_unit_day`、`mv_unit`（統計 view）、`idx_mt_eff_date`（索引）、`ai_reports`、`job_runs`、`app_meta`，以及帳號／上傳紀錄相關資料表。**`module_test` 欄位不變**（只在缺少時補上 `upload_id` 等早期版本加過的 nullable 欄位）。7 萬筆資料約 2 秒。
 - 舊的單檔 `solo_pixi_dashboard.html`、`ai_summary_helper.py` 已不再使用，留在伺服器上無害；用 `--delete` 部署會移除。
 - 部署後所有人需要重新登入一次。
