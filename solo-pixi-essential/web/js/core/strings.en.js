@@ -15,7 +15,7 @@ export default {
     'nav.failanalysis': 'Fail Analysis',
     'nav.dbtweak': 'DB Maintenance',
     'nav.dataalign': 'Data Alignment',
-    'nav.logupload': 'Log Upload',
+    'nav.logupload': '上傳 Log',              // line staff look for it in Chinese (Q55)
     'nav.accounts': 'Accounts',
 
     'page.overview': 'Dashboard',

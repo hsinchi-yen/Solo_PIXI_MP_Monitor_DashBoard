@@ -35,11 +35,12 @@ SHOTS = os.environ.get('PIXI_SHOTS', os.path.join(ROOT, 'docs', 'test-report', '
 CJK = re.compile(r'[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]')
 PAGES = ['overview', 'workorders', 'fails', 'measurements', 'failanalysis', 'dbtweak', 'dataalign', 'logupload', 'accounts']
 # UI text of the sidebar, top bar and visible page — without data (table bodies, names, chat, selects)
-# and without the language button, whose label 中文 is Chinese on purpose.
+# and without the language button and the upload menu item, which are Chinese on purpose (Q55).
 UI_TEXT_JS = """() => [document.querySelector('.sidebar'), document.querySelector('.topbar'),
     document.querySelector('.page:not([hidden])')].map(el => {
         const c = el.cloneNode(true);
-        c.querySelectorAll('tbody, select, .msg, #authName, #btnLang, #pageScope, #luFileInfo').forEach(x => x.remove());
+        c.querySelectorAll('tbody, select, .msg, #authName, #btnLang, #pageScope, #luFileInfo, a[data-page="logupload"]')
+            .forEach(x => x.remove());
         return c.textContent;
     }).join(' ')"""
 E2E_USER, E2E_PASS = 'e2e-uploader', 'e2e-pass-123'
@@ -404,6 +405,42 @@ class E2E(unittest.TestCase):
         self.assertEqual(pg.get_attribute('#rpLang button[data-lang="zh"]', 'aria-pressed'), 'true')
         pg.keyboard.press('Escape')
         pg.click('#btnLang')
+
+    # ── Q53–Q55: uploaders (line staff) get 中文; sign-out restores the browser's language ──
+    @unittest.skipUnless(os.path.isfile(ZIP_007), 'rawlogs/log5101-260630007.zip not present')
+    def test_15_uploader_gets_chinese_then_signout_restores_english(self):
+        pg = self.page()
+        pg.goto(BASE + '/', wait_until='networkidle')
+        self.assertEqual(pg.get_attribute('html', 'lang'), 'en')
+        self.assertEqual(pg.inner_text('a[data-page="logupload"] [data-i18n]'), '上傳 Log', 'Q55 menu item in Chinese')
+        token = pg.request.post(BASE + '/api/auth/login', data={'username': ADMIN_USER, 'password': ADMIN_PASS}).json()['token']
+        pg.request.post(BASE + '/api/admin/users', headers={'X-Tweak-Token': token},   # 400 when test_07 made it already
+                        data={'username': E2E_USER, 'display_name': 'E2E Tester', 'password': E2E_PASS})
+        try:
+            self.login(pg, E2E_USER, E2E_PASS)
+            pg.wait_for_function("document.documentElement.lang === 'zh-Hant-TW'")
+            self.assertEqual(pg.inner_text('#pageTitle'), '上傳 Log', 'Q54 uploader → 中文')
+            self.assertEqual(pg.inner_text('#btnLang'), 'EN')
+            pg.set_input_files('#luFile', ZIP_007)
+            pg.wait_for_selector('#luStepConfirm:not([hidden])', timeout=120000)
+            self.assertIn('分析完成', pg.inner_text('#luAnalyzeStatus'))
+            if pg.locator('#luChatPanel').is_visible():
+                self.assertIn('已讀取 4 個站別', pg.inner_text('#luChatLog'), 'opening in 中文')
+                pg.fill('#luChatInput', f'工單是 {WO_007}，2000 台')
+                pg.press('#luChatInput', 'Enter')
+                pg.wait_for_function("!document.getElementById('btnLuUpload').disabled", timeout=90000)
+                reply = pg.inner_text('#luChatLog .msg.assistant:last-child')
+                self.assertIsNotNone(CJK.search(reply), f'the assistant answers in 中文: {reply}')
+                self.assertIn('計畫', pg.inner_text('#luIssues'))
+            pg.locator('#luStepConfirm').scroll_into_view_if_needed()
+            self.shot(pg, '22_uploader_zh_upload')
+            pg.click('#btnLuReset')
+            pg.click('#btnLogout')
+            pg.wait_for_function("document.documentElement.lang === 'en'")
+            self.assertEqual(pg.inner_text('#pageTitle'), 'Log Upload', 'sign-out restores English')
+            self.shot(pg, '23_after_signout_en')
+        finally:
+            psql(f"DELETE FROM upload_log WHERE username = '{E2E_USER}' AND status = 'analyzed'")
 
     def test_99_no_console_errors(self):
         self.assertEqual([e for e in self.errors if 'favicon' not in e], [])

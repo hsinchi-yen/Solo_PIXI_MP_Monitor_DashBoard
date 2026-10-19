@@ -42,7 +42,7 @@ code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; 
 .nav-item[aria-current="page"] { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
 .nav-item:disabled { opacity: .45; cursor: not-allowed; }
 .nav-icon { width: 20px; text-align: center; }
-.sidebar-foot { padding: 12px 14px 16px; border-top: 1px solid var(--border); display: grid; gap: 10px; }
+.sidebar-foot { padding: 12px 14px 16px; border-top: 1px solid var(--border); display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }  /* long names ellipsize instead of widening */
 .auth-box { padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); }
 .auth-name { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .auth-role { font-size: 11px; color: var(--text-3); }

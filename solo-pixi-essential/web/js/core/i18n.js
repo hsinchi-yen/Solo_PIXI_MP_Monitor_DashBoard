@@ -23,10 +23,15 @@ export function initialLang(search = '', stored = null) {
     return LANGS.includes(stored) ? stored : 'en';
 }
 
-export function initLang() {
+/** This browser's choice (address, then saved, then English). */
+export function preferredLang() {
     let stored = null;
     try { stored = localStorage.getItem(STORAGE_KEY); } catch { /* storage blocked */ }
-    setLang(initialLang(location.search, stored), { save: false, notify: false });
+    return initialLang(location.search, stored);
+}
+
+export function initLang() {
+    setLang(preferredLang(), { save: false, notify: false });
 }
 
 export function setLang(next, { save = true, notify = true } = {}) {

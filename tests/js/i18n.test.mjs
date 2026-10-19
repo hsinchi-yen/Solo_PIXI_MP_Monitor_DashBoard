@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { getLang, initialLang, joinList, localized, setLang, STRINGS, t, tLang } from '../../solo-pixi-essential/web/js/core/i18n.js';
 
 const CJK = /[　-〿㐀-鿿＀-￯]/;
-// Language names are written in their own language on purpose.
-const ENGLISH_MAY_HAVE_CHINESE = new Set(['lang.switch', 'lang.aria', 'rp.zh']);
+// Language names are written in their own language on purpose; the upload menu item stays Chinese
+// for the line staff (Q55).
+const ENGLISH_MAY_HAVE_CHINESE = new Set(['lang.switch', 'lang.aria', 'rp.zh', 'nav.logupload']);
 const vars = s => [...s.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort();
 
 test('English is the default language', () => {

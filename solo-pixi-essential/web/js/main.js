@@ -3,7 +3,7 @@ import { apiGet, apiPost, onApiStatus } from './core/api.js';
 import * as auth from './core/auth.js';
 import * as charts from './core/charts.js';
 import { fmtClockDate, fmtDate, fmtShortDate, fmtTime, setThresholds } from './core/format.js';
-import { applyI18n, getLang, initLang, onLangChange, setLang, t } from './core/i18n.js';
+import { applyI18n, getLang, initLang, onLangChange, preferredLang, setLang, t } from './core/i18n.js';
 import { presetRange, scopeKey, scopeParams } from './core/scope.js';
 import { $, $$, initEscapeClose, initFormModal, toast, closeFormModal } from './core/ui.js';
 import report from './report.js';
@@ -246,6 +246,21 @@ function initLanguage() {
     });
 }
 
+// Uploaders (line staff in Taiwan) get 中文 while signed in; this does not change the browser's
+// saved choice, which comes back after they sign out. Admins and visitors keep their language.
+let uploaderZh = false;
+
+function applyUploaderLanguage(user) {
+    const uploader = user?.role === 'uploader';
+    if (uploader && !uploaderZh) {
+        uploaderZh = true;
+        if (getLang() !== 'zh') setLang('zh', { save: false });
+    } else if (!uploader && uploaderZh) {
+        uploaderZh = false;
+        if (getLang() !== preferredLang()) setLang(preferredLang(), { save: false });
+    }
+}
+
 /* ─── Signed-in user box ─── */
 function renderAuthBox(user) {
     $('#authBox').hidden = !user;
@@ -259,6 +274,7 @@ function renderAuthBox(user) {
 }
 
 function renderAuth(user, reason) {
+    applyUploaderLanguage(user);
     renderAuthBox(user);
     if (reason === 'expired') toast(t('auth.expired'), 'bad');
     PAGES.forEach(p => p.onAuthChange?.(user, reason, app));
