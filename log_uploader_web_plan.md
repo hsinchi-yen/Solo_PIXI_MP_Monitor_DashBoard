@@ -1,4 +1,6 @@
 # Dashboard Log Uploader 實作計劃書
+
+> 2026-10-19 起程式結構已改版（見 `improve_plan.md` D1／D2）：`api/app.py` 拆成 `api/routers/` 與 `api/services/`，`solo_pixi_dashboard.html` 改為 `web/`。本文件中的檔案路徑與行號以當時的版本為準。
 *Web-based Log Uploader with LLM-guided Confirmation — Implementation Plan*
 
 | 項目 | 內容 |

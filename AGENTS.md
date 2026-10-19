@@ -1,105 +1,89 @@
 # Solo PIXI MP Monitor Dashboard - Agent Guide
 
-## Core Development Commands
+## Core Commands
 
-### Backend API
-- Start API server: `uvicorn app:app --host 0.0.0.0 --port 8000`
-- Health check: `curl http://localhost:8000/health`
-- API documentation: `http://localhost:8000/docs`
-
-### Database
-- Initialize DB: Docker Compose handles schema initialization via `schema.sql`
-- Reset DB: `docker compose down -v && docker compose up -d`
-- Connect to DB: `psql postgresql://pixi:pixipass@localhost:5433/pixi_test`
-
-### Docker
-- Start all services: `docker compose up -d`
-- Stop services: `docker compose down`
-- View logs: `docker compose logs -f`
-
-### Desktop Applications
-- Log splitter: `python log_splitter_app.py`
-- Log concatenate: `python log_concatenate_app.py`
-- Log uploader: `python log_uploader_app.py`
+### Stack (run in `solo-pixi-essential/`)
+- Production-style: `docker compose up -d --build` — code is baked into the api image; nginx serves `web/`
+- Development: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d` — `api/` and the two shared modules are mounted; after editing Python run `... restart api`. `web/` and `nginx/` are mounted in both modes (reload the browser; `docker exec <prefix>-nginx nginx -s reload` after nginx changes)
+- The local test stack on hermesrunner uses compose project `pixi-local` (`docker compose -p pixi-local …`)
+- Health: `curl http://localhost:8001/health` (DB latency, LLM status, stats refresh time, version)
+- API docs: `http://localhost:8001/docs`
+- DB shell: `psql postgresql://pixi:pixipass@localhost:5433/pixi_test`
+- Deploy: `scripts/deploy.sh` (backup → rsync → build → health → automatic rollback); rehearse with `scripts/deploy.sh --local DIR`. Production deploys need the user's explicit approval.
 
 ### Tests
-- Unit test suite: `python test_dashboard_suite.py`
-- 109 tests: HTML structure, API pure functions (no DB), JS alignment logic via Node.js, Log Uploader core (`TestLogUploader`), accounts + AI chat helpers (`TestAccountsAndChat`)
-- Known pre-existing failures (20): donut-ring / MAC1-range / `alignGetStore` tests expect code not in the dashboard, and `TestAPIFunctions` cannot import `app.py` (needs `ai_summary_helper`/`log_splitter`/`auth_utils`/`upload_chat` on the path). New work must not add to this set.
-- `TestLogUploader.test_sample_zip_matches_desktop_split_output` runs only when `rawlogs/5101-260630005.zip` and `rawlogs/5101-260630005_S/` exist (rawlogs is git-ignored)
+- `python tests/test_unit.py` — no DB; also runs `node --test tests/js/` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image: `docker run --rm -v "$PWD":/repo:ro pixi-dashboard-api:3.0.0 sh -c "pip install -q httpx && python /repo/tests/test_unit.py"`)
+- `python tests/test_integration.py` — needs the running stack + `docker` (direct DB checks); uploads use `rawlogs/*.zip`
+- `python tests/test_e2e.py [--shots DIR]` — Playwright; screenshots for docs/test-report
+- CI: `.github/workflows/tests.yml` runs the unit suites
 
-## Environment Configuration
-- Database URL: Set via `DATABASE_URL` env var (default: `postgresql://pixi:pixipass@localhost:5433/pixi_test`)
-- Administrator account: `TWEAK_USER` / `TWEAK_PASS` (default: `pixi`/`pixipass`) — the only admin; uploader accounts live in the `app_users` table
-- Login sessions: `SESSION_TTL_HOURS` (default 8)
-- Local LLM: `LLM_API_BASE`, `LLM_MODEL` (default `Qwen3.8-27B-UD-Q6_K_L`), `LLM_ENABLE_THINKING` (default `false` — thinking costs ~15x latency on the dense 27B model), `LLM_REPORT_MAX_TOKENS`
-- See `.env.example` for a complete template of all environment variables
+## Architecture
 
-## Project Structure
-- `solo-pixi-essential/`: Contains FastAPI backend and dashboard
-  - `api/`: FastAPI application
-  - `api/app.py`: Main FastAPI application with all endpoints
-  - `module_log_parser.py`: Log parsing utility used by the web Log Uploader, reparse endpoint and desktop uploader
-  - `log_splitter.py`: Server-side splitter + upload validation rules (R1–R8) for the web Log Uploader; split output is byte-identical to `log_splitter_app.py`
-  - `auth_utils.py`: Password hashing (PBKDF2), session tokens, account input checks — pure functions
-  - `upload_chat.py`: Log Uploader AI assistant — prompt building, value extraction, fallback parsing — pure functions
-  - `solo_pixi_dashboard.html`: Frontend dashboard (single-file, ~5000 lines)
-  - `docker-compose.yml`: Service definitions for PostgreSQL, API, and Nginx
-- Root level: Desktop applications, utility scripts, and test suite
-  - `test_dashboard_suite.py`: Unit test suite (109 tests, no DB required)
-  - `log_uploader_web_plan.md`: Design / alignment record for the web Log Uploader
+### Rule: existing tables keep their columns
+`module_test` and the other existing tables are never altered (the desktop uploader writes `module_test` directly with a fixed column list). Allowed: new indexes, new tables, materialized views, query rewrites. Startup migrations check `information_schema` before touching `module_test` (only the four nullable columns earlier releases added: `fail_error_code`, `fail_category`, `unit_date`, `upload_id`).
 
-## Key API Endpoints
-- Health: `GET /health`
-- Summary stats: `GET /api/summary`
-- Yield trends: `GET /api/yield-trend`
-- Fail analysis: `GET /api/fail-analysis`
-- Filter options: `GET /api/filter-options`
-- Work order summary: `GET /api/work-order-summary`
-- Retries: `GET /api/retries`
-- Auth: `POST /api/auth/login` (alias `/api/tweak/login`) → `{token, role, username, display_name, expires_at}`; `POST /api/auth/logout`; `GET /api/auth/me`; `POST /api/auth/change-password` (uploaders only)
-  - `X-Tweak-Token` carries that random session token (the DB stores only its SHA-256). The old base64 `user:pass` token is rejected. 401 = sign in again, 403 = role not allowed
-- DB Tweak + `/api/reparse` + `/api/tweak/raw-log`: administrator only
-- Accounts (administrator only): `GET/POST /api/admin/users`, `PATCH /api/admin/users/{username}` (profile / `enabled`), `POST /api/admin/users/{username}/reset-password`, `GET /api/admin/audit`, `GET /api/admin/login-log`
-- Log Uploader (administrator or uploader; uploaders only reach batches they analyzed):
-  - `POST /api/log-upload/analyze` — multipart `file` (.zip); splits every `<station>/…/Log_All.txt` in memory, returns `upload_id` + facts + `chat_opening` (no `module_test` writes)
-  - `POST /api/log-upload/chat` — `{upload_id, messages, known}` → NDJSON (`extract`/`validation`/`delta`/`done` or `fallback`); regex extracts the work order, the LLM the quantity, the R1–R8 rules decide
-  - `POST /api/log-upload/validate` — `{upload_id, work_order, planned_qty}` → rule results `{issues, can_upload, needs_ack}`
-  - `POST /api/log-upload/commit` — `{upload_id, work_order, planned_qty, ack_warnings, mode}` → NDJSON stream (`start`/`split`/`progress`/`done`/`error`); one upload at a time (pg advisory lock → 409)
-  - `GET /api/log-upload/history?username=` (uploaders always get only their own), `GET /api/log-upload/{upload_id}`, `DELETE /api/log-upload/{upload_id}` (undo a batch)
+### API (`solo-pixi-essential/api/`)
+- `app.py` entry (lifespan: migrations + scheduler; request timing log; StaticFiles fallback when run without nginx)
+- `config.py` env settings + shared thresholds (yield ≥98 green, ≥95 amber; retry ≤3 green, ≤5 amber); `db.py` per-worker pool (`with db.db() as conn`), dedicated `db.connect()` for work that holds advisory locks; slow statements (>500 ms) logged
+- `errors.py` — every error is `{"error", "code"}`; raise `ApiError` / `bad_request` / `not_found` / `conflict`
+- `routers/`: `analytics` (public dashboard data), `auth`, `admin` (accounts), `tweak` (DB Tweak + `/api/reparse` jobs), `upload` (Log Uploader), `reports` (AI), `system` (health, llm-status, stats refresh)
+- `services/`: `filters` (date-range scope), `stats` (unit statistics from the views + result cache), `measurements` (SQL histograms), `reports` + `report_text` (AI report facts / prompt / number check / Markdown), `llm`, `ingest` (web upload thread), `reparse` (background job), `migrations`, `scheduler`, `auth`, `auth_utils`, `upload_chat`
+- Shared with the desktop tools, one level up: `module_log_parser.py`, `log_splitter.py`
+
+### Statistics
+- "Unit" = (work order, MAC1), counted by its latest PASS if it ever passed, else its latest attempt (the original `ROW_NUMBER … PASS first, start_time DESC` rule, within the requested scope).
+- `mv_unit_day` (per effective date × WO × MAC1) and `mv_unit` (per unit, all dates) are refreshed CONCURRENTLY every `STATS_REFRESH_SEC` (300) and right after web uploads, undo and DB Tweak deletes. Desktop uploads appear within one interval (or after 「立即更新」). Bump `MV_VERSION` in `services/migrations.py` when changing a view definition.
+- Results are cached per worker under the data version (view refresh time + alignment targets), so nothing stale is served.
+- Scope parameters: `date_from`, `date_to` (inclusive ISO dates), `work_order`; legacy `year/month/week/day/unit_date` still accepted (`week` is ISO and needs `year`). Filters use `COALESCE(unit_date, start_time::date)`, indexed by `idx_mt_eff_date` — keep that exact expression.
+- A refactor must keep numbers identical: the pre-refactor comparison (210 checks) is described in `docs/test-report/test_report.md`.
+
+### AI reports
+- `build_facts()` computes every number (units, PASS/FAIL/STOP, yield, retry, top-5 error codes/categories, planned vs tested, period, previous 3 WOs, risk level by thresholds). The LLM writes only `summary / 3 findings / 3 recommendations` via `json_schema`, zh and en in parallel, temperature 0.2. `check_numbers()` flags numbers not in the facts and regenerates once.
+- Stored in `ai_reports` (both languages per row, `data_hash` of the facts). Generated on demand (NDJSON stream), after each web upload (queued) and daily at `REPORT_DAILY_AT` (18:00, `APP_TZ`). One background generation at a time across workers (advisory locks). Follow-up questions: `POST /api/reports/{wo}/ask`.
+- AI text is rendered with `textContent` only (no Markdown → HTML).
+
+### Accounts
+- `X-Tweak-Token` carries a random session token (SHA-256 stored in `app_sessions`, `SESSION_TTL_HOURS` = 8). Administrator = `TWEAK_USER`/`TWEAK_PASS`; uploaders = `app_users` (disabled, never deleted). Dependencies: `Depends(auth.current_user)`, `Depends(auth.require_admin)`.
+- Uploaders: Log Uploader (own batches only) and planned quantities. Admin: everything incl. DB Tweak, reparse, accounts, daily-batch trigger.
+
+### Web (`solo-pixi-essential/web/`, no build step)
+- `index.html` shell; `css/theme.css` (Dark default / Light — the only two themes; all colours incl. charts are variables), `css/base.css`, `css/pages.css`
+- `js/main.js` routing (`#overview` …), filter bar (全部/今天/本週/本月/自訂 + 工單; default = latest work order), freshness + 立即更新, theme, idle rotation (overview ↔ workorders every 30 s after 5 min idle; filters untouched; paused while busy)
+- `js/core/`: `api.js` (errors, NDJSON, authenticated downloads), `auth.js`, `charts.js`, `format.js`, `scope.js`, `i18n.js` (every UI string; `data-i18n*` attributes in HTML), `ui.js`
+- `js/pages/*.js` one module per page: `{id, scoped, init(app), load(app), onAuthChange?, isBusy?}`; `js/report.js` the single AI report window
+- Chart.js is vendored (`vendor/chart.umd-4.4.1.min.js`); no CDN at runtime
+- Unit tests check: every `t('key')` / `data-i18n` key exists, ids used by JS exist, no inline styles, no hex colours outside `theme.css`
 
 ## Dashboard Pages
-| Page key | Nav label | Auth required |
+| Page key | Nav label | Auth |
 |---|---|---|
-| `overview` | 📊 Dashboard | No |
-| `workorders` | 📋 Work Orders | No |
-| `fails` | ⚠️ Fail List | No |
-| `bt` | 📡 BT Analysis | No |
-| `wifi` | 📶 WiFi Analysis | No |
-| `advanced` | 📈 Advanced Analytics | No |
-| `failanalysis` | 🔍 Fail Analysis | No |
-| `dbtweak` | 🔧 DB Tweak | Yes (administrator) |
-| `dataalign` | ⚖️ Data Alignment | No |
-| `logupload` | 📤 Log Uploader | Yes (administrator or uploader) |
-| `accounts` | 👥 帳號管理 | Yes (administrator; nav link hidden otherwise) |
+| `overview` | 📊 儀表板 | — |
+| `workorders` | 📋 工單 | — |
+| `fails` | ⚠️ 失敗清單 | — |
+| (button) | ✨ AI 報告（最新工單） | — (generation needs the LLM) |
+| `measurements` | 📡 量測分析 (BT / WiFi / 其他 tabs) | — |
+| `failanalysis` | 🔍 失敗分析 | — |
+| `dbtweak` | 🔧 資料庫維護 (DB Tweak) | administrator |
+| `dataalign` | ⚖️ 計畫數對齊 (Data Alignment) | view: —; save: signed in |
+| `logupload` | 📤 上傳 Log | administrator or uploader |
+| `accounts` | 👥 帳號管理 | administrator (hidden otherwise) |
 
-## Client-Side Storage
-- `pixi-auth-v1` (sessionStorage): the login session token. Survives a reload, cleared when the tab closes.
-- `pixi-align-v1` (localStorage): JSON map of `{ [workOrder]: { target: number } }`.
-  Stores per-WO alignment targets for the Data Alignment page. No backend write required.
+## Key Endpoints
+- Dashboard (public): `GET /api/overview`, `/api/filter-options`, `/api/summary`, `/api/pass-fail-split`, `/api/trend`, `/api/monthly-count`, `/api/work-order-summary`, `/api/retries`, `/api/fails` (paged), `/api/fail-analysis`, `/api/config-analysis`, `/api/measurements`, `/api/alignment`, `/api/raw-log/{id}`, `/api/meta`
+- `GET/POST /api/alignment-targets` (POST needs sign-in)
+- `POST /api/stats/refresh` (at most once per 10 s)
+- Auth: `POST /api/auth/login` (alias `/api/tweak/login`), `/logout`, `GET /me`, `POST /change-password`
+- Admin: `/api/admin/users` (GET/POST), `PATCH /api/admin/users/{u}`, `POST …/reset-password`, `GET /api/admin/audit`, `/api/admin/login-log`
+- DB Tweak (admin): `GET /api/tweak/records`, `DELETE /api/tweak/delete-scope`, `DELETE /api/tweak/records/{id}`, `GET /api/tweak/raw-log/{id}`; reparse `POST/GET /api/reparse`, `POST /api/reparse/{id}/cancel`
+- Log Uploader (signed in): `POST /api/log-upload/analyze|validate|chat|commit`, `GET /history`, `GET|DELETE /{id}`
+- AI reports: `GET /api/reports/{wo}`, `POST …/generate?force=`, `GET …/history`, `GET …/compare`, `GET …/markdown?lang=`, `POST …/ask`, `POST /api/reports/run-daily` (admin)
 
-## Special Notes
-- Database migrations run automatically on API startup (see `run_migrations()` in app.py)
-- DB Tweak endpoints provide administrative functions for data management
-- Raw log access requires authentication via DB Tweak credentials
-- Filtering system supports cascading dropdowns for Year/Month/Week/Day/Work Order
-- All datetime filtering uses `unit_date` with fallback to `start_time::date`
-- Data Alignment logic is purely client-side: golden stops and gap calculation happen in-browser
-- Overview page fetches 6 API endpoints in parallel via `Promise.all` for faster load
-- Search inputs (Work Orders, Fails, Fail Analysis) are debounced at 200 ms
-- Log Uploader: `file_hash` = sha256 of each split record and ignores the work order, so a wrong work order cannot be fixed by re-uploading — undo the batch (`DELETE /api/log-upload/{id}`) first. Rows inserted by the web uploader carry `module_test.upload_id`; desktop-uploaded rows have NULL. Upload batches are recorded in `upload_log`; a successful upload writes the planned quantity to `alignment_targets`.
-- `module_log_parser._plain_sum` keeps a left-to-right float sum on purpose: Python 3.12's compensated `sum()` shifts some 3-decimal WiFi power averages by 0.001 versus the Python 3.11 desktop uploader
-- The scheduled 10-minute page carousel + latest-WO AI report popup was removed; the sidebar "AI Report — Latest WO" button opens it on demand. The 5-minute idle page rotation remains and pauses while a Log Upload is unfinished.
-- Accounts: uploader accounts are disabled, never deleted (history stays attributable). Disabling or resetting a password revokes that account's sessions immediately; no lockout on failed logins, but every attempt is in `auth_log`. Account changes go to `account_audit`. `upload_log.username` / `user_role` record who uploaded; `reverted_by` who undid it.
-- Log Uploader AI assistant: chat is the default when `/api/llm-status` is connected, with a manual switch to the form; both modes share the same hidden `luWo`/`luQty` inputs. The first assistant line is built from the facts (no LLM). The reply prompt branches on warnings in code — left to the model, it told users to tick the ack box when none was shown. On LLM failure the page falls back to the form; the transcript is saved server-side per turn (`upload_log.chat_transcript`).
-- API files are single-file bind mounts in `docker-compose.yml`: after editing `app.py`, `module_log_parser.py`, `log_splitter.py`, `auth_utils.py`, `upload_chat.py` or the dashboard HTML, restart the api container (`docker compose restart api`) or it keeps serving the old file. Adding a new mount or env var needs `docker compose up -d api`.
+## Environment
+`solo-pixi-essential/.env.example` lists everything: `PIXI_PREFIX` / `PIXI_HTTP_PORT` / `PIXI_DB_PORT` (container names and ports), `TWEAK_USER` / `TWEAK_PASS`, `SESSION_TTL_HOURS`, `LLM_*`, `STATS_REFRESH_SEC`, `REPORT_AUTO`, `REPORT_DAILY_AT`, `APP_TZ`, `DB_POOL_MAX`, `APP_VERSION`.
+
+## Notes
+- nginx: no upstream keepalive (it caused ~40 ms stalls on small responses); NDJSON routes are unbuffered; 512 MB bodies only for `/api/log-upload/analyze`; gzip on; `index.html`/js/css revalidate (`no-cache`), `vendor/` is immutable.
+- `module_log_parser._plain_sum` keeps a left-to-right float sum on purpose (matches the Python 3.11 desktop uploader).
+- Log Uploader: `file_hash` ignores the work order, so a wrong work order cannot be fixed by re-uploading — undo the batch first. Rows from the web uploader carry `module_test.upload_id`.
+- Desktop tools (`log_splitter_app.py`, `log_uploader_app.py`, `log_concatenate_app.py`) are unchanged and keep working against the same database.
+- Design records: `improve_plan.md` (this round), `log_uploader_web_plan.md` (uploader / accounts); superseded plans in `docs/archive/`.

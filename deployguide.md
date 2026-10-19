@@ -1,144 +1,74 @@
-# Deploy Guide — Solo PIXI MP Monitor Dashboard
+# 部署指南 — Solo PIXI MP Monitor Dashboard
 
-> 適用版本：commit `32dab2ec`（feat: Local LLM AI Report, Aligned KPI fix, metallic UI）
-> 目標：安全更新遠端機器，**DB 資料不受影響**
+正式環境：`sit@10.20.31.40:/mnt/md127/pixi-solo-dashboard`（容器 `pixi-test-*`，看板 port 8001，資料庫 port 5433）。
+同一台主機上的 `iw-solo-pixi-essential`（port 8004）是另一套系統，**不要動**。
 
----
+> 任何正式環境部署都要先在本機驗證，並經負責人同意後才執行。
 
-## 本次更新的檔案清單
+## 1. 一般部署（建議）
 
-| 遠端路徑（相對於專案根目錄）| 類型 | 說明 |
-|---|---|---|
-| `solo-pixi-essential/api/app.py` | 修改 | 後端 API |
-| `solo-pixi-essential/ai_summary_helper.py` | **新增** ⚠️ 必須存在 | LLM prompt helper |
-| `solo-pixi-essential/solo_pixi_dashboard.html` | 修改 | Dashboard UI |
-| `solo-pixi-essential/docker-compose.yml` | 修改 | 新增 ai_summary_helper volume mount |
-
-> `ai_summary_helper.py` 是全新檔案，**必須先複製到位**，否則 api 容器重啟會失敗。
-
----
-
-## 方法一：遠端機有 Git（推薦）
+在開發機的 repo 內執行：
 
 ```bash
-# 1. 進入專案目錄
-cd /path/to/Solo_PIXI_MP_Monitor_DashBoard
-
-# 2. 拉取最新版本
-git pull origin main
-
-# 3. 安全重啟（只動 api + nginx，postgres 保持運行）
 cd solo-pixi-essential
-docker compose up -d --no-deps api nginx
-
-# 4. 確認容器狀態
-docker compose ps
+export SSHPASS='…'                 # 用密碼登入時（需要安裝 sshpass）；有 SSH key 則不需要
+scripts/deploy.sh --dry-run        # 先看會同步哪些檔案
+scripts/deploy.sh                  # 正式部署
 ```
 
----
+`deploy.sh` 依序做：
 
-## 方法二：手動複製檔案（SCP / SFTP）
-
-### Step 1 — 複製 4 個檔案到遠端
-
-```bash
-# 從本機執行（替換 user@remote-ip 與路徑）
-REMOTE="user@10.20.30.xx"
-REMOTE_DIR="/path/to/Solo_PIXI_MP_Monitor_DashBoard/solo-pixi-essential"
-
-scp solo-pixi-essential/api/app.py               ${REMOTE}:${REMOTE_DIR}/api/app.py
-scp solo-pixi-essential/ai_summary_helper.py      ${REMOTE}:${REMOTE_DIR}/ai_summary_helper.py
-scp solo-pixi-essential/solo_pixi_dashboard.html  ${REMOTE}:${REMOTE_DIR}/solo_pixi_dashboard.html
-scp solo-pixi-essential/docker-compose.yml        ${REMOTE}:${REMOTE_DIR}/docker-compose.yml
-```
-
-### Step 2 — 在遠端機執行重啟
-
-```bash
-cd /path/to/Solo_PIXI_MP_Monitor_DashBoard/solo-pixi-essential
-
-# 只重啟 api 和 nginx，postgres 完全不動
-docker compose up -d --no-deps api nginx
-```
-
----
-
-## 為什麼這樣做是安全的
-
-```
-┌─────────────────────────────────────────────────────┐
-│  docker compose 服務架構                              │
-│                                                      │
-│  ┌──────────────┐   不動  ┌──────────────────────┐   │
-│  │   postgres   │ ──────► │  pixi-pgdata (Volume) │  │
-│  │  pixi-test-db│         │  /var/lib/postgresql  │  │
-│  └──────────────┘         └──────────────────────┘  │
-│         ▲  DB 資料在 Named Volume，與容器生命週期無關    │
-│                                                      │
-│  ┌──────────────┐  重啟   ← api/app.py       (mount) │
-│  │     api      │         ← ai_summary_helper.py     │
-│  │ pixi-test-api│         ← solo_pixi_dashboard.html │
-│  └──────────────┘                                    │
-│                                                      │
-│  ┌──────────────┐  重啟                              │
-│  │    nginx     │                                    │
-│  │pixi-test-nginx                                    │
-│  └──────────────┘                                    │
-└─────────────────────────────────────────────────────┘
-```
-
-- `postgres` 容器使用 **Named Volume** (`pixi-pgdata`)，資料與容器無關，容器重啟或刪除都不會損失資料
-- `api` 的應用程式碼全部透過 **volume mount** 注入（非 image 內）—— 更新檔案後只需 restart，**不需要重新 build image**
-- `docker compose up -d --no-deps api nginx`：`--no-deps` 確保不會連帶重啟 postgres
-
----
-
-## 指令說明
-
-| 指令 | 用途 |
+| 步驟 | 內容 |
 |---|---|
-| `docker compose up -d --no-deps api nginx` | 根據最新 compose 設定重啟指定服務（**本次推薦**，因 compose.yml 有異動）|
-| `docker compose restart api nginx` | 僅重啟容器，不重讀 compose 設定（若只有改程式碼可用）|
-| `docker compose ps` | 查看所有容器狀態 |
-| `docker compose logs -f api` | 即時查看 api 容器 log |
-| `docker compose logs --tail=50 api` | 查看最近 50 行 api log |
+| 1. 備份 | 目前的檔案 → `oldbackup/<時間>/files.tgz`；資料庫 `pg_dump -Fc` → `dbbackup/pixi_test_<時間>.dump`（備份是空的就中止，不做任何變更） |
+| 2. 同步 | `rsync` 整個 `solo-pixi-essential/`（不含伺服器上的 `.env`、`oldbackup/`、`dbbackup/`）。加 `--delete` 才會刪除伺服器上多出來的舊檔 |
+| 3. 建置 | `docker compose up -d --build` |
+| 4. 健康檢查 | 最多 2 分鐘：`/health` 必須回 `ok` 且版本號正確，首頁要能開 |
+| 5. 失敗自動還原 | 還原 `files.tgz` 並重新 build，等舊版本恢復健康；資料庫不受影響 |
 
----
+本機演練（不會用到 SSH）：準備一個目錄放 `.env`（例如 `PIXI_PREFIX=pixi-rehearsal`、`PIXI_HTTP_PORT=8002`、`PIXI_DB_PORT=5434`），再執行 `scripts/deploy.sh --local <目錄>`。
 
-## 重啟後驗證
+### 第一次部署 v3.0.0 要注意
+- API 啟動時會自動建立新物件：`mv_unit_day`、`mv_unit`（統計 view）、`idx_mt_eff_date`（索引）、`ai_reports`、`job_runs`、`app_meta`，以及帳號／上傳紀錄相關資料表。**`module_test` 欄位不變**（只在缺少時補上 `upload_id` 等早期版本加過的 nullable 欄位）。7 萬筆資料約 2 秒。
+- 舊的單檔 `solo_pixi_dashboard.html`、`ai_summary_helper.py` 已不再使用，留在伺服器上無害；用 `--delete` 部署會移除。
+- 部署後所有人需要重新登入一次。
+- 伺服器上的 `.env`（若有）請比對 `.env.example` 補上新設定；不補也可以，全部都有預設值。
 
-```bash
-# 1. 確認容器都是 Up 狀態
-docker compose ps
+## 2. 每日資料庫備份（14 天保留）
 
-# 2. 確認 api health check 通過（status 應為 healthy）
-docker compose ps api
+在伺服器加入 cron（`crontab -e`）：
 
-# 3. 快速測試 API
-curl http://localhost:8001/health
-
-# 4. 確認 ai_summary_helper 有正確掛載
-docker exec pixi-test-api python -c "import ai_summary_helper; print('OK')"
+```
+0 2 * * *  /mnt/md127/pixi-solo-dashboard/scripts/backup_db.sh >> /mnt/md127/pixi-solo-dashboard/dbbackup/backup.log 2>&1
 ```
 
----
-
-## 若 api 容器起不來（排錯）
+還原：
 
 ```bash
-# 查看啟動 log
-docker compose logs api
-
-# 常見原因：ai_summary_helper.py 未複製到位
-ls -la /path/to/solo-pixi-essential/ai_summary_helper.py
-
-# 強制重建（不影響 DB）
-docker compose up -d --no-deps --force-recreate api nginx
+docker exec -i pixi-test-db pg_restore -U pixi -d pixi_test --clean --if-exists < dbbackup/pixi_test_<時間>.dump
 ```
 
----
+## 3. 手動回復到上一版
 
-> DB 備份建議（可選，預防萬一）：
-> ```bash
-> docker exec pixi-test-db pg_dump -U pixi pixi_test > backup_$(date +%Y%m%d).sql
-> ```
+```bash
+cd /mnt/md127/pixi-solo-dashboard
+ls oldbackup/                                   # 找到要回復的時間
+find . -mindepth 1 -maxdepth 1 ! -name oldbackup ! -name dbbackup ! -name .env -exec rm -rf {} +
+tar xzf oldbackup/<時間>/files.tgz
+docker compose up -d --build
+```
+
+新增的資料表和 view 不影響舊版程式，可以保留。
+
+## 4. 常用指令（伺服器上）
+
+| 目的 | 指令 |
+|---|---|
+| 狀態 | `docker compose ps`；`curl http://localhost:8001/health` |
+| API 日誌（含每個請求耗時、慢查詢） | `docker compose logs -f api` |
+| 手動更新統計 | 看板右上「立即更新」，或 `curl -X POST http://localhost:8001/api/stats/refresh` |
+| 重新啟動 | `docker compose restart api` |
+
+## 5. 設定（`.env`，與 `docker-compose.yml` 同目錄）
+
+完整清單見 `solo-pixi-essential/.env.example`。常用：`TWEAK_USER` / `TWEAK_PASS`（管理者）、`LLM_API_BASE` / `LLM_MODEL`、`STATS_REFRESH_SEC`（預設 300 秒）、`REPORT_DAILY_AT`（預設 18:00）、`REPORT_AUTO`。
