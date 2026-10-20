@@ -5,7 +5,7 @@
 ### Stack (run in `solo-pixi-essential/`)
 - Production-style: `docker compose up -d --build` — code is baked into the api image; nginx serves `web/`
 - Development: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d` — `api/` and the two shared modules are mounted; after editing Python run `... restart api`. `web/` and `nginx/` are mounted in both modes (reload the browser; `docker exec <prefix>-nginx nginx -s reload` after nginx changes)
-- The local test stack on hermesrunner uses compose project `pixi-local` (`docker compose -p pixi-local …`)
+- Local test stack on hermesrunner: compose project `pixi-local` (http://10.88.90.136:8001). Not kept running since the 2026-10-20 production deploy; to test again run `docker compose -p pixi-local up -d --build`, then load production data with `docker exec -i pixi-test-db pg_restore -U pixi -d pixi_test --clean --if-exists < ../dbbackup/<YYMMDD>/pixi_test_*.dump` and restart api. Never touch the other stacks on this host (`sitaskai-*` = Ask AI, `iw-solo-pixi-essential`)
 - Health: `curl http://localhost:8001/health` (DB latency, LLM status, stats refresh time, version)
 - API docs: `http://localhost:8001/docs`
 - DB shell: `psql postgresql://pixi:pixipass@localhost:5433/pixi_test`
