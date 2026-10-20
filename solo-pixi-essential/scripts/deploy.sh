@@ -10,7 +10,8 @@
 #           --dry-run        show what would be synced, change nothing
 #
 # SSH: key-based login, or export SSHPASS=… (needs `sshpass`).
-# The target keeps its own .env (never overwritten). Backups land in <target>/oldbackup/<timestamp>/.
+# The target keeps its own .env (never overwritten). Backups land in <target>/oldbackup/<YYMMDD>/
+# (one folder per day, e.g. oldbackup/261020/): files_<HHMMSS>.tgz and pixi_test_<stamp>.dump.
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,6 +32,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 STAMP="$(date +%Y%m%d_%H%M%S)"
+BK="oldbackup/$(date +%y%m%d)"
+FILES_TGZ="$BK/files_${STAMP#*_}.tgz"
+DB_DUMP="$BK/pixi_test_$STAMP.dump"
 log() { printf '\033[1;34m[deploy %s]\033[0m %s\n' "$(date +%H:%M:%S)" "$*"; }
 die() { printf '\033[1;31m[deploy] %s\033[0m\n' "$*" >&2; exit 1; }
 
@@ -66,16 +70,16 @@ if [[ $DRY_RUN -eq 1 ]]; then
 fi
 
 # ── 1. Backup ────────────────────────────────────────────────────────────────
-run "mkdir -p '$DIR/oldbackup/$STAMP' '$DIR/dbbackup'"
-log "backing up current files → oldbackup/$STAMP/files.tgz"
-run "cd '$DIR' && tar czf 'oldbackup/$STAMP/files.tgz' --exclude=oldbackup --exclude=dbbackup --exclude='__pycache__' . 2>/dev/null || true"
+run "mkdir -p '$DIR/$BK'"
+log "backing up current files → $FILES_TGZ"
+run "cd '$DIR' && tar czf '$FILES_TGZ' --exclude=oldbackup --exclude=dbbackup --exclude='__pycache__' . 2>/dev/null || true"
 DB_CONTAINER="$(run "cd '$DIR' && docker compose ps -q postgres 2>/dev/null | head -1" || true)"
 DB_NOTE="no database backup was taken"
 if [[ $DB_BACKUP -eq 1 && -n "$DB_CONTAINER" ]]; then
-    log "backing up the database → dbbackup/pixi_test_$STAMP.dump"
-    run "docker exec $DB_CONTAINER pg_dump -U pixi -Fc pixi_test > '$DIR/dbbackup/pixi_test_$STAMP.dump'"
-    run "test -s '$DIR/dbbackup/pixi_test_$STAMP.dump'" || die "database backup is empty — aborting before any change"
-    DB_NOTE="database backup: dbbackup/pixi_test_$STAMP.dump"
+    log "backing up the database → $DB_DUMP"
+    run "docker exec $DB_CONTAINER pg_dump -U pixi -Fc pixi_test > '$DIR/$DB_DUMP'"
+    run "test -s '$DIR/$DB_DUMP'" || die "database backup is empty — aborting before any change"
+    DB_NOTE="database backup: $DB_DUMP"
 else
     log "database backup skipped"
 fi
@@ -107,13 +111,13 @@ done
 
 if [[ $healthy -eq 1 ]]; then
     log "healthy: $body"
-    log "done — backup kept in $DIR/oldbackup/$STAMP"
+    log "done — backup kept in $DIR/$BK"
     exit 0
 fi
 
 # ── 5. Rollback ──────────────────────────────────────────────────────────────
-log "health check FAILED — restoring oldbackup/$STAMP/files.tgz"
-run "cd '$DIR' && find . -mindepth 1 -maxdepth 1 ! -name oldbackup ! -name dbbackup ! -name .env -exec rm -rf {} + && tar xzf 'oldbackup/$STAMP/files.tgz'"
+log "health check FAILED — restoring $FILES_TGZ"
+run "cd '$DIR' && find . -mindepth 1 -maxdepth 1 ! -name oldbackup ! -name dbbackup ! -name .env -exec rm -rf {} + && tar xzf '$FILES_TGZ'"
 run "cd '$DIR' && docker compose up -d --build 2>&1 | tail -5"
 for i in $(seq 1 40); do
     if run "curl -fsS --max-time 5 http://localhost:$PORT/health" >/dev/null 2>&1; then

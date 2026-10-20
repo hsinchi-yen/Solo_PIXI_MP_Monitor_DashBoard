@@ -20,7 +20,7 @@ scripts/deploy.sh                  # 正式部署
 
 | 步驟 | 內容 |
 |---|---|
-| 1. 備份 | 目前的檔案 → `oldbackup/<時間>/files.tgz`；資料庫 `pg_dump -Fc` → `dbbackup/pixi_test_<時間>.dump`（備份是空的就中止，不做任何變更） |
+| 1. 備份 | 一天一個資料夾 `oldbackup/<YYMMDD>/`（例如 `oldbackup/261020/`）：目前的檔案 → `files_<HHMMSS>.tgz`；資料庫 `pg_dump -Fc` → `pixi_test_<時間>.dump`（備份是空的就中止，不做任何變更） |
 | 2. 同步 | `rsync` 整個 `solo-pixi-essential/`（不含伺服器上的 `.env`、`oldbackup/`、`dbbackup/`）。加 `--delete` 才會刪除伺服器上多出來的舊檔 |
 | 3. 建置 | `docker compose up -d --build` |
 | 4. 健康檢查 | 最多 2 分鐘：`/health` 必須回 `ok` 且版本號正確，首頁要能開 |
@@ -36,7 +36,7 @@ scripts/deploy.sh                  # 正式部署
 
 ## 2. 每日資料庫備份（14 天保留）
 
-在伺服器加入 cron（`crontab -e`）：
+正式機 2026-10-20 起已設定（使用者 `sit` 的 crontab）。新主機在伺服器加入 cron（`crontab -e`）：
 
 ```
 0 2 * * *  /mnt/md127/pixi-solo-dashboard/scripts/backup_db.sh >> /mnt/md127/pixi-solo-dashboard/dbbackup/backup.log 2>&1
@@ -52,13 +52,21 @@ docker exec -i pixi-test-db pg_restore -U pixi -d pixi_test --clean --if-exists 
 
 ```bash
 cd /mnt/md127/pixi-solo-dashboard
-ls oldbackup/                                   # 找到要回復的時間
+ls oldbackup/*/                                 # 找到要回復的日期與時間
 find . -mindepth 1 -maxdepth 1 ! -name oldbackup ! -name dbbackup ! -name .env -exec rm -rf {} +
-tar xzf oldbackup/<時間>/files.tgz
+tar xzf oldbackup/<YYMMDD>/files_<HHMMSS>.tgz
 docker compose up -d --build
 ```
 
 新增的資料表和 view 不影響舊版程式，可以保留。
+
+回到 v3 之前的版本（commit `137e1151`）用 `oldbackup/261020/files_102401.tgz`；同一個資料夾也有那時的 DB 備份（`.sql` 和 `.dump`）。
+
+## 部署紀錄
+
+| 日期 | 版本 | 備份 | 驗收 |
+|---|---|---|---|
+| 2026-10-20 10:24 | 3.1.0（取代 `137e1151`） | `oldbackup/261020/` | 新舊數字 238/238 相同；中斷約 14 秒（`docs/test-report/v3.1.0/test_report.md` 第 10 節） |
 
 ## 4. 常用指令（伺服器上）
 
