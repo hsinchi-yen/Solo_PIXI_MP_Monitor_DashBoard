@@ -59,12 +59,12 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
-    image: pixi-dashboard-api:${APP_VERSION:-3.1.0}
+    image: pixi-dashboard-api:${APP_VERSION:-3.2.0}
     container_name: ${PIXI_PREFIX:-pixi-test}-api
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://pixi:pixipass@postgres/pixi_test
-      APP_VERSION: ${APP_VERSION:-3.1.0}
+      APP_VERSION: ${APP_VERSION:-3.2.0}
       APP_TZ: ${APP_TZ:-Asia/Taipei}
       TZ: ${APP_TZ:-Asia/Taipei}
       TWEAK_USER: ${TWEAK_USER:-pixi}

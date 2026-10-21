@@ -42,7 +42,7 @@ def filter_options():
 def overview(scope: Scope = Depends(scope_params)):
     """Everything the 儀表板 page shows, in one request.
 
-    Numbers, trend and PASS/FAIL split follow the selected scope. The two monthly
+    Numbers, trend, PASS/FAIL split and hourly output follow the selected scope. The two monthly
     charts show the whole year of that scope across all work orders, for context."""
     with db.db() as conn:
         return stats.cached(conn, ("overview", scope), lambda: _overview(conn, scope))
@@ -60,6 +60,7 @@ def _overview(conn, scope):
                     "has_target": any(r.get("target_total") is not None for r in align["items"])},
         "split": stats.pass_fail_split(conn, scope),
         "trend": stats.trend(conn, scope),
+        "hourly": stats.hourly_output(conn, scope),
         "monthly": monthly,
         "top_causes": stats.top_fail_causes(conn, scope, 5),
         "data_as_of": stats.refreshed_at(conn),
@@ -82,6 +83,13 @@ def pass_fail_split(scope: Scope = Depends(scope_params)):
 def trend(scope: Scope = Depends(scope_params)):
     with db.db() as conn:
         return stats.cached(conn, ("trend", scope), lambda: stats.trend(conn, scope))
+
+
+@router.get("/hourly-output")
+def hourly_output(scope: Scope = Depends(scope_params)):
+    """Test runs per work hour (config.WORK_HOURS) on the latest day of the selected or latest work order."""
+    with db.db() as conn:
+        return stats.cached(conn, ("hourly_output", scope), lambda: stats.hourly_output(conn, scope))
 
 
 @router.get("/monthly-count")

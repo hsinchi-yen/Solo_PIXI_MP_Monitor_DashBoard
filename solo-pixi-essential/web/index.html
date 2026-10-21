@@ -98,9 +98,11 @@
     <!-- ─── 儀表板 ─── -->
     <section class="page" id="page-overview" hidden>
         <div class="ov-numbers">
+            <div class="ov-split"><div class="label" data-i18n="ov.split"></div><div class="chart-box"><canvas id="chOvSplit"></canvas></div></div>
             <div class="ov-hero">
                 <div class="label" data-i18n="ov.yield"></div>
                 <div class="value" id="ovYield">—</div>
+                <div class="aligned" id="ovFirstPass"></div>
                 <div class="aligned" id="ovAligned"></div>
             </div>
             <div class="ov-num"><div class="label" data-i18n="ov.units"></div><div class="value" id="ovUnits">—</div><div class="sub" id="ovUnitsSub"></div></div>
@@ -111,7 +113,7 @@
         </div>
         <div class="ov-charts">
             <div class="card"><div class="card-head"><div class="card-title" data-i18n="ov.trend"></div><div class="card-note" id="ovTrendNote"></div></div><div class="chart-box"><canvas id="chOvTrend"></canvas></div></div>
-            <div class="card"><div class="card-head"><div class="card-title" data-i18n="ov.split"></div></div><div class="chart-box"><canvas id="chOvSplit"></canvas></div></div>
+            <div class="card"><div class="card-head"><div class="card-title" data-i18n="ov.hourly"></div><div class="card-note" id="ovHourlyNote"></div></div><div class="chart-box"><canvas id="chOvHourly"></canvas></div></div>
             <div class="card"><div class="card-head"><div class="card-title" data-i18n="ov.monthly"></div><div class="card-note" id="ovMonthlyNote"></div></div><div class="chart-box"><canvas id="chOvMonthly"></canvas></div></div>
             <div class="card"><div class="card-head"><div class="card-title" data-i18n="ov.monthlyFail"></div><div class="card-note" id="ovMonthlyFailNote"></div></div><div class="chart-box"><canvas id="chOvMonthlyFail"></canvas></div></div>
         </div>

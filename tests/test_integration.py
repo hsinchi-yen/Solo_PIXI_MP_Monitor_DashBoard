@@ -187,6 +187,42 @@ class T1System(Base):
         ov = call('GET', '/api/overview')[1]
         self.assertEqual(ov['summary']['total'], s['total'])
 
+    def test_first_pass_yield(self):
+        # First pass = the unit's first attempt (start_time, then id) is PASS — the IW61x rule (Q70).
+        wo = call('GET', '/api/filter-options')[1]['work_orders'][0]['work_order']
+        expected = psql("SELECT COUNT(*) FILTER (WHERE r = 'PASS') || '/' || COUNT(*) FROM ("
+                        "SELECT (ARRAY_AGG(result ORDER BY start_time, id))[1] AS r FROM module_test "
+                        f"WHERE work_order = '{wo}' GROUP BY mac1) u")
+        for qs in (f'work_order={wo}', f'work_order={wo}&date_from=2000-01-01&date_to=2100-12-31'):
+            s = call('GET', f'/api/summary?{qs}')[1]
+            self.assertEqual(f"{s['first_pass']}/{s['total']}", expected, qs)
+            self.assertLessEqual(s['first_pass'], s['pass'])
+            tr = call('GET', f'/api/trend?{qs}')[1]
+            self.assertEqual(sum(p['first_pass'] for p in tr['points']), s['first_pass'], qs)
+            self.assertTrue(all('fpy_pct' in p for p in tr['points']))
+
+    def test_hourly_output(self):
+        # Q69: PASS / FAIL / STOP runs per hour, 07:00–19:00 of the work order's latest day with runs then.
+        wo = call('GET', '/api/filter-options')[1]['work_orders'][0]['work_order']
+        h = call('GET', f'/api/hourly-output?work_order={wo}')[1]
+        self.assertEqual([p['hour'] for p in h['points']], list(range(7, 19)))
+        day = psql(f"SELECT MAX(start_time::date) FROM module_test WHERE work_order = '{wo}' "
+                   "AND start_time::time >= '07:00' AND start_time::time < '19:00'")
+        self.assertEqual(h['date'], day)
+        out = psql("SELECT EXTRACT(HOUR FROM start_time)::int, COUNT(*) FILTER (WHERE result = 'PASS'), "
+                   "COUNT(*) FILTER (WHERE result = 'FAIL'), COUNT(*) FILTER (WHERE result = 'STOP') FROM module_test "
+                   f"WHERE work_order = '{wo}' AND start_time >= '{day} 07:00' AND start_time < '{day} 19:00' GROUP BY 1")
+        expected = {int(a): (int(b), int(c), int(d)) for a, b, c, d in (line.split('|') for line in out.splitlines())}
+        got = {p['hour']: (p['pass'], p['fail'], p['stop']) for p in h['points'] if p['pass'] + p['fail'] + p['stop']}
+        self.assertEqual(got, expected)
+        outside = psql(f"SELECT COUNT(*) FROM module_test WHERE work_order = '{wo}' AND start_time::date = '{day}' "
+                       "AND (start_time::time < '07:00' OR start_time::time >= '19:00')")
+        self.assertEqual(h['outside'], int(outside))
+        # No work order selected: the latest one; the dashboard gets the same in /api/overview.
+        self.assertEqual(call('GET', '/api/hourly-output')[1], h)
+        self.assertEqual(call('GET', '/api/overview')[1]['hourly'], h)
+        self.assertEqual(call('GET', '/api/hourly-output?work_order=NOPE-1')[1]['points'], [])
+
     def test_b9_alignment_targets_need_login(self):
         self.assertEqual(call('POST', '/api/alignment-targets', body={'X-1': 5})[0], 401)
 

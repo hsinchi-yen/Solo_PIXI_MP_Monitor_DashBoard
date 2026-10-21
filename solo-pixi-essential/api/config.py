@@ -1,7 +1,7 @@
 """Settings, read once from the environment (docker-compose passes them from .env)."""
 import os
 
-APP_VERSION = os.environ.get("APP_VERSION", "3.1.0")
+APP_VERSION = os.environ.get("APP_VERSION", "3.2.0")
 APP_TZ = os.environ.get("APP_TZ", "Asia/Taipei")
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://pixi:pixipass@localhost:5433/pixi_test")
@@ -26,6 +26,9 @@ LLM_STATUS_PROBE_SEC = 60
 # Statistics materialized view (mv_unit_day): refreshed on this interval, and right after
 # web uploads / undo / DB Tweak deletes. Desktop uploads show up within one interval.
 STATS_REFRESH_SEC = int(os.environ.get("STATS_REFRESH_SEC", "300"))
+
+# Line work hours [start, end) for the dashboard's hourly output chart (local wall-clock hours).
+WORK_HOURS = (7, 19)
 
 # AI reports: generated after each web upload and in a daily batch at this local time.
 REPORT_DAILY_AT = os.environ.get("REPORT_DAILY_AT", "18:00")

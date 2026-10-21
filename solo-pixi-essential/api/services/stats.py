@@ -6,12 +6,16 @@ the dashboard has always used (ROW_NUMBER … ORDER BY result = 'PASS' first, st
 DESC). mv_unit keeps that result per unit over all dates (used when there is no date filter);
 mv_unit_day keeps one row per (effective date, work order, MAC1), so a date-range scope only
 combines a few day rows per unit instead of sorting every test record.
+
+First pass: the result of a unit's first attempt in scope (start_time, then id); a unit
+passes first time only when that attempt is PASS (a first STOP counts as not passed, as on
+the IW61x dashboard).
 """
 import logging
 import threading
 import time
 from collections import OrderedDict
-from datetime import timedelta
+from datetime import datetime, time as dtime, timedelta
 
 import config
 import db
@@ -41,6 +45,7 @@ def units_cte(scope: Scope):
                MIN(first_time)                                                 AS first_time,
                MAX(last_time)                                                  AS last_time,
                MAX(last_pass_time)                                             AS last_pass_time,
+               (ARRAY_AGG(first_result ORDER BY first_time))[1]                AS first_result,
                (ARRAY_AGG(last_result ORDER BY last_time DESC))[1]             AS latest_result,
                (ARRAY_AGG(eff_date ORDER BY last_time DESC))[1]                AS latest_date,
                (ARRAY_AGG(eff_date ORDER BY last_pass_time DESC NULLS LAST))[1] AS pass_date,
@@ -72,6 +77,8 @@ def summary(conn, scope: Scope):
                COUNT(*) FILTER (WHERE result = 'FAIL')                    AS fail,
                COUNT(*) FILTER (WHERE result = 'STOP')                    AS stop,
                ROUND(COUNT(*) FILTER (WHERE result = 'PASS') * 100.0 / NULLIF(COUNT(*), 0), 2) AS yield_pct,
+               COUNT(*) FILTER (WHERE first_result = 'PASS')              AS first_pass,
+               ROUND(COUNT(*) FILTER (WHERE first_result = 'PASS') * 100.0 / NULLIF(COUNT(*), 0), 2) AS first_pass_pct,
                COUNT(*) FILTER (WHERE attempts > 1)                       AS retry_units,
                COUNT(*) FILTER (WHERE has_pass AND stop_count > 0 AND fail_count = 0 AND attempts > 1) AS stop_to_pass,
                COALESCE(SUM(attempts), 0)                                 AS test_attempts,
@@ -81,6 +88,7 @@ def summary(conn, scope: Scope):
     """, params)
     total = row["total"] or 0
     row["yield_pct"] = _round2(row["yield_pct"])
+    row["first_pass_pct"] = _round2(row["first_pass_pct"])
     row["retry_rate"] = round((row["retry_units"] or 0) * 100.0 / max(total, 1), 2)
     return row
 
@@ -125,7 +133,8 @@ def monthly(conn, scope: Scope, year):
 
 
 def trend(conn, scope: Scope):
-    """Yield over time: hourly when the scope covers one day, otherwise daily (gap-filled)."""
+    """Yield and first-pass yield over time: hourly when the scope covers one day, otherwise
+    daily (gap-filled). Both use the same units per point (by the record each unit is counted by)."""
     cte, params = units_cte(scope)
     span = db.fetch_one(conn, f"""
         WITH {cte} SELECT MIN(chosen_date) AS lo, MAX(chosen_date) AS hi, COUNT(*) AS n FROM c
@@ -138,27 +147,73 @@ def trend(conn, scope: Scope):
             WITH {cte},
             data AS (
                 SELECT date_trunc('hour', chosen_time) AS t, COUNT(*) AS total,
-                       COUNT(*) FILTER (WHERE result = 'PASS') AS passed
+                       COUNT(*) FILTER (WHERE result = 'PASS') AS passed,
+                       COUNT(*) FILTER (WHERE first_result = 'PASS') AS first_pass
                 FROM c GROUP BY 1
             ),
             hours AS (SELECT generate_series(MIN(t), MAX(t), interval '1 hour') AS t FROM data)
-            SELECT h.t, COALESCE(d.total, 0) AS total, COALESCE(d.passed, 0) AS passed
+            SELECT h.t, COALESCE(d.total, 0) AS total, COALESCE(d.passed, 0) AS passed,
+                   COALESCE(d.first_pass, 0) AS first_pass
             FROM hours h LEFT JOIN data d ON d.t = h.t ORDER BY h.t
         """, params)
     else:
         rows = db.fetch_all(conn, f"""
             WITH {cte},
             data AS (
-                SELECT chosen_date AS t, COUNT(*) AS total, COUNT(*) FILTER (WHERE result = 'PASS') AS passed
+                SELECT chosen_date AS t, COUNT(*) AS total, COUNT(*) FILTER (WHERE result = 'PASS') AS passed,
+                       COUNT(*) FILTER (WHERE first_result = 'PASS') AS first_pass
                 FROM c GROUP BY 1
             ),
             days AS (SELECT generate_series(MIN(t), MAX(t), interval '1 day')::date AS t FROM data)
-            SELECT dd.t, COALESCE(d.total, 0) AS total, COALESCE(d.passed, 0) AS passed
+            SELECT dd.t, COALESCE(d.total, 0) AS total, COALESCE(d.passed, 0) AS passed,
+                   COALESCE(d.first_pass, 0) AS first_pass
             FROM days dd LEFT JOIN data d ON d.t = dd.t ORDER BY dd.t
         """, params)
     for r in rows:
         r["yield_pct"] = round(r["passed"] * 100.0 / r["total"], 2) if r["total"] else None
+        r["fpy_pct"] = round(r["first_pass"] * 100.0 / r["total"], 2) if r["total"] else None
     return {"unit": unit, "points": rows}
+
+
+def hourly_output(conn, scope: Scope):
+    """Test runs per hour (PASS / FAIL / STOP) inside the work hours of one day: the selected
+    work order (or the latest one in scope), on its latest day in scope with runs in those hours."""
+    start, end = config.WORK_HOURS
+    wo = scope.work_order
+    if not wo:
+        where, params = mv_where(scope, ["wo_key <> ''"])
+        row = db.fetch_one(conn, f"""
+            SELECT wo_key FROM mv_unit_day {where} GROUP BY wo_key ORDER BY MAX(last_time) DESC, wo_key LIMIT 1
+        """, params)
+        wo = row["wo_key"] if row else None
+    empty = {"work_order": wo, "date": None, "start": start, "end": end, "points": [], "outside": 0}
+    if not wo:
+        return empty
+    where, params = raw_where(Scope(scope.date_from, scope.date_to, wo),
+                              ["start_time::time >= %s", "start_time::time < %s"])
+    day = db.fetch_one(conn, f"SELECT MAX(start_time::date) AS d FROM module_test {where}",
+                       params + [dtime(start), dtime(end)])["d"]
+    if day is None:
+        return empty
+    lo, hi = datetime.combine(day, dtime(start)), datetime.combine(day, dtime(end))
+    points = db.fetch_all(conn, """
+        WITH data AS (
+            SELECT EXTRACT(HOUR FROM start_time)::int AS hour,
+                   COUNT(*) FILTER (WHERE result = 'PASS') AS pass,
+                   COUNT(*) FILTER (WHERE result = 'FAIL') AS fail,
+                   COUNT(*) FILTER (WHERE result = 'STOP') AS stop
+            FROM module_test WHERE work_order = %s AND start_time >= %s AND start_time < %s
+            GROUP BY 1
+        )
+        SELECT h.hour, COALESCE(d.pass, 0) AS pass, COALESCE(d.fail, 0) AS fail, COALESCE(d.stop, 0) AS stop
+        FROM generate_series(%s, %s) AS h(hour) LEFT JOIN data d ON d.hour = h.hour
+        ORDER BY h.hour
+    """, [wo, lo, hi, start, end - 1])
+    outside = db.fetch_one(conn, """
+        SELECT COUNT(*) AS n FROM module_test
+        WHERE work_order = %s AND start_time >= %s AND start_time < %s AND (start_time < %s OR start_time >= %s)
+    """, [wo, datetime.combine(day, dtime()), datetime.combine(day + timedelta(days=1), dtime()), lo, hi])["n"]
+    return {**empty, "date": day, "points": points, "outside": outside}
 
 
 def work_order_summary(conn, scope: Scope):

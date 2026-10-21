@@ -65,6 +65,8 @@ class Summary(BaseModel):
     fail: int
     stop: int
     yield_pct: Optional[float] = None
+    first_pass: int = 0
+    first_pass_pct: Optional[float] = None
     retry_units: int
     retry_rate: float
     stop_to_pass: int
@@ -80,6 +82,8 @@ class TrendPoint(BaseModel):
     total: int
     passed: int
     yield_pct: Optional[float] = None
+    first_pass: int = 0
+    fpy_pct: Optional[float] = None
 
 
 class Trend(BaseModel):

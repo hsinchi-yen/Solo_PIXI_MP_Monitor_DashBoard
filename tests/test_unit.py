@@ -784,7 +784,7 @@ class TestApiApp(unittest.TestCase):
 
     def test_routes_present(self):
         paths = {r.path for r in self.app.routes}
-        for p in ('/health', '/api/overview', '/api/measurements', '/api/alignment', '/api/trend', '/api/filter-options',
+        for p in ('/health', '/api/overview', '/api/measurements', '/api/alignment', '/api/trend', '/api/hourly-output', '/api/filter-options',
                   '/api/reports/{work_order}', '/api/reports/{work_order}/generate', '/api/reports/{work_order}/ask',
                   '/api/reparse', '/api/stats/refresh', '/api/auth/login', '/api/log-upload/commit', '/api/admin/users'):
             self.assertIn(p, paths)

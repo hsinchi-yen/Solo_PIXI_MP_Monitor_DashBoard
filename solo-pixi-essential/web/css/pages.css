@@ -1,5 +1,9 @@
-/* ─── 儀表板 (overview): one row of big numbers, then four charts ─────────── */
-.ov-numbers { display: grid; grid-template-columns: minmax(300px, 1.35fr) repeat(5, minmax(0, 1fr)); gap: 14px; }
+/* ─── 儀表板 (overview): the PASS/FAIL/STOP doughnut and big numbers, then four charts ─ */
+.ov-numbers { display: grid; grid-template-columns: minmax(270px, 1.3fr) minmax(350px, 1.6fr) repeat(5, minmax(0, 1fr)); gap: 14px; }
+.ov-split { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 6px; min-width: 0; }
+.ov-split .label { font-size: 16px; font-weight: 700; color: var(--text-2); }
+.ov-split .chart-box { height: auto; min-height: 130px; }
+.ov-split .chart-box > canvas { position: absolute; left: 0; top: 0; }
 .ov-hero { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; display: grid; gap: 4px; align-content: center; }
 .ov-hero .label { font-size: 16px; font-weight: 700; color: var(--text-2); }
 .ov-hero .value { font-size: 76px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -1px; }
@@ -7,10 +11,12 @@
 .ov-hero .aligned { font-size: 17px; color: var(--text-2); font-weight: 600; }
 .ov-hero .aligned b { font-size: 24px; color: var(--text); }
 .ov-hero .aligned .gap { display: block; font-size: 14px; color: var(--text-3); white-space: nowrap; }
-.ov-num { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; display: grid; align-content: center; gap: 2px; min-width: 0; }
+.ov-num { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px 14px; display: grid; align-content: center; gap: 2px; min-width: 0; }
 .ov-num .label { font-size: 16px; font-weight: 700; color: var(--text-2); }
-.ov-num .value { font-size: 44px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.ov-num .value { font-size: 40px; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .ov-num .sub { font-size: 13px; color: var(--text-3); }
+/* 6+ characters (e.g. 12,345 or 12.34 %) would wrap in the narrow one-row boxes. */
+.ov-num .value.long { font-size: 32px; }
 /* The overview fills the screen: numbers on top, the four charts share the remaining height. */
 #page-overview { grid-template-rows: auto minmax(0, 1fr); }
 .ov-charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -19,16 +25,21 @@
 .v-good { color: var(--good); } .v-warn { color: var(--warn); } .v-bad { color: var(--bad); }
 .v-pass { color: var(--c-pass); } .v-fail { color: var(--c-fail); } .v-stop { color: var(--c-stop); }
 
-@media (max-width: 1500px) {
+/* Seven boxes in one row need a full-HD width; below that the doughnut + yield take the first row. */
+@media (max-width: 1850px) {
     .ov-numbers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .ov-hero { grid-column: 1 / -1; }
+    .ov-hero { grid-column: span 2; }
+    .ov-num .value { font-size: 44px; }
 }
 @media (max-width: 900px) {
     .ov-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ov-hero, .ov-split { grid-column: 1 / -1; }
+    .ov-split .chart-box { min-height: 180px; }
     .ov-charts { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; }
     .ov-charts .chart-box { flex: none; height: 260px; }
     .ov-hero .value { font-size: 56px; }
     .ov-num .value { font-size: 32px; }
+    .ov-num .value.long { font-size: 26px; }
 }
 
 /* ─── AI report modal ───────────────────────────────────────────────────── */

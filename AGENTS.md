@@ -12,9 +12,9 @@
 - Deploy: `scripts/deploy.sh` (backup → rsync → build → health → automatic rollback); rehearse with `scripts/deploy.sh --local DIR`. Production deploys need the user's explicit approval.
 
 ### Tests
-- `python tests/test_unit.py` — no DB; also runs `node --test "tests/js/*.test.mjs"` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image as root, since the image user cannot install packages: `docker run --rm --user root -v "$PWD":/repo:ro pixi-dashboard-api:3.1.0 sh -c "pip install -q --root-user-action=ignore httpx && python /repo/tests/test_unit.py"`)
+- `python tests/test_unit.py` — no DB; also runs `node --test "tests/js/*.test.mjs"` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image as root, since the image user cannot install packages: `docker run --rm --user root -v "$PWD":/repo:ro pixi-dashboard-api:3.2.0 sh -c "pip install -q --root-user-action=ignore httpx && python /repo/tests/test_unit.py"`)
 - `python tests/test_integration.py` — needs the running stack + `docker` (direct DB checks); uploads use `rawlogs/*.zip`
-- `python tests/test_e2e.py [--shots DIR]` — Playwright; screenshots for docs/test-report/v3.1.0 (English by default, test_12–14 switch to 中文)
+- `python tests/test_e2e.py [--shots DIR]` — Playwright; screenshots for docs/test-report/v3.2.0 (English by default, test_12–14 switch to 中文)
 - CI: `.github/workflows/tests.yml` runs the unit suites
 
 ## Architecture
@@ -32,7 +32,9 @@
 
 ### Statistics
 - "Unit" = (work order, MAC1), counted by its latest PASS if it ever passed, else its latest attempt (the original `ROW_NUMBER … PASS first, start_time DESC` rule, within the requested scope).
-- `mv_unit_day` (per effective date × WO × MAC1) and `mv_unit` (per unit, all dates) are refreshed CONCURRENTLY every `STATS_REFRESH_SEC` (300) and right after web uploads, undo and DB Tweak deletes. Desktop uploads appear within one interval (or after 「立即更新」). Bump `MV_VERSION` in `services/migrations.py` when changing a view definition.
+- First pass (since 3.2.0, same rule as the IW61x dashboard): the result of the unit's first attempt in scope (`start_time`, then `id`) is PASS; a first STOP counts as not passed. `first_result` in both views; `summary.first_pass(_pct)`, `trend` points `first_pass` / `fpy_pct` (same units per point as the yield line).
+- Hourly output (`hourly_output`): PASS / FAIL / STOP test runs per hour in `config.WORK_HOURS` (07:00–19:00) on the latest day, within scope, that the selected work order (or the latest one in scope) has runs in those hours; `outside` = that day's runs before / after.
+- `mv_unit_day` (per effective date × WO × MAC1) and `mv_unit` (per unit, all dates) are refreshed CONCURRENTLY every `STATS_REFRESH_SEC` (300) and right after web uploads, undo and DB Tweak deletes. Desktop uploads appear within one interval (or after 「立即更新」). Bump `MV_VERSION` in `services/migrations.py` when changing a view definition (now 4; startup rebuilds both views).
 - Results are cached per worker under the data version (view refresh time + alignment targets), so nothing stale is served.
 - Scope parameters: `date_from`, `date_to` (inclusive ISO dates), `work_order`; legacy `year/month/week/day/unit_date` still accepted (`week` is ISO and needs `year`). Filters use `COALESCE(unit_date, start_time::date)`, indexed by `idx_mt_eff_date` — keep that exact expression.
 - A refactor must keep numbers identical: the pre-refactor comparison (210 checks) is described in `docs/test-report/test_report.md`.
@@ -50,6 +52,7 @@
 - `index.html` shell; `css/theme.css` (Dark default / Light — the only two themes; all colours incl. charts are variables), `css/base.css`, `css/pages.css`
 - `js/main.js` routing (`#overview` …), filter bar (全部/今天/本週/本月/自訂 + 工單; default = latest work order), freshness + 立即更新, theme, idle rotation (overview ↔ workorders every 30 s after 5 min idle; filters untouched; paused while busy)
 - `js/core/`: `api.js` (errors in the UI language, NDJSON, authenticated downloads), `auth.js`, `charts.js`, `format.js`, `scope.js`, `i18n.js` (language state, `t()`, `localized(zh, en)`; `data-i18n*` attributes in HTML), `strings.en.js` / `strings.zh.js` (every UI string; same keys and `{variables}`, English has no Chinese — checked by tests), `ui.js`
+- 儀表板 (`js/pages/overview.js`): the PASS / FAIL / STOP doughnut sits left of the Yield box (first pass and aligned yield under it), then Units / PASS / FAIL / STOP / Retry; charts Yield Trend (yield, first pass, units), Hourly Output, Units per Month, FAIL / STOP per Month. Seven boxes in one row from 1850 px (1920×1080 fits without scrolling); below that three columns; values of 6+ characters get a smaller font so they never wrap
 - `js/pages/*.js` one module per page: `{id, scoped, init(app), load(app), onAuthChange?, isBusy?}`; `js/report.js` the single AI report window
 - Chart.js is vendored (`vendor/chart.umd-4.4.1.min.js`); no CDN at runtime
 - Language: English is the default; the sidebar button switches to 中文 (`localStorage` `pixi-lang`; `?lang=en|zh` wins). Uploader accounts (Taiwan line staff) get 中文 while signed in without changing the saved choice, which returns on sign-out (`applyUploaderLanguage` in `main.js`); the upload menu item reads 上傳 Log in both languages. Switching re-renders the shell and the visible page (pages may add `onLangChange`). Dates stay numeric in both languages; only month labels differ (Jan / 1 月). The AI report opens in the UI language; the upload assistant and report follow-ups get `lang` in the request body
@@ -70,7 +73,7 @@
 | `accounts` | 👥 帳號管理 | administrator (hidden otherwise) |
 
 ## Key Endpoints
-- Dashboard (public): `GET /api/overview`, `/api/filter-options`, `/api/summary`, `/api/pass-fail-split`, `/api/trend`, `/api/monthly-count`, `/api/work-order-summary`, `/api/retries`, `/api/fails` (paged), `/api/fail-analysis`, `/api/config-analysis`, `/api/measurements`, `/api/alignment`, `/api/raw-log/{id}`, `/api/meta`
+- Dashboard (public): `GET /api/overview`, `/api/filter-options`, `/api/summary`, `/api/pass-fail-split`, `/api/trend`, `/api/hourly-output`, `/api/monthly-count`, `/api/work-order-summary`, `/api/retries`, `/api/fails` (paged), `/api/fail-analysis`, `/api/config-analysis`, `/api/measurements`, `/api/alignment`, `/api/raw-log/{id}`, `/api/meta`
 - `GET/POST /api/alignment-targets` (POST needs sign-in)
 - `POST /api/stats/refresh` (at most once per 10 s)
 - Auth: `POST /api/auth/login` (alias `/api/tweak/login`), `/logout`, `GET /me`, `POST /change-password`
@@ -87,4 +90,4 @@
 - `module_log_parser._plain_sum` keeps a left-to-right float sum on purpose (matches the Python 3.11 desktop uploader).
 - Log Uploader: `file_hash` ignores the work order, so a wrong work order cannot be fixed by re-uploading — undo the batch first. Rows from the web uploader carry `module_test.upload_id`.
 - Desktop tools (`log_splitter_app.py`, `log_uploader_app.py`, `log_concatenate_app.py`) are unchanged and keep working against the same database.
-- Design records: `bilingual_ui_plan.md` (English / 中文, v3.1.0), `improve_plan.md` (v3.0.0), `log_uploader_web_plan.md` (uploader / accounts); superseded plans in `docs/archive/`.
+- Design records: `overview_fpy_hourly_plan.md` (first pass + hourly output, v3.2.0), `bilingual_ui_plan.md` (English / 中文, v3.1.0), `improve_plan.md` (v3.0.0), `log_uploader_web_plan.md` (uploader / accounts); superseded plans in `docs/archive/`.

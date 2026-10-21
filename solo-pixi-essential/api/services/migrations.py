@@ -14,7 +14,7 @@ import db
 log = logging.getLogger("pixi.migrations")
 
 # Bump when the view definition changes; startup then rebuilds it.
-MV_VERSION = "3"
+MV_VERSION = "4"
 
 MV_UNIT_DAY_SQL = """
 CREATE MATERIALIZED VIEW mv_unit_day AS
@@ -29,6 +29,7 @@ SELECT
     MIN(start_time)                                                   AS first_time,
     MAX(start_time)                                                   AS last_time,
     MAX(start_time) FILTER (WHERE result = 'PASS')                    AS last_pass_time,
+    (ARRAY_AGG(result ORDER BY start_time, id))[1]                    AS first_result,
     (ARRAY_AGG(result ORDER BY start_time DESC, id DESC))[1]          AS last_result,
     (ARRAY_AGG(mac2 ORDER BY start_time DESC, id DESC))[1]            AS last_mac2,
     SUM(test_duration_sec)                                            AS dur_sum,
@@ -55,6 +56,7 @@ FROM (
            MIN(first_time)                                                  AS first_time,
            MAX(last_time)                                                   AS last_time,
            MAX(last_pass_time)                                              AS last_pass_time,
+           (ARRAY_AGG(first_result ORDER BY first_time))[1]                 AS first_result,
            (ARRAY_AGG(last_result ORDER BY last_time DESC))[1]              AS latest_result,
            (ARRAY_AGG(eff_date ORDER BY last_time DESC))[1]                 AS latest_date,
            (ARRAY_AGG(eff_date ORDER BY last_pass_time DESC NULLS LAST))[1] AS pass_date,
