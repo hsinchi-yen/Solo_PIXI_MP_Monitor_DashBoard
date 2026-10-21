@@ -3,7 +3,7 @@
 | 項目 | 內容 |
 |------|------|
 | 文件版本 | **v1.0**（2026-10-21；附錄 A 的 Q68–Q71 已確認） |
-| 狀態 | **已實作，本機驗證完成**（v3.2.0）。結果見 [docs/test-report/v3.2.0/test_report.md](docs/test-report/v3.2.0/test_report.md)。**尚未部署到正式環境** |
+| 狀態 | **已部署**：2026-10-21 11:12 上線（v3.2.0）。部署前在正式機 DB 複本上確認相容；結果見 [docs/test-report/v3.2.0/test_report.md](docs/test-report/v3.2.0/test_report.md) 第 8 節 |
 | 起因 | 一次通過率比良率更能反映產線的實際狀況，IW61x 看板已經有這個數字。另外希望儀表板能看到當天每小時的產量 |
 | 範圍 | `api/services/migrations.py`（兩個物化視圖）、`stats.py`、`routers/analytics.py`、`schemas.py`、`web/`（儀表板版面）、測試、文件 |
 | 不變 | `module_test` 等既有資料表、桌面工具、Dark／Light 兩種主題，以及良率、PASS/FAIL/STOP、重測率等所有既有數字 |
