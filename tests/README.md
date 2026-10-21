@@ -14,6 +14,7 @@ sample work orders, AI reports) and remove it again. Upload tests skip themselve
 sample work orders already exist in the database.
 
 Environment: `PIXI_BASE_URL` (default `http://localhost:8001`), `TWEAK_USER` / `TWEAK_PASS`,
-`PIXI_DB_CONTAINER` (default `pixi-test-db`), `PIXI_BROWSER_CHANNEL` (default `chrome`),
+`PIXI_DB_CONTAINER` (default `pixi-test-db`), `PIXI_DB_SSH` (stack on another host: the direct DB checks
+run there, e.g. `PIXI_DB_SSH="ssh sit@10.20.31.40"`), `PIXI_BROWSER_CHANNEL` (default `chrome`),
 `PIXI_SHOTS` (screenshot folder, default `docs/test-report/v3.2.0/screenshots`; the v3.0.0 set in
 `docs/test-report/screenshots` and the v3.1.0 set are kept as those releases' records).

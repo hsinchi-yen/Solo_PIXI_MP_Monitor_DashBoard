@@ -11,6 +11,7 @@ The UI opens in English (the default); test_12/13 switch to 中文 and back.
 """
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -28,6 +29,7 @@ BASE = os.environ.get('PIXI_BASE_URL', 'http://localhost:8001').rstrip('/')
 ADMIN_USER = os.environ.get('TWEAK_USER', 'pixi')
 ADMIN_PASS = os.environ.get('TWEAK_PASS', 'pixipass')
 DB_CONTAINER = os.environ.get('PIXI_DB_CONTAINER', 'pixi-test-db')
+DB_SSH = os.environ.get('PIXI_DB_SSH', '')   # e.g. "ssh sit@10.20.31.40": DB checks run on that host
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ZIP_007 = os.path.join(ROOT, 'rawlogs', 'log5101-260630007.zip')
 WO_007 = '5101-260630007'
@@ -47,8 +49,10 @@ E2E_USER, E2E_PASS = 'e2e-uploader', 'e2e-pass-123'
 
 
 def psql(sql):
-    return subprocess.run(['docker', 'exec', DB_CONTAINER, 'psql', '-U', 'pixi', '-d', 'pixi_test', '-At', '-c', sql],
-                          capture_output=True, text=True, check=True).stdout.strip()
+    cmd = ['docker', 'exec', DB_CONTAINER, 'psql', '-U', 'pixi', '-d', 'pixi_test', '-At', '-c', sql]
+    if DB_SSH:   # stack on another host: run the same command there
+        cmd = shlex.split(DB_SSH) + [shlex.join(cmd)]
+    return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
 
 
 @unittest.skipUnless(sync_playwright, 'playwright not installed')

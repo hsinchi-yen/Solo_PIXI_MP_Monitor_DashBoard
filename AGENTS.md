@@ -14,6 +14,7 @@
 ### Tests
 - `python tests/test_unit.py` — no DB; also runs `node --test "tests/js/*.test.mjs"` when Node is present; FastAPI tests skip where FastAPI is not installed (the host has none; run them in the api image as root, since the image user cannot install packages: `docker run --rm --user root -v "$PWD":/repo:ro pixi-dashboard-api:3.2.0 sh -c "pip install -q --root-user-action=ignore httpx && python /repo/tests/test_unit.py"`)
 - `python tests/test_integration.py` — needs the running stack + `docker` (direct DB checks); uploads use `rawlogs/*.zip`
+- Against production (both suites): `PIXI_BASE_URL=http://10.20.31.40:8001 PIXI_DB_SSH="sshpass -e ssh sit@10.20.31.40"` (with `SSHPASS` set) runs the DB checks on that host. The tests leave admin sessions, admin login records, AI reports, a `job_runs` reparse row, the `daily_reports_date` set to today (which skips that day's 18:00 batch) and staged files in the api container's `/tmp/pixi_uploads`. Snapshot first and clean up afterwards, as in `docs/test-report/v3.2.0/test_report.md` §9
 - `python tests/test_e2e.py [--shots DIR]` — Playwright; screenshots for docs/test-report/v3.2.0 (English by default, test_12–14 switch to 中文)
 - CI: `.github/workflows/tests.yml` runs the unit suites
 

@@ -5,7 +5,7 @@ Integration tests against a running stack (default http://localhost:8001).
 
 Needs: the stack up (docker compose), admin credentials (TWEAK_USER / TWEAK_PASS, default
 pixi / pixipass), and `docker` on PATH for direct DB checks (container PIXI_DB_CONTAINER,
-default pixi-test-db). Upload tests use rawlogs/*.zip and are skipped without them; AI tests
+default pixi-test-db; for a stack on another host set PIXI_DB_SSH, e.g. "ssh sit@10.20.31.40"). Upload tests use rawlogs/*.zip and are skipped without them; AI tests
 are skipped when the LLM is offline.
 
 The tests create and then remove their own data: a temporary uploader account, uploads of
@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -31,6 +32,7 @@ BASE = os.environ.get('PIXI_BASE_URL', 'http://localhost:8001').rstrip('/')
 ADMIN_USER = os.environ.get('TWEAK_USER', 'pixi')
 ADMIN_PASS = os.environ.get('TWEAK_PASS', 'pixipass')
 DB_CONTAINER = os.environ.get('PIXI_DB_CONTAINER', 'pixi-test-db')
+DB_SSH = os.environ.get('PIXI_DB_SSH', '')   # e.g. "ssh sit@10.20.31.40": DB checks run on that host
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ZIP_005 = os.path.join(ROOT, 'rawlogs', '5101-260630005.zip')
 ZIP_007 = os.path.join(ROOT, 'rawlogs', 'log5101-260630007.zip')
@@ -95,8 +97,10 @@ def login(user, pw):
 
 
 def psql(sql):
-    out = subprocess.run(['docker', 'exec', DB_CONTAINER, 'psql', '-U', 'pixi', '-d', 'pixi_test', '-At', '-c', sql],
-                         capture_output=True, text=True, check=True)
+    cmd = ['docker', 'exec', DB_CONTAINER, 'psql', '-U', 'pixi', '-d', 'pixi_test', '-At', '-c', sql]
+    if DB_SSH:   # stack on another host: run the same command there
+        cmd = shlex.split(DB_SSH) + [shlex.join(cmd)]
+    out = subprocess.run(cmd, capture_output=True, text=True, check=True)
     return out.stdout.strip()
 
 
