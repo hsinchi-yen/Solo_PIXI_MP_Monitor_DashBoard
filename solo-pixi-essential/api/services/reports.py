@@ -178,12 +178,12 @@ def generate(work_order, trigger="manual", requested_by=None, on_event=None, row
                 cur.execute("""
                     UPDATE ai_reports SET status = 'running', started_at = NOW(), facts = %s, data_hash = %s, model = %s
                     WHERE id = %s
-                """, (json.dumps(facts, ensure_ascii=False), digest, config.LLM_MODEL, row_id))
+                """, (json.dumps(facts, ensure_ascii=False), digest, llm.active_model(), row_id))
             else:
                 cur.execute("""
                     INSERT INTO ai_reports (work_order, status, trigger, requested_by, data_hash, facts, model, started_at)
                     VALUES (%s, 'running', %s, %s, %s, %s, %s, NOW()) RETURNING id
-                """, (work_order, trigger, requested_by, digest, json.dumps(facts, ensure_ascii=False), config.LLM_MODEL))
+                """, (work_order, trigger, requested_by, digest, json.dumps(facts, ensure_ascii=False), llm.active_model()))
                 row_id = cur.fetchone()["id"]
             emit({"type": "started", "id": row_id})
 

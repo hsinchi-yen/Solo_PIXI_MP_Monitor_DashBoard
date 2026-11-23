@@ -13,10 +13,12 @@ TWEAK_USER = os.environ.get("TWEAK_USER", "pixi")
 TWEAK_PASS = os.environ.get("TWEAK_PASS", "pixipass")
 SESSION_TTL_HOURS = float(os.environ.get("SESSION_TTL_HOURS", "8"))
 
-# Local LLM (llama.cpp, OpenAI-compatible). Thinking off: ~15x faster on the dense 27B model.
-LLM_API_BASE = os.environ.get("LLM_API_BASE", "http://10.20.30.23:8000/v1")
+# Local LLM: any OpenAI-compatible server (vLLM or llama.cpp). Thinking off: ~15x faster on the dense 27B model.
+# LLM_MODEL is the preferred model id; when the server does not serve it (or it is empty / "auto"),
+# the client uses the first id from GET /models instead, so a renamed model does not break the AI features.
+LLM_API_BASE = os.environ.get("LLM_API_BASE", "http://10.20.30.23:8000/v1").rstrip("/")
 LLM_API_KEY = os.environ.get("LLM_API_KEY", "tn8227")
-LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen3.8-27B-UD-Q6_K_L")
+LLM_MODEL = os.environ.get("LLM_MODEL", "Qwen3.8-27B-FP8").strip()
 LLM_ENABLE_THINKING = os.environ.get("LLM_ENABLE_THINKING", "false").lower() == "true"
 LLM_REPORT_MAX_TOKENS = int(os.environ.get("LLM_REPORT_MAX_TOKENS", "1536"))
 LLM_CHAT_TIMEOUT = 60      # seconds per call; the uploader falls back to the form on timeout

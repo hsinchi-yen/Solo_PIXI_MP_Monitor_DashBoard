@@ -81,3 +81,5 @@ docker compose up -d --build
 ## 5. 設定（`.env`，與 `docker-compose.yml` 同目錄）
 
 完整清單見 `solo-pixi-essential/.env.example`。常用：`TWEAK_USER` / `TWEAK_PASS`（管理者）、`LLM_API_BASE` / `LLM_MODEL`、`STATS_REFRESH_SEC`（預設 300 秒）、`REPORT_DAILY_AT`（預設 18:00）、`REPORT_AUTO`。
+
+LLM 伺服器可用 vLLM 或 llama.cpp（OpenAI 相容 `/v1`）。`LLM_MODEL` 要填 `GET /v1/models` 列出的 id；填錯、留空或填 `auto` 時會自動改用清單中的第一個模型，並在 API log 留下警告（`LLM model ... is not served`），換模型後請檢查 log 或 `/api/llm-status` 的 `model`。`LLM_ENABLE_THINKING` 建議維持 `false`（開啟約慢 10 倍）。

@@ -5,7 +5,7 @@ QCA9377 BT + WiFi 模組量產測試的監控看板：上傳測試 log、看良�
 - **看板**（`solo-pixi-essential/web/`）：儀表板、工單、失敗清單、量測分析、失敗分析、AI 報告；英文介面為主（預設），可一鍵切換繁體中文；深色／淺色兩種主題，以產線大電視（1920×1080）為主要版面。
 - **API**（`solo-pixi-essential/api/`）：FastAPI + PostgreSQL 16。統計數字來自 materialized view，量測資料在伺服器端分箱。
 - **上傳**：網頁版「上傳 Log」（zip → 切檔 → 寫入資料庫，含 AI 對話確認），以及並行使用的桌面工具（`log_splitter_app.py`、`log_uploader_app.py`）。
-- **AI 報告**：本機 LLM（llama.cpp, Qwen3.8-27B）依伺服器算好的事實表撰寫中英文報告；網頁上傳後與每天 18:00 自動產生。
+- **AI 報告**：本機 LLM（OpenAI 相容伺服器，vLLM 或 llama.cpp 皆可；目前為 vLLM, Qwen3.8-27B-FP8）依伺服器算好的事實表撰寫中英文報告；網頁上傳後與每天 18:00 自動產生。
 
 操作說明請看 [docs/operator_manual.md](docs/operator_manual.md)；部署請看 [deployguide.md](deployguide.md)。
 
